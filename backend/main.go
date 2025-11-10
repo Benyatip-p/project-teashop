@@ -2,56 +2,53 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"database/sql"
 	"os"
+	"database/sql"
+	_ "github.com/lib/pq"
+	"log"
+	"github.com/gin-gonic/gin"
+	"net/http"
 	"time"
-	"encoding/json"
 	"strings"
-	
-	"github.com/joho/godotenv"
+	"encoding/json"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/gin-contrib/cors"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-	"github.com/gin-gonic/gin"
-	"github.com/gin-contrib/cors"
-	_ "github.com/lib/pq"
+	"github.com/joho/godotenv"
 )
 
-// ===================== struct =====================
-type Config struct {
-	DBHost     string
-	DBPort     int
-	DBUser     string
-	DBPassword string
-	DBName     string
+// ===================== Response Types =====================
+type ErrorResponse struct {
+	Message string `json:"message"`
 }
 
-// ===================== JWT Claims =====================
-type CustomClaims struct {
-	UserID   int      `json:"user_id"`
-	Username string   `json:"username"`
-	Roles    []string `json:"roles"`
-	jwt.RegisteredClaims
+// ===================== Book Model =====================
+type Book struct {
+	ID        int       `json:"id"`
+	Title     string    `json:"title"`
+	Author    string    `json:"author"`
+	ISBN      string    `json:"isbn"`
+	Year      int       `json:"year"`
+	Price     float64   `json:"price"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ===================== Auth Models =====================
 type User struct {
-	ID           int    `json:"id"`
-	Username     string `json:"username"`
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
-	IsActive     bool   `json:"is_active"`
+	ID           int       `json:"id"`
+	Username     string    `json:"username"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"` // ไม่ส่งไปใน JSON
+	IsActive     bool      `json:"is_active"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-type RefreshRequest struct {
-	RefreshToken string `json:"refresh_token"`
+	Username string `json:"username" binding:"required"`
+	Password string `json:"password" binding:"required"`
 }
 
 type LoginResponse struct {
@@ -67,7 +64,19 @@ type UserInfo struct {
 	Roles    []string `json:"roles"`
 }
 
-// ===================== Database =====================
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+// ===================== JWT Claims =====================
+type CustomClaims struct {
+	UserID   int      `json:"user_id"`
+	Username string   `json:"username"`
+	Roles    []string `json:"roles"`
+	jwt.RegisteredClaims
+}
+
+
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
@@ -77,86 +86,6 @@ func getEnv(key, defaultValue string) string {
 
 var db *sql.DB
 var jwtSecret = []byte("my-super-secret-key-change-in-production-2024")
-
-func initDB() {
-	// Load .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Println("Warning: .env file not found, using environment variables")
-	}
-
-	var dbErr error
-
-	host := getEnv("DB_HOST", "")
-	name := getEnv("DB_NAME", "")
-	user := getEnv("DB_USER", "")
-	password := getEnv("DB_PASSWORD", "")
-	port := getEnv("DB_PORT", "")
-
-	conSt := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, name)
-	// fmt.Println(conSt)
-	db, dbErr = sql.Open("postgres", conSt)
-	if dbErr != nil {
-		log.Fatal("failed to open database")
-	}
-
-	// กำหนดจำนวน Connection สูงสุด
-	db.SetMaxOpenConns(25)
-
-	// กำหนดจำนวน Idle connection สูงสุด
-	db.SetMaxIdleConns(25)
-
-	// กำหนดอายุของ Connection
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	dbErr = db.Ping()
-	if dbErr != nil {
-		log.Fatal("failed to connect to database", dbErr)
-	}
-	log.Println("successfully connected to database")
-}
-
-
-func CloseDB() {
-	if db != nil {
-		db.Close()
-	}
-}
-
-func initDatabaseHandler(c *gin.Context) {
-	if db == nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database not initialized"})
-		return
-	}
-	// Read init.sql
-	initSQL, err := ioutil.ReadFile("init.sql")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error reading init.sql: %v", err)})
-		return
-	}
-
-	// Execute init.sql
-	_, err = db.Exec(string(initSQL))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error executing init.sql: %v", err)})
-		return
-	}
-
-	// Read data.sql
-	dataSQL, err := ioutil.ReadFile("data.sql")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error reading data.sql: %v", err)})
-		return
-	}
-
-	_, err = db.Exec(string(dataSQL))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error executing data.sql: %v", err)})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "Database initialized successfully"})
-}
 
 // ===================== Password Hashing Functions =====================
 func hashPassword(password string) (string, error) {
@@ -333,6 +262,44 @@ func logAudit(userID int, action, resource string, resourceID interface{}, detai
 		c.ClientIP(),
 		c.GetHeader("User-Agent"),
 	)
+}
+
+func initDB() {
+	// Load .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Warning: .env file not found, using environment variables")
+	}
+
+	var dbErr error
+
+	host := getEnv("DB_HOST", "")
+	name := getEnv("DB_NAME", "")
+	user := getEnv("DB_USER", "")
+	password := getEnv("DB_PASSWORD", "")
+	port := getEnv("DB_PORT", "")
+
+	conSt := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, name)
+	// fmt.Println(conSt)
+	db, dbErr = sql.Open("postgres", conSt)
+	if dbErr != nil {
+		log.Fatal("failed to open database")
+	}
+
+	// กำหนดจำนวน Connection สูงสุด
+	db.SetMaxOpenConns(25)
+
+	// กำหนดจำนวน Idle connection สูงสุด
+	db.SetMaxIdleConns(25)
+
+	// กำหนดอายุของ Connection
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	dbErr = db.Ping()
+	if dbErr != nil {
+		log.Fatal("failed to connect to database", dbErr)
+	}
+	log.Println("successfully connected to database")
 }
 
 // ===================== Authentication Endpoints =====================
@@ -558,6 +525,9 @@ func main() {
 	r := gin.Default()
 	r.Use(cors.Default())
 
+	// ===================== Public Endpoints =====================
+
+	// Health check endpoint (for Docker healthcheck)
 	r.GET("/health", func(c *gin.Context){
 		err := db.Ping()
 		if err != nil {
@@ -579,10 +549,8 @@ func main() {
 	api := r.Group("/api/v1")
 	api.Use(authMiddleware()) // ทุก endpoint ต้อง authenticate
 	{
-		
+
 	}
 
 	r.Run(":8080")
 }
-
-
