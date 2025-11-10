@@ -11,8 +11,8 @@ import (
 	"time"
 	"strings"
 	"encoding/json"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	//swaggerFiles "github.com/swaggo/files"
+	//ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/gin-contrib/cors"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -41,9 +41,12 @@ type User struct {
 	ID           int       `json:"id"`
 	Username     string    `json:"username"`
 	Email        string    `json:"email"`
+	FirstName    *string   `json:"first_name"`
+	LastName     *string   `json:"last_name"`
 	PasswordHash string    `json:"-"` // ไม่ส่งไปใน JSON
 	IsActive     bool      `json:"is_active"`
 	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type LoginRequest struct {
@@ -58,10 +61,12 @@ type LoginResponse struct {
 }
 
 type UserInfo struct {
-	ID       int      `json:"id"`
-	Username string   `json:"username"`
-	Email    string   `json:"email"`
-	Roles    []string `json:"roles"`
+	ID        int      `json:"id"`
+	Username  string   `json:"username"`
+	Email     string   `json:"email"`
+	FirstName *string  `json:"first_name"`
+	LastName  *string  `json:"last_name"`
+	Roles     []string `json:"roles"`
 }
 
 type RefreshRequest struct {
@@ -313,17 +318,21 @@ func login(c *gin.Context) {
 	// ดึงข้อมูล user จาก database
 	var user User
 	query := `
-		SELECT id, username, email, password_hash, is_active
-		FROM users
-		WHERE username = $1
+	  SELECT id, username, email, first_name, last_name, password_hash, is_active, created_at, updated_at
+	  FROM users
+	  WHERE username = $1
 	`
 
 	err := db.QueryRow(query, req.Username).Scan(
-		&user.ID,
-		&user.Username,
-		&user.Email,
-		&user.PasswordHash,
-		&user.IsActive,
+	  &user.ID,
+	  &user.Username,
+	  &user.Email,
+	  &user.FirstName,
+	  &user.LastName,
+	  &user.PasswordHash,
+	  &user.IsActive,
+	  &user.CreatedAt,
+	  &user.UpdatedAt,
 	)
 
 	if err == sql.ErrNoRows {
@@ -384,14 +393,16 @@ func login(c *gin.Context) {
 
 	// ส่ง response
 	c.JSON(http.StatusOK, LoginResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		User: UserInfo{
-			ID:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-			Roles:    roles,
-		},
+	  AccessToken:  accessToken,
+	  RefreshToken: refreshToken,
+	  User: UserInfo{
+	    ID:        user.ID,
+	    Username:  user.Username,
+	    Email:     user.Email,
+	    FirstName: user.FirstName,
+	    LastName:  user.LastName,
+	    Roles:     roles,
+	  },
 	})
 }
 
@@ -436,24 +447,85 @@ func refreshTokenHandler(c *gin.Context) {
 }
 
 func logout(c *gin.Context) {
-	// ดึง refresh token จาก request
-	var req RefreshRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+  // ดึง refresh token จาก request
+  var req RefreshRequest
+  if err := c.ShouldBindJSON(&req); err != nil {
+    c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+    return
+  }
+
+  // Revoke refresh token
+  if err := revokeRefreshToken(req.RefreshToken); err != nil {
+    log.Printf("Error revoking token: %v", err)
+  }
+
+  // Log audit (ถ้ามี user_id ใน context)
+  if userID, exists := c.Get("user_id"); exists {
+    logAudit(userID.(int), "logout", "auth", nil, nil, c)
+  }
+
+  c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+}
+
+func getMyProfileHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	// Revoke refresh token
-	if err := revokeRefreshToken(req.RefreshToken); err != nil {
-		log.Printf("Error revoking token: %v", err)
+	// ดึงข้อมูล user จาก database
+	var user User
+	query := `
+		SELECT id, username, email, first_name, last_name, is_active, created_at, updated_at
+		FROM users
+		WHERE id = $1
+	`
+
+	err := db.QueryRow(query, userID).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.FirstName, 
+		&user.LastName,
+		&user.IsActive,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	} else if err != nil {
+		log.Printf("Database error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+		return
 	}
 
-	// Log audit (ถ้ามี user_id ใน context)
-	if userID, exists := c.Get("user_id"); exists {
-		logAudit(userID.(int), "logout", "auth", nil, nil, c)
+	roles, err := getUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		roles = []string{}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "logged out successfully"})
+	type UserProfileResponse struct {
+		ID        int      `json:"id"`
+		Username  string   `json:"username"`
+		Email     string   `json:"email"`
+		FirstName *string  `json:"first_name"`
+		LastName  *string  `json:"last_name"`
+		Roles     []string `json:"roles"`
+	}
+
+	// ส่ง response
+	c.JSON(http.StatusOK, UserProfileResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Roles:     roles,
+	})
 }
 
 // ===================== Middleware =====================
@@ -547,9 +619,14 @@ func main() {
 
 	// ===================== Protected API Endpoints =====================
 	api := r.Group("/api/v1")
-	api.Use(authMiddleware()) // ทุก endpoint ต้อง authenticate
 	{
-
+        
+		protected := api.Group("/")
+		protected.Use(authMiddleware())
+		{
+			// ต้องล็อกอินก่อนถึงจะเข้าถึงได้
+			protected.GET("/profile", getMyProfileHandler)
+		}
 	}
 
 	r.Run(":8080")
