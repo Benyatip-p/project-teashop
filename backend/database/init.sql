@@ -104,10 +104,13 @@ CREATE INDEX idx_audit_logs_user ON audit_logs(user_id);
 -- หมวดหมู่สินค้า
 CREATE TABLE categories (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
+    parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL, 
+    name VARCHAR(100) NOT NULL,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_categories_parent ON categories(parent_id);
 
 -- สินค้า
 CREATE TABLE products (
@@ -165,7 +168,7 @@ INSERT INTO users (username, email, first_name, last_name, password_hash, is_act
     'admin@teashop.com',
     'Admin',
     'User',
-    '\$2a\$12\$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2',
+    '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2',
     true
 ),
 (
@@ -173,9 +176,10 @@ INSERT INTO users (username, email, first_name, last_name, password_hash, is_act
     'user@teashop.com',
     'Regular',
     'User',
-    '\$2a\$12\$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2',
+    '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2',
     true
 );
+
 
 -- 3. ผูก User กับ Role
 -- (user_id 1 = 'admin', role_id 1 = 'admin')
@@ -204,10 +208,13 @@ SELECT 1, id FROM permissions;
 
 
 -- 6. เพิ่ม หมวดหมู่สินค้า
-INSERT INTO categories (name, description) VALUES
-('Tea Leaves', 'ชาคุณภาพสูงจากแหล่งต่างๆ เช่น อู่หลง, ชาเขียว'),
-('TEA Accessories', 'อุปกรณ์สำหรับประสบการณ์การชงชาที่สมบูรณ์'),
-('TEA Pots', 'กาชงชาดีไซน์สวยงามและใช้งานได้ดี');
+INSERT INTO categories (name, description, parent_id) VALUES
+('Tea', 'ชาคุณภาพสูงจากแหล่งต่างๆ', NULL),     ('TEA Accessories', 'อุปกรณ์สำหรับประสบการณ์การชงชา', NULL), ('TEA Pots', 'กาชงชาดีไซน์สวยงาม', NULL);
+
+INSERT INTO categories (name, description, parent_id) VALUES
+('ชาเขียว', 'ชาเขียวรสชาตินุ่มนวล', 1),
+('ชาอู่หลง', 'ชาอู่หลงกลิ่นหอม', 1),
+('ชาดำ', 'ชาดำเข้มข้น', 1);
 
 -- 7. เพิ่ม สินค้า
 INSERT INTO products (category_id, name, description, price, stock, image_url) VALUES
