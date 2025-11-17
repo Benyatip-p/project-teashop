@@ -24,7 +24,7 @@ const NotFound = () => {
             กลับหน้าแรก
           </Link>
           <Link 
-            to="/books"
+            to="/products"
             className="inline-flex items-center px-6 py-3 bg-white text-viridian-600 
               font-semibold rounded-lg border-2 border-viridian-600 
               hover:bg-viridian-50 transition-colors">

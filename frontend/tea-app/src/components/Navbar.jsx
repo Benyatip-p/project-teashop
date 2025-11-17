@@ -1,10 +1,19 @@
 import React, { useState } from 'react';
+import { useShop } from '../context/ShopContext';
+import { useLocation } from 'react-router-dom';
 import { Link, NavLink } from 'react-router-dom';
-import { ShoppingCartIcon, SearchIcon, UserIcon, MenuIcon, XIcon } from '@heroicons/react/outline';
+import { ShoppingCartIcon, SearchIcon, UserIcon, MenuIcon, XIcon, HeartIcon } from '@heroicons/react/outline';
+
+
+
 
 const Navbar = () => {
      const [isMenuOpen, setIsMenuOpen] = useState(false);
-     const [cartCount] = useState(3);
+     
+     const { cartCount } = useShop();
+
+     const location = useLocation();
+     const isActivePath = (path) => location.pathname.startsWith(path);
 
      const toggleMenu = () => {
           setIsMenuOpen(!isMenuOpen);
@@ -74,18 +83,28 @@ const Navbar = () => {
                                    <SearchIcon className="h-6 w-6" />
                               </button>
 
-                              <button className="relative p-2  text-white hover:text-green-600 transition-colors">
-                                   <ShoppingCartIcon className="h-6 w-6" />
+                              <button className={`p-2 transition-colors ${isActivePath('/favorites')? 'text-green-600': 'text-white hover:text-green-400'}`}>
+                                   <Link to="/favorites">
+                                        <HeartIcon className="h-6 w-6" />
+                                   </Link>
+                              </button>
+
+                              <button className={`relative p-2 transition-colors ${isActivePath('/cart')? 'text-green-600': 'text-white hover:text-green-400'}`}>
+                                   <Link to="/cart">
+                                     <ShoppingCartIcon className="h-6 w-6" />
+                                   </Link>
                                    {cartCount > 0 && (
                                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs 
-                  rounded-full h-5 w-5 flex items-center justify-center">
+                                             rounded-full h-5 w-5 flex items-center justify-center">
                                              {cartCount}
                                         </span>
                                    )}
                               </button>
 
-                              <button className="p-2  text-white hover:text-green-600 transition-colors">
-                                   <UserIcon className="h-6 w-6" />
+                              <button className={`p-2 transition-colors ${isActivePath('/profile')? 'text-green-600': 'text-white hover:text-green-400'}`}>
+                                   <Link to="/profile">
+                                     <UserIcon className="h-6 w-6" />
+                                   </Link>
                               </button>
 
                               {/* Mobile Menu Toggle */}
