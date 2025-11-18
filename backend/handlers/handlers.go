@@ -170,6 +170,113 @@ func GetFeaturedProductsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"products": products})
 }
 
+// CreateOrderHandler godoc
+// @Summary Create a new order
+// @Description Create a new order with products and shipping information
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param request body models.CreateOrderRequest true "Order creation data"
+// @Security BearerAuth
+// @Success 201 {object} models.Order
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders [post]
+func CreateOrderHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req models.CreateOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	order, err := database.CreateOrder(userID.(int), req, database.LogAudit, c)
+	if err != nil {
+		log.Printf("Error creating order: %v", err)
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, order)
+}
+
+// GetUserOrdersHandler godoc
+// @Summary Get user's order history
+// @Description Get the order history for the authenticated user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/user/orders [get]
+func GetUserOrdersHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	orders, err := database.GetUserOrders(userID.(int))
+	if err != nil {
+		log.Printf("Error getting user orders: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"orders": orders})
+}
+
+// GetOrderByIDHandler godoc
+// @Summary Get order details by ID
+// @Description Get detailed information for a specific order (user can only view their own orders)
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Security BearerAuth
+// @Success 200 {object} models.Order
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders/{id} [get]
+func GetOrderByIDHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	orderIDStr := c.Param("id")
+	orderID, err := strconv.Atoi(orderIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	order, err := database.GetOrderByID(orderID, userID.(int))
+	if err != nil {
+		log.Printf("Error getting order by ID: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	if order == nil {
+		c.JSON(404, gin.H{"error": "order not found"})
+		return
+	}
+
+	c.JSON(200, order)
+}
+
 // GetCategoriesHandler godoc
 // @Summary Get parent categories
 // @Description Get a list of parent/main product categories (parent_id = null)
