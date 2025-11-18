@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 
 const Cartpage = () => {
+  const navigate = useNavigate();
   const { cart, removeFromCart, updateCartQty } = useShop();
 
   // ✅ โหลดรายการที่เคยติ้ก จาก localStorage
@@ -22,9 +24,9 @@ const Cartpage = () => {
     return localStorage.getItem('couponError') || '';
   });
 
-  // ---------- useEffect ทั้งหมดต้องอยู่ก่อน return ----------
+  // ---------- useEffect ทั้งหมดต้องอยู่ก่อนคำนวณ/return ----------
 
-  // sync selectedIds กับ cart
+  // sync selectedIds กับ cart (ลบ id ที่ไม่มีใน cart แล้ว)
   useEffect(() => {
     setSelectedIds(prev =>
       prev.filter(id => cart.some(item => item.id === id))
@@ -50,6 +52,7 @@ const Cartpage = () => {
     }
   }, [appliedCoupon]);
 
+  // บันทึก couponError ลง localStorage
   useEffect(() => {
     localStorage.setItem('couponError', couponError);
   }, [couponError]);
@@ -73,7 +76,7 @@ const Cartpage = () => {
   const totalBeforeDiscount = subtotal + shipping;
   const total = Math.max(totalBeforeDiscount - couponDiscount, 0);
 
-  // ถ้ายอดเปลี่ยนจนไม่ถึง 700 ให้ยกเลิกคูปอง + แจ้งข้อความ
+  // ถ้ายอดเปลี่ยนจนไม่ถึง 700 ให้ขึ้น error แต่ยังจำคูปอง
   useEffect(() => {
     if (!appliedCoupon) return;
 
@@ -87,15 +90,7 @@ const Cartpage = () => {
     }
   }, [subtotal, appliedCoupon]);
 
-  // ---------- หลังจากนี้ค่อย return / ฟังก์ชัน handler ต่าง ๆ ----------
-
-  /*if (cart.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        ตะกร้าสินค้าว่าง
-      </div>
-    );
-  }*/
+  // ---------- handler ต่าง ๆ ----------
 
   const handleDecrease = (item) => {
     const currentQty = item.qty || 1;
@@ -151,17 +146,33 @@ const Cartpage = () => {
     setCouponError('');
   };
 
-  // ✅ ปุ่มกากบาท ล้างโค้ด
+  // ปุ่มกากบาท ล้างโค้ด
   const handleClearCouponInput = () => {
     setCouponInput('');
     setAppliedCoupon(null);
     setCouponError('');
-    // localStorage จะอัปเดตให้เองจาก useEffect
+    // localStorage จะอัปเดตจาก useEffect เอง
   };
+
+  const handlePayment = () => {
+    if (selectedItems.length === 0) {
+      alert('กรุณาเลือกสินค้าที่ต้องการชำระเงิน');
+      return;
+    }
+
+    navigate('/payment', {
+      state: {
+        selectedItems: selectedItems
+      }
+    });
+  };
+
+
+  // ---------- render ----------
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-semibold mb-6">ตะกร้าสินค้า</h1>
+      <h1 className="text-4xl font-semibold mb-6">ตะกร้าสินค้า</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* ซ้าย: รายการสินค้า */}
@@ -172,73 +183,84 @@ const Cartpage = () => {
               className="w-4 h-4 accent-red-500"
               checked={allSelected}
               onChange={handleToggleSelectAll}
+              disabled={cart.length === 0}   // ถ้าตะกร้าว่าง ติ๊กไม่ได้
             />
             <span className="text-sm">เลือกทั้งหมด</span>
           </div>
 
           <div className="space-y-4">
-            {cart.map((item, index) => (
-              <div key={item.id}>
-                <div className="flex items-center py-4 gap-4">
-                  <input
-                    type="checkbox"
-                    className="w-4 h-4 mr-2 accent-red-500"
-                    checked={selectedIds.includes(item.id)}
-                    onChange={() => handleToggleSelectItem(item.id)}
-                  />
-
-                  <div className="w-24 flex-shrink-0">
-                    <img
-                      src={item.coverImage || item.image}
-                      alt={item.title}
-                      className="w-20 h-20 object-cover"
-                    />
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">
-                      {item.title}
-                    </div>
-                  </div>
-
-                  <div className="w-32 flex items-center justify-center">
-                    <div className="inline-flex items-center border border-gray-300">
-                      <button
-                        type="button"
-                        className="px-3 py-1 text-sm text-gray-500"
-                        onClick={() => handleDecrease(item)}
-                      >
-                        -
-                      </button>
-                      <span className="px-4 py-1 text-sm border-l border-r border-gray-300 bg-gray-50">
-                        {item.qty || 1}
-                      </span>
-                      <button
-                        type="button"
-                        className="px-3 py-1 text-sm text-gray-500"
-                        onClick={() => handleIncrease(item)}
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="w-32 text-right text-sm">
-                    <div className="font-medium">
-                      ฿{((item.price || 0) * (item.qty || 1)).toFixed(2)}
-                    </div>
-                    <button
-                      className="mt-1 text-xs text-red-500 hover:underline"
-                      onClick={() => removeFromCart(item.id)}
-                    >
-                      ลบ
-                    </button>
-                  </div>
-                </div>
-
-                {index !== cart.length - 1 && <hr />}
+            {cart.length === 0 ? (
+              // ✅ กรณีไม่มีสินค้าในตะกร้า
+              <div className="py-10 text-center text-gray-500">
+                ไม่มีสินค้าในตะกร้า
               </div>
-            ))}
+            ) : (
+              // ✅ กรณีมีสินค้า แสดงรายการตามเดิม
+              // ✨✨✨ จุดที่แก้ไข ✨✨✨
+              [...cart].reverse().map((item, index) => (
+                <div key={item.id}>
+                  <div className="flex items-center py-4 gap-4">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 mr-2 accent-red-500"
+                      checked={selectedIds.includes(item.id)}
+                      onChange={() => handleToggleSelectItem(item.id)}
+                    />
+
+                    <div className="w-24 flex-shrink-0">
+                      <img
+                        src={item.coverImage || item.image}
+                        alt={item.title}
+                        className="w-20 h-20 object-cover"
+                      />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium truncate">
+                        {item.title}
+                      </div>
+                    </div>
+
+                    <div className="w-32 flex items-center justify-center">
+                      <div className="inline-flex items-center border border-gray-300">
+                        <button
+                          type="button"
+                          className="px-3 py-1 text-sm text-gray-500"
+                          onClick={() => handleDecrease(item)}
+                        >
+                          -
+                        </button>
+                        <span className="px-4 py-1 text-sm border-l border-r border-gray-300 bg-gray-50">
+                          {item.qty || 1}
+                        </span>
+                        <button
+                          type="button"
+                          className="px-3 py-1 text-sm text-gray-500"
+                          onClick={() => handleIncrease(item)}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="w-32 text-right text-sm">
+                      <div className="font-medium">
+                        ฿{((item.price || 0) * (item.qty || 1)).toFixed(2)}
+                      </div>
+                      <button
+                        className="mt-1 text-xs text-red-500 hover:underline"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        ลบ
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* แก้ไขเงื่อนไขการแสดงเส้นคั่นเล็กน้อยให้ถูกต้อง */}
+                  {index !== cart.length - 1 && <hr />}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -306,8 +328,6 @@ const Cartpage = () => {
               </span>
             </div>
 
-            
-
             <hr className="my-4" />
 
             <div className="flex justify-between mb-1 text-xs text-gray-500">
@@ -330,6 +350,7 @@ const Cartpage = () => {
             <button
               className="w-full py-3 bg-gray-500 text-white text-sm font-medium"
               disabled={subtotal === 0}
+              onClick={handlePayment}
             >
               ชำระเงิน
             </button>

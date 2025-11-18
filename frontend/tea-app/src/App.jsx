@@ -16,6 +16,9 @@ import Favoritepage from './pages/Favoritepage';
 import Cartpage from './pages/Cartpage';
 import Profilepage from './pages/Profilepage';
 import ProductDetailpage from './pages/ProductDetailpage';
+import Paymentpage from './pages/Paymentpage';
+
+
 
 function App() {
  return (
@@ -41,6 +44,7 @@ function App() {
                <Route path="/favorites" element={<Favoritepage />} />
                <Route path="/cart" element={<Cartpage />} />
                <Route path="/profile" element={<Profilepage />} />
+               <Route path="/payment" element={<Paymentpage />} />
                <Route path="*" element={<NotFound />} />
              </Routes>
            </main>
