@@ -71,6 +71,9 @@ func main() {
 		protected := api.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		{
+			protected.POST("/orders", handlers.CreateOrderHandler)
+			protected.GET("/orders/:id", handlers.GetOrderByIDHandler)
+			protected.GET("/user/orders", handlers.GetUserOrdersHandler)
 			protected.GET("/profile", handlers.GetMyProfileHandler)
 			protected.PUT("/profile", handlers.UpdateProfileHandler)
 		}

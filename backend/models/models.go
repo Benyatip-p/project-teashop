@@ -95,3 +95,35 @@ type Category struct {
 	IsFeatured  bool           `json:"is_featured"`
 	CreatedAt   time.Time      `json:"created_at"`
 }
+
+// ===================== Order Models =====================
+type OrderItemRequest struct {
+	ProductID int `json:"product_id" binding:"required"`
+	Quantity  int `json:"quantity" binding:"required,min=1"`
+}
+
+type CreateOrderRequest struct {
+	CustomerName    string             `json:"customer_name" binding:"required"`
+	ShippingAddress string             `json:"shipping_address" binding:"required"`
+	Items           []OrderItemRequest `json:"items" binding:"required,min=1"`
+}
+
+type OrderItem struct {
+	ID           int     `json:"id"`
+	ProductID    int     `json:"product_id"`
+	ProductName  string  `json:"product_name"`
+	Quantity     int     `json:"quantity"`
+	PricePerUnit float64 `json:"price_per_unit"`
+	TotalPrice   float64 `json:"total_price"`
+}
+
+type Order struct {
+	ID              int         `json:"id"`
+	UserID          int         `json:"user_id"`
+	TotalAmount     float64     `json:"total_amount"`
+	Status          string      `json:"status"`
+	CustomerName    string      `json:"customer_name"`
+	ShippingAddress string      `json:"shipping_address"`
+	Items           []OrderItem `json:"items"`
+	CreatedAt       time.Time   `json:"created_at"`
+}
