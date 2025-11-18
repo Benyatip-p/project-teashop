@@ -5,13 +5,13 @@ import { useShop } from '../context/ShopContext';
 const Favoritepage = () => {
   const { favorites, toggleFavorite } = useShop();
 
-  if (favorites.length === 0) {
+  /*if (favorites.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
         ยังไม่มีสินค้าในรายการโปรด
       </div>
     );
-  }
+  }*/
 
   // กลับลำดับ
   const favoritesReversed = [...favorites].reverse();
