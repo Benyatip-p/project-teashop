@@ -5,14 +5,14 @@ const FeaturedCategories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [imageErrors, setImageErrors] = useState({}); // เก็บสถานะรูปที่โหลดไม่ได้
+  const [imageErrors, setImageErrors] = useState({}); 
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
         
-        // เรียก API เพื่อดึงข้อมูลหมวดหมู่แนะนำ
+        // เรียก API เพื่อดึงข้อมูลหมวดหมู่
         const response = await fetch('/api/v1/categories/featured');
         console.log('Categories Response:', response);
         
