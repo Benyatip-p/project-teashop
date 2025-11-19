@@ -220,12 +220,12 @@ INSERT INTO categories (name, description, parent_id, image_url, is_featured) VA
 ('ชาเขียว', 'ชาเขียวรสชาตินุ่มนวลจากญี่ปุ่นและจีน', 1, 'images/categories/green-tea.jpg', true),
 ('ชาอู่หลง', 'ชาอู่หลงกลิ่นหอมดอกไม้', 1, 'images/categories/oolong-tea.jpg', true),
 ('ชาดำ', 'ชาดำเข้มข้น รสชาติหนักแน่น', 1, 'images/categories/black-tea.jpg', false),
-('ชาขาว', 'ชารสชาติเบาบาง ละเอียดอ่อน', 1, NULL, false);
+('ชาขาว', 'ชารสชาติเบาบาง ละเอียดอ่อน', 1, 'images/categories/white-tea.jpg', false);
 
 -- เพิ่มหมวดหมู่ย่อย ภายใต้ "อุปกรณ์ชงชา" (parent_id = 2)
 INSERT INTO categories (name, description, parent_id, image_url, is_featured) VALUES
 ('ที่กรองชา', 'ที่กรองชาสแตนเลสและซิลิโคน', 2, 'images/categories/strainers.jpg', false),
-('ถ้วยชา', 'ถ้วยชาเซรามิกและแก้ว', 2, NULL, false);
+('ถ้วยชา', 'ถ้วยชาเซรามิกและแก้ว', 2, 'images/categories/cups.jpg', false);
 
 -- 7. เพิ่ม สินค้า
 INSERT INTO products (category_id, name, description, price, stock, image_url) VALUES
