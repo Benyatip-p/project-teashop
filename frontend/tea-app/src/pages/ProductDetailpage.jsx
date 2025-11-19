@@ -19,37 +19,74 @@ const ProductDetailpage = () => {
   const { addToCart, toggleFavorite, isFavorite } = useShop();
 
   useEffect(() => {
+  const categoryIdToName = {
+      4: 'ชาเขียว',
+      5: 'ชาอู่หลง',
+      6: 'ชาดำ',
+      3: 'กาชงชา',
+      8: 'ที่กรองชา',
+      9: 'ถ้วยชา',
+    };
+
     const fetchProduct = async () => {
       setLoading(true);
 
       try {
-        // 1️⃣ ลองดึงจาก API ก่อน
         const response = await fetch(`/api/v1/products/${id}`);
 
-        if (response.ok) {
-          const data = await response.json();
-          setProduct(data);
-          setError(null);
-        } else {
-          throw new Error("API responded with error");
+        if (!response.ok) {
+          throw new Error('API responded with error');
         }
 
-      } catch (apiError) {
-        console.warn("API fetch failed, using mock data...", apiError.message);
+        const json = await response.json();
+        const apiProduct = json.product;
 
-        // 2️⃣ Fallback → ใช้ mock data
+        if (!apiProduct) {
+          throw new Error('Product not found from API');
+        }
+
+        const categoryName = categoryIdToName[apiProduct.category_id] || 'อื่น ๆ';
+
+        const img = apiProduct.image_url?.String || '';
+
+        const normalizedImg =
+          img.startsWith('http')
+            ? img
+            : img.startsWith('/')
+            ? img
+            : `/${img}`;
+
+        const mapped = {
+          id: apiProduct.id,
+          title: apiProduct.name,
+          description: apiProduct.description,
+          brand: '-',
+          category: categoryName,
+          quantity: apiProduct.stock,
+          price: apiProduct.price,
+          // ใช้แบบเดียวกับหน้า list: image_url.String ตรง ๆ
+          coverImage: normalizedImg || '/images/default-product.jpg',
+        };
+
+        setProduct(mapped);
+        setError(null);
+      } catch (apiError) {
+        console.warn('API fetch failed, using mock data...', apiError.message);
+
         const mockProduct = productsData.find(
           (item) => String(item.id) === String(id)
         );
 
         if (mockProduct) {
           setProduct(mockProduct);
+          setError(null);
         } else {
-          setError("Product not found in mock data");
+          setError(apiError.message || 'ไม่สามารถโหลดข้อมูลสินค้าได้');
+          setProduct(null);
         }
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     if (id) fetchProduct();
