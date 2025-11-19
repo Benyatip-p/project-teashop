@@ -1,0 +1,228 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  MenuAlt2Icon,
+  LogoutIcon,
+  SearchIcon,
+  BellIcon,
+  HomeIcon,
+  ChartBarIcon,
+  CollectionIcon,
+  UserCircleIcon,
+} from "@heroicons/react/outline";
+import { PlusIcon, PencilAltIcon, TrashIcon } from "@heroicons/react/outline";
+
+// AdminDashboardReact.jsx
+// - Single-file React component (Tailwind CSS) that reproduces the template-style
+//   dashboard (sidebar, top nav, statistic cards, content cards)
+// - Drop this file into your React project (e.g. src/pages/AdminDashboard.jsx)
+// - Requires: Tailwind CSS, @heroicons/react
+// - Put logo assets in public or import them as needed (see LOGO_URL below)
+
+const LOGO_URL = "/assets/images/logos/logo.svg"; // adjust path to your project
+
+const StatCard = ({ title, value, icon }) => (
+  <div className="bg-white p-5 rounded-xl shadow-sm border">
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="text-sm text-gray-500">{title}</p>
+        <p className="text-2xl font-semibold mt-2">{value}</p>
+      </div>
+      <div className="h-12 w-12 bg-gray-100 rounded-lg flex items-center justify-center">
+        {icon}
+      </div>
+    </div>
+  </div>
+);
+
+const ProductCard = ({ img, name, price }) => (
+  <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+    <img src={img} alt={name} className="w-full h-40 object-cover" />
+    <div className="p-4">
+      <h4 className="font-semibold">{name}</h4>
+      <p className="text-sm text-gray-500">ราคา {price} ฿</p>
+      <div className="mt-3 flex space-x-2">
+        <button className="flex-1 py-2 rounded-md bg-green-600 text-white text-sm">เพิ่ม</button>
+        <button className="px-3 py-2 rounded-md border text-sm">แก้ไข</button>
+      </div>
+    </div>
+  </div>
+);
+
+export default function AdminDashboardReact() {
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    if (localStorage.getItem("isAdminAuthenticated") !== "true") {
+      navigate("/login");
+    }
+  }, [navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("isAdminAuthenticated");
+    localStorage.removeItem("adminUser");
+    navigate("/login");
+  };
+
+  // sample data (replace with real API)
+  const stats = [
+    { title: "ยอดขายวันนี้", value: "฿12,450", icon: <ChartBarIcon className="h-6 w-6 text-green-600" /> },
+    { title: "จำนวนสต็อก", value: "1,234", icon: <CollectionIcon className="h-6 w-6 text-indigo-600" /> },
+    { title: "ผู้ใช้งานใหม่", value: "86", icon: <UserCircleIcon className="h-6 w-6 text-yellow-600" /> },
+  ];
+
+  const products = [
+    { img: "/assets/images/products/s1.jpg", name: "ชาเขียวโฮจิฉะ", price: 120 },
+    { img: "/assets/images/products/s2.jpg", name: "ชาไทยพรีเมียม", price: 95 },
+    { img: "/assets/images/products/s3.jpg", name: "โอวัลตินเย็น", price: 80 },
+    { img: "/assets/images/products/s4.jpg", name: "มัทฉะแฟรป", price: 140 },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* SIDEBAR */}
+      <aside className={`bg-white border-r transition-all duration-200 ${sidebarOpen ? "w-64" : "w-16"}`}>
+        <div className="p-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <img src={LOGO_URL} alt="logo" className={`h-8 ${sidebarOpen ? "block" : "hidden"}`} />
+            <span className={`font-semibold text-gray-700 ${sidebarOpen ? "block" : "hidden"}`}>GOODTEA</span>
+          </div>
+          <button
+            aria-label="Toggle sidebar"
+            onClick={() => setSidebarOpen((s) => !s)}
+            className="p-2 rounded-md hover:bg-gray-100"
+          >
+            <MenuAlt2Icon className="h-5 w-5 text-gray-600" />
+          </button>
+        </div>
+
+        <nav className="mt-6 px-2">
+          <button
+            onClick={() => navigate("/")}
+            className={`flex items-center w-full p-2 rounded-md hover:bg-gray-100 ${sidebarOpen ? "justify-start" : "justify-center"}`}
+          >
+            <HomeIcon className="h-5 w-5 text-gray-700" />
+            <span className={`ml-3 ${sidebarOpen ? "inline" : "hidden"}`}>Dashboard</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/reports")}
+            className={`flex items-center w-full p-2 rounded-md hover:bg-gray-100 mt-2 ${sidebarOpen ? "justify-start" : "justify-center"}`}
+          >
+            <ChartBarIcon className="h-5 w-5 text-gray-700" />
+            <span className={`ml-3 ${sidebarOpen ? "inline" : "hidden"}`}>รายงาน</span>
+          </button>
+
+          <button
+            onClick={() => navigate("/products")}
+            className={`flex items-center w-full p-2 rounded-md hover:bg-gray-100 mt-2 ${sidebarOpen ? "justify-start" : "justify-center"}`}
+          >
+            <CollectionIcon className="h-5 w-5 text-gray-700" />
+            <span className={`ml-3 ${sidebarOpen ? "inline" : "hidden"}`}>สินค้า</span>
+          </button>
+
+          <div className="mt-6 border-t pt-4">
+            <button
+              onClick={handleLogout}
+              className={`flex items-center w-full p-2 rounded-md hover:bg-gray-100 text-red-600 ${sidebarOpen ? "justify-start" : "justify-center"}`}
+            >
+              <LogoutIcon className="h-5 w-5" />
+              <span className={`ml-3 ${sidebarOpen ? "inline" : "hidden"}`}>ออกจากระบบ</span>
+            </button>
+          </div>
+        </nav>
+      </aside>
+
+      {/* MAIN */}
+      <div className="flex-1">
+        {/* Topbar */}
+        <header className="flex items-center justify-between bg-gradient-to-r from-viridian-600 to-green-600 text-white p-4 shadow-sm">
+          <div className="flex items-center space-x-3">
+            <h1 className="text-xl font-semibold">GOODTEA - Admin Dashboard</h1>
+            <div className="hidden md:block">
+              <p className="text-sm opacity-90">สวัสดี Admin — จัดการข้อมูลร้านของคุณได้ที่นี่</p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <div className="relative hidden sm:block">
+              <input placeholder="ค้นหา..." className="rounded-md py-1 px-3 text-sm text-gray-700" />
+              <SearchIcon className="h-4 w-4 absolute right-2 top-2 text-gray-400" />
+            </div>
+            <button className="p-2 rounded-full hover:bg-white/10">
+              <BellIcon className="h-5 w-5" />
+            </button>
+            <div className="flex items-center space-x-2">
+              <img src="/assets/images/logos/logo-wrappixel.svg" alt="avatar" className="h-8 w-8 rounded-full bg-white p-1" />
+              <span className="text-sm">Admin</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Content area */}
+        <main className="p-6">
+          {/* Top stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {stats.map((s, i) => (
+              <StatCard key={i} title={s.title} value={s.value} icon={s.icon} />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left: charts / overview */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-xl shadow-sm border p-6">
+                <h3 className="font-semibold text-lg">สรุปยอดขายประจำเดือน</h3>
+                <div className="mt-4 h-56 rounded-md bg-gray-50 border-dashed border-2 border-gray-200 flex items-center justify-center text-gray-400">
+                  (แทรก Chart library เช่น recharts / chart.js ที่นี่)
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border p-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-lg">กิจกรรมล่าสุด</h3>
+                  <button className="text-sm text-green-600">ดูทั้งหมด</button>
+                </div>
+
+                <ul className="mt-4 space-y-3">
+                  <li className="flex items-start space-x-3">
+                    <div className="h-9 w-9 rounded-full bg-green-100 flex items-center justify-center text-green-600">A</div>
+                    <div>
+                      <p className="text-sm font-medium">สั่งซื้อใหม่: #10234</p>
+                      <p className="text-xs text-gray-500">2 ชั่วโมงที่แล้ว</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start space-x-3">
+                    <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">P</div>
+                    <div>
+                      <p className="text-sm font-medium">สินค้าเพิ่มสต็อก: มัทฉะแฟรป</p>
+                      <p className="text-xs text-gray-500">เมื่อวานนี้</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Right: products */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg">สินค้าขายดี</h3>
+                <button onClick={() => navigate('/store-manager/add-Tea')} className="px-3 py-2 rounded-md bg-green-600 text-white text-sm flex items-center space-x-2">
+                  <PlusIcon className="h-4 w-4" />
+                  <span>เพิ่มสินค้า</span>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {products.map((p, i) => (
+                  <ProductCard key={i} img={p.img} name={p.name} price={p.price} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}

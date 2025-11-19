@@ -1,71 +1,146 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { BookOpenIcon, ArrowLeftIcon } from "@heroicons/react/outline";
-import BookList from "./TeaList";
-import BookEditForm from "./TeaEditForm";
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 
-const EditBookPage = () => {
+const EditTeaPage = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [books, setBooks] = useState([]);
-  const [selectedBook, setSelectedBook] = useState(null);
+
+  const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (localStorage.getItem("isAdminAuthenticated") !== "true") {
-      navigate("/login");
-    }
-  }, [navigate]);
+useEffect(() => {
+  fetch(`/api/v1/products/${id}`)
+    .then((res) => res.json())
+    .then((data) => {
+      const productData = {
+        ...data,
+        coverImage: data.image_url || data.coverImage || "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024",
+        title: data.name || data.title,
+        category: data.category_name || data.category,
+        price: data.price,
+      };
+      setProduct(productData);
+      setLoading(false);
+    })
+    .catch(() => {
+      alert("โหลดข้อมูลสินค้าไม่สำเร็จ");
+      setLoading(false);
+    });
+}, [id]);
 
-  useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const res = await fetch("http://localhost:8081/products");
-        if (!res.ok) throw new Error("โหลด products ล้มเหลว");
-        const data = await res.json();
-        setBooks(data);
-      } catch (err) {
-        alert(err.message);
-      } finally {
-        setLoading(false);
-      }
+  if (loading) return <p className="p-6 text-center">กำลังโหลดข้อมูล...</p>;
+  if (!product) return <p className="p-6 text-center text-red-600">ไม่พบข้อมูลสินค้า</p>;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const body = {
+      name: product.title,
+      category_id: product.category_id || product.categoryId,
+      description: product.description,
+      price: product.price,
+      stock: product.stock,
+      image_url: product.coverImage,
+      is_active: product.is_active ?? true,
     };
-    fetchBooks();
-  }, []);
 
-  if (loading) return <p className="text-center py-10">กำลังโหลด...</p>;
+    const res = await fetch(`/api/v1/products/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) return alert("แก้ไขสินค้าไม่สำเร็จ");
+
+    alert("อัปเดตข้อมูลสินค้าเรียบร้อย!");
+    navigate("/store-manager/products");
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-gradient-to-r from-viridian-600 to-green-700 text-white shadow-lg">
-        <div className="container mx-auto px-4 py-6 flex items-center space-x-3">
-          <BookOpenIcon className="h-8 w-8" />
-          <h1 className="text-2xl font-bold">edit products</h1>
+    <div className="max-w-5xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">แก้ไขสินค้า</h1>
+
+      {/* ----- Edit Form ----- */}
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          {/* LEFT SIDE — FORM */}
+          <div className="md:col-span-2 space-y-4">
+
+            <div>
+              <label className="font-semibold">ชื่อสินค้า</label>
+              <input
+                type="text"
+                className="w-full mt-1 p-2 border rounded"
+                value={product.title}
+                onChange={(e) => setProduct({ ...product, title: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold">หมวดหมู่</label>
+              <input
+                type="text"
+                className="w-full mt-1 p-2 border rounded"
+                value={product.category}
+                onChange={(e) => setProduct({ ...product, category: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold">ราคา</label>
+              <input
+                type="number"
+                className="w-full mt-1 p-2 border rounded"
+                value={product.price}
+                onChange={(e) => setProduct({ ...product, price: Number(e.target.value) })}
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold">สต็อก</label>
+              <input
+                type="number"
+                className="w-full mt-1 p-2 border rounded"
+                value={product.stock}
+                onChange={(e) => setProduct({ ...product, stock: Number(e.target.value) })}
+              />
+            </div>
+
+            <div>
+              <label className="font-semibold">ลิงก์รูปภาพ (Image URL)</label>
+              <input
+                type="text"
+                className="w-full mt-1 p-2 border rounded"
+                value={product.coverImage}
+                onChange={(e) => setProduct({ ...product, coverImage: e.target.value })}
+              />
+            </div>
+
+          </div>
+
+          {/* RIGHT SIDE — IMAGE PREVIEW */}
+          <div className="flex flex-col items-center">
+            <p className="font-medium mb-2">ตัวอย่างรูปภาพ</p>
+
+            <img
+              src={product.coverImage}
+              alt="preview"
+              className="w-48 h-48 object-cover rounded-lg border shadow"
+            />
+          </div>
+
         </div>
-      </header>
 
-      <div className="container mx-auto px-4 py-8">
         <button
-          onClick={() => navigate(-1)}
-          className="mb-4 flex items-center text-gray-700 hover:text-viridian-700"
+          type="submit"
+          className="w-full mt-6 bg-green-600 text-white p-3 rounded-lg text-lg font-semibold hover:bg-green-700"
         >
-          <ArrowLeftIcon className="h-5 w-5 mr-2" />
-          ย้อนกลับ
+          บันทึกการแก้ไข
         </button>
-
-        {!selectedBook ? (
-          <BookList books={books} onSelectBook={setSelectedBook} />
-        ) : (
-          <BookEditForm
-  book={selectedBook}
-  onBack={() => setSelectedBook(null)} // กลับไป productsList
-  onBookUpdated={(updated) =>
-    setBooks((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
-  }
-/>
-        )}
-      </div>
+      </form>
     </div>
   );
 };
 
-export default EditBookPage;
+export default EditTeaPage;

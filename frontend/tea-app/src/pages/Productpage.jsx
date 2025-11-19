@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ProductCard from '../components/ProductCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { ChevronDownIcon } from '@heroicons/react/outline';
-import { getAllProducts } from '../data/productsData';
-import { useRef } from "react";
 
 const Productpage = () => {
-   const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [sortBy, setSortBy] = useState('newest');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -16,123 +14,152 @@ const Productpage = () => {
 
   const [hoverCategory, setHoverCategory] = useState(null);
   const [openDropdown, setOpenDropdown] = useState(false);
-  
-  const categories = {
-  'TEA': ['Green Tea', 'White Tea', 'Oolong Tea', 'Black Tea', 'Red Tea', 'Flower Tea', 'Matcha'],
-  'TEA Pot': ['Small Pot', 'Medium Pot', 'Large Pot'],
-  'TEA Accessories': ['Spoons', 'Filters', 'Cups']
-};
-
+  const [openSort, setOpenSort] = useState(false);
   const [error, setError] = useState(null);
 
-  //คลิกนอก dropdown ให้ปิดของ หมวดหมู่
   const dropdownRef = useRef(null);
-  useEffect(() => {
-  const handler = (e) => {
-    if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-      setOpenDropdown(false);
-      setHoverCategory(null);
-    }
-  };
-
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-  //คลิกนอก dropdown ให้ปิดของ sort
-  const [openSort, setOpenSort] = useState(false);
   const sortRef = useRef(null);
 
-  useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (sortRef.current && !sortRef.current.contains(event.target)) {
-      setOpenSort(false);
-    }
+  // map category_id จาก API -> ชื่อหมวดใน UI / filter
+  const categoryIdToName = {
+    4: 'ชาเขียว',
+    5: 'ชาอู่หลง',
+    6: 'ชาดำ',
+    3: 'กาชงชา',
+    8: 'ที่กรองชา',
+    9: 'ถ้วยชา',
   };
 
-    document.addEventListener("mousedown", handleClickOutside);
+  // หมวดหลัก + หมวดย่อย (กาชงชา ไม่มีหมวดย่อย)
+  const categories = {
+    'ชา': ['ชาเขียว', 'ชาขาว', 'ชาอู่หลง', 'ชาดำ'],
+    'กาชงชา': [], // ไม่มีหมวดย่อย
+    'อุปกรณ์ชา': ['ที่กรองชา', 'ถ้วยชา'],
+  };
 
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+  // ปิด dropdown หมวดหมู่เมื่อคลิกข้างนอก
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setOpenDropdown(false);
+        setHoverCategory(null);
+      }
     };
+
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-
-  /*useEffect(() => {
-  // เริ่มโหลดข้อมูล
-  setLoading(true);
-
-  // ใช้ฟังก์ชัน fetch เพื่อดึงข้อมูลจากฐานข้อมูล
-  const fetchBooks = async () => {
-    try {
-      // เรียก API เพื่อดึงข้อมูลหนังสือ
-      const response = await fetch('/api/v1/books');
-      
-      if (!response.ok) {
-        throw new Error('ไม่สามารถดึงข้อมูลหนังสือ');
-      }
-
-      const data = await response.json();
-
-      // เก็บข้อมูลหนังสือทั้งหมดใน state
-      setBooks(data);
-      setFilteredBooks(data);
-    } catch (err) {
-      console.error('เกิดข้อผิดพลาดในการดึงข้อมูลหนังสือ:', err);
-      setError(err.message); // เก็บข้อความข้อผิดพลาด
-    } finally {
-      setLoading(false); // ปิดสถานะการโหลด
-    }
-  };*/
-
+  // ปิด dropdown sort เมื่อคลิกข้างนอก
   useEffect(() => {
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const data = await getAllProducts();   // ← ใช้ mock แทน fetch
-      setProducts(data);
-      setFilteredProducts(data);
-    } catch (err) {
-      console.error("เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const handleClickOutside = (event) => {
+      if (sortRef.current && !sortRef.current.contains(event.target)) {
+        setOpenSort(false);
+      }
+    };
 
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  // เรียกใช้ฟังก์ชันดึงข้อมูล
-  fetchProducts();
-}, []);
+  // ดึงข้อมูลสินค้าจาก API + map field ให้ตรงกับ ProductCard
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
+        const response = await fetch('/api/v1/products', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('ไม่สามารถดึงข้อมูลสินค้า');
+        }
+
+        const resJson = await response.json();
+
+        // API: { products: [...] }
+        const productsArray = resJson.products || [];
+
+        const normalized = productsArray.map((p) => {
+          const categoryName = categoryIdToName[p.category_id] || 'ชา';
+          const rawImg = p.image_url?.String || '';
+
+          const normalizedImg =
+          rawImg.startsWith('http')
+            ? rawImg
+            : rawImg.startsWith('/')
+            ? rawImg                           // เช่น "/images/products/xxx.jpg"
+            : `/${rawImg}`;  
+
+          return {
+            ...p,
+            id: p.id,
+            title: p.name,          // ProductCard ใช้ product.title
+            coverImage: normalizedImg,  // ProductCard ใช้ product.coverImage
+            price: p.price,
+            originalPrice: p.price, // ยังไม่มีราคาเดิม, ใช้เท่ากับ price
+            discount: null,         // ยังไม่มีส่วนลด
+            category: categoryName, // ใช้สำหรับแสดงและ filter
+            rating: 5,              // สมมติ rating ไปก่อน (หรือ 0 ถ้าต้องการ)
+            reviews: 0,             // ยังไม่มีใน API
+            isNew: false,           // ถ้าอยากใช้ created_at เช็คความใหม่ ค่อยเพิ่ม logic
+            createdAt: p.created_at,
+          };
+        });
+
+        setProducts(normalized);
+        setFilteredProducts(normalized);
+      } catch (err) {
+        console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า:', err);
+        setError(err.message || 'เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า');
+        setProducts([]);
+        setFilteredProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   const handleCategoryFilter = (category) => {
-  setSelectedCategory(category);
+    setSelectedCategory(category);
 
-      if (category === "all") {
-        setFilteredProducts(products);
-      }
-      // หมวดหมู่ใหญ่ เช่น TEA, TEA Pot, TEA Accessories
-      else if (categories[category]) {
-        const subCats = categories[category].map(c => c.toLowerCase());
-
-        const filtered = products.filter(product =>
+    if (category === 'all') {
+      setFilteredProducts(products);
+    }
+    // หมวดใหญ่ เช่น "ชา", "กาชงชา", "อุปกรณ์ชา"
+    else if (categories[category] !== undefined) {
+      // ถ้ามีหมวดย่อย -> filter จาก subCategories
+      if (categories[category].length > 0) {
+        const subCats = categories[category].map((c) => c.toLowerCase());
+        const filtered = products.filter((product) =>
           subCats.includes(product.category.toLowerCase())
         );
-
         setFilteredProducts(filtered);
-      }
-      // หมวดหมู่ย่อย เช่น Green Tea, Matcha
-      else {
-        const filtered = products.filter(product =>
-          product.category.toLowerCase() === category.toLowerCase()
+      } else {
+        // ไม่มีหมวดย่อย (เช่น กาชงชา) -> filter ตรงกับชื่อหมวดใหญ่เลย
+        const filtered = products.filter(
+          (product) => product.category.toLowerCase() === category.toLowerCase()
         );
-
         setFilteredProducts(filtered);
       }
+    }
+    // เลือกเป็นหมวดย่อยโดยตรง เช่น "ชาเขียว", "ถ้วยชา"
+    else {
+      const filtered = products.filter(
+        (product) => product.category.toLowerCase() === category.toLowerCase()
+      );
+      setFilteredProducts(filtered);
+    }
 
-      setCurrentPage(1);
+    setCurrentPage(1);
   };
-
 
   const handleSort = (sortValue) => {
     setSortBy(sortValue);
@@ -154,19 +181,20 @@ const Productpage = () => {
     setFilteredProducts(sorted);
   };
 
-  // Pagination logic
+  // pagination
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
   const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   const handleClearFilters = () => {
     setSelectedCategory('all');
     setSortBy('newest');
     setFilteredProducts(products);
     setCurrentPage(1);
-  }
+  };
 
   if (loading) {
     return <LoadingSpinner />;
@@ -175,18 +203,23 @@ const Productpage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        {/* Page Header */}
+        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">สินค้าทั้งหมด</h1>
         </div>
-        
+
+        {/* Error */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <div className="flex flex-col lg:flex-row gap-4">
-            
             <div className="flex items-end gap-4">
-
-              {/* Dropdown filter หมวดหมู่ */}
+              {/* Dropdown หมวดหมู่ */}
               <div className="relative" ref={dropdownRef}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   หมวดหมู่
@@ -195,7 +228,7 @@ const Productpage = () => {
                   onClick={() => setOpenDropdown(!openDropdown)}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-500 bg-white hover:bg-gray-100 cursor-pointer flex items-center gap-2 w-[300px] justify-between"
                 >
-                  {selectedCategory === 'all' ? "รายการสินค้าทั้งหมด" : selectedCategory}
+                  {selectedCategory === 'all' ? 'รายการสินค้าทั้งหมด' : selectedCategory}
                   <ChevronDownIcon className="w-5 h-5" />
                 </button>
 
@@ -204,7 +237,7 @@ const Productpage = () => {
                     <p
                       className="p-2 hover:bg-gray-200 cursor-pointer"
                       onClick={() => {
-                        handleCategoryFilter("all");
+                        handleCategoryFilter('all');
                         setOpenDropdown(false);
                         setHoverCategory(null);
                       }}
@@ -216,8 +249,12 @@ const Productpage = () => {
                       <div
                         key={cat}
                         className="p-2 hover:bg-gray-200 cursor-pointer relative"
-                        onMouseEnter={() => setHoverCategory(cat)}
-                        onMouseLeave={() => setHoverCategory(null)}
+                        onMouseEnter={() =>
+                          categories[cat].length > 0 && setHoverCategory(cat)
+                        }
+                        onMouseLeave={() =>
+                          categories[cat].length > 0 && setHoverCategory(null)
+                        }
                         onClick={() => {
                           handleCategoryFilter(cat);
                           setOpenDropdown(false);
@@ -225,7 +262,8 @@ const Productpage = () => {
                       >
                         {cat}
 
-                        {hoverCategory === cat && (
+                        {/* panel ย่อย: แสดงเฉพาะหมวดที่มี subcategories */}
+                        {hoverCategory === cat && categories[cat].length > 0 && (
                           <div
                             className="absolute left-full top-0 bg-gray-100 shadow-lg rounded-lg p-3 min-w-[150px] z-50"
                             onMouseEnter={() => setHoverCategory(cat)}
@@ -262,15 +300,15 @@ const Productpage = () => {
                   onClick={() => setOpenSort(!openSort)}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-500 bg-white hover:bg-gray-100 cursor-pointer flex items-center gap-2 w-[300px] justify-between"
                 >
-                  {sortBy === "newest"
-                    ? "ใหม่ล่าสุด"
-                    : sortBy === "price-low"
-                    ? "ราคาต่ำ-สูง"
-                    : sortBy === "price-high"
-                    ? "ราคาสูง-ต่ำ"
-                    : sortBy === "popular"
-                    ? "ยอดนิยม"
-                    : "เลือกการจัดเรียง"}
+                  {sortBy === 'newest'
+                    ? 'ใหม่ล่าสุด'
+                    : sortBy === 'price-low'
+                    ? 'ราคาต่ำ-สูง'
+                    : sortBy === 'price-high'
+                    ? 'ราคาสูง-ต่ำ'
+                    : sortBy === 'popular'
+                    ? 'ยอดนิยม'
+                    : 'เลือกการจัดเรียง'}
                   <ChevronDownIcon className="w-5 h-5" />
                 </button>
 
@@ -279,7 +317,7 @@ const Productpage = () => {
                     <div
                       className="p-2 hover:bg-gray-200 cursor-pointer "
                       onClick={() => {
-                        handleSort("newest");
+                        handleSort('newest');
                         setOpenSort(false);
                       }}
                     >
@@ -289,7 +327,7 @@ const Productpage = () => {
                     <div
                       className="p-2 hover:bg-gray-200 cursor-pointer"
                       onClick={() => {
-                        handleSort("price-low");
+                        handleSort('price-low');
                         setOpenSort(false);
                       }}
                     >
@@ -299,7 +337,7 @@ const Productpage = () => {
                     <div
                       className="p-2 hover:bg-gray-200 cursor-pointer"
                       onClick={() => {
-                        handleSort("price-high");
+                        handleSort('price-high');
                         setOpenSort(false);
                       }}
                     >
@@ -309,7 +347,7 @@ const Productpage = () => {
                     <div
                       className="p-2 hover:bg-gray-200 cursor-pointer"
                       onClick={() => {
-                        handleSort("popular");
+                        handleSort('popular');
                         setOpenSort(false);
                       }}
                     >
@@ -327,21 +365,20 @@ const Productpage = () => {
               >
                 ล้าง
               </button>
-
             </div>
           </div>
-          
-          {/* Results count */}
+
+          {/* จำนวนสินค้า */}
           <div className="mt-4 text-sm text-gray-600">
             พบสินค้า {filteredProducts.length} ชิ้น
             {selectedCategory !== 'all' && ` ในหมวด ${selectedCategory}`}
           </div>
         </div>
-        
+
         {/* Products Grid */}
         {currentProducts.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {currentProducts.map(product => (
+            {currentProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
@@ -350,19 +387,20 @@ const Productpage = () => {
             <p className="text-gray-500 text-lg">ไม่พบสินค้าที่ค้นหา</p>
           </div>
         )}
-        
+
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-12 flex justify-center">
             <nav className="flex items-center space-x-2">
-              <button 
+              <button
                 onClick={() => paginate(currentPage - 1)}
                 disabled={currentPage === 1}
                 className="px-4 py-2 border border-gray-300 rounded-lg 
-                  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 ก่อนหน้า
               </button>
-              
+
               {[...Array(Math.min(5, totalPages))].map((_, index) => {
                 let pageNumber = index + 1;
                 if (totalPages > 5) {
@@ -373,15 +411,15 @@ const Productpage = () => {
                     pageNumber = totalPages - 4 + index;
                   }
                 }
-                
+
                 if (pageNumber > 0 && pageNumber <= totalPages) {
                   return (
-                    <button 
+                    <button
                       key={pageNumber}
                       onClick={() => paginate(pageNumber)}
                       className={`px-4 py-2 rounded-lg ${
                         currentPage === pageNumber
-                          ? 'bg-viridian-600 text-white' 
+                          ? 'bg-viridian-600 text-white'
                           : 'border border-gray-300 hover:bg-gray-50'
                       }`}
                     >
@@ -391,12 +429,13 @@ const Productpage = () => {
                 }
                 return null;
               })}
-              
-              <button 
+
+              <button
                 onClick={() => paginate(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className="px-4 py-2 border border-gray-300 rounded-lg 
-                  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                  hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
                 ถัดไป
               </button>
             </nav>

@@ -101,6 +101,57 @@ export const productsData = [
     mfyear: 1/12/2025,
     expyear: 25/6/2027,
     description: 'มัทฉะเกรดพรีเมียม ช่วยเพิ่มพลังงานและสมาธิ พร้อมสารต้านอนุมูลอิสระสูง'
+  },
+  {
+    id: 7,
+    title: 'Blue Chinese Tea Pot',
+    category: 'Small Pot',
+    brand: 'Tea House',
+    price: 700,
+    originalPrice: 790,
+    coverImage: '/images/products/smteapot.jpg',
+    rating: 4.5,
+    reviews: 34,
+    discount: 25,
+    isbn: '978-0-7432-7356-7',
+    quantity: 250,
+    mfyear: '' ,
+    expyear: '',
+    description: 'กาน้ำชาจีนขนาดเล็ก สีฟ้า ผลิตจากเซรามิกคุณภาพดี ทนความร้อนสูง เหมาะสำหรับชงชาเขียวและชาดำ'
+  },
+  {
+    id: 8,
+    title: 'Stone Tea Pot',
+    category: 'Medium Pot',
+    brand: 'Tea House',
+    price: 590,
+    originalPrice: 670,
+    coverImage: '/images/products/mdteapot.jpg',
+    rating: 4.5,
+    reviews: 34,
+    discount: 25,
+    isbn: '978-0-7432-7356-8',
+    quantity: 250,
+    mfyear: '',
+    expyear: '',
+    description: 'กาน้ำชาหินขนาดกลาง ผลิตจากหินธรรมชาติ ทนความร้อนสูง เหมาะสำหรับชงชาหลากหลายประเภท'
+  },
+  {
+    id: 9,
+    title: 'Black Chinese Tea Pot',
+    category: 'Large Pot',
+    brand: 'Tea House',
+    price: 1090,
+    originalPrice: 1190,
+    coverImage: '/images/products/lgteapot.jpg',
+    rating: 4.5,
+    reviews: 34,
+    discount: 25,
+    isbn: '978-0-7432-7356-9',
+    quantity: 250,
+    mfyear: '',
+    expyear: '',
+    description: 'กาน้ำชาจีนขนาดใหญ่ สีดำ ผลิตจากเซรามิกคุณภาพดี ทนความร้อนสูง เหมาะสำหรับชงชาเขียวและชาดำ'
   }
 ];
 
