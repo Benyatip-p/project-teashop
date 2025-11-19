@@ -1,0 +1,451 @@
+package database
+
+import (
+	"backend/models"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"log"
+	"os"
+	"time"
+
+	_ "github.com/lib/pq"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+)
+
+var DB *sql.DB
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func InitDB() {
+	// Load .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Warning: .env file not found, using environment variables")
+	}
+
+	var dbErr error
+
+	host := getEnv("DB_HOST", "")
+	name := getEnv("DB_NAME", "")
+	user := getEnv("DB_USER", "")
+	password := getEnv("DB_PASSWORD", "")
+	port := getEnv("DB_PORT", "")
+
+	conSt := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, name)
+	// fmt.Println(conSt)
+	DB, dbErr = sql.Open("postgres", conSt)
+	if dbErr != nil {
+		log.Fatal("failed to open database")
+	}
+
+	// กำหนดจำนวน Connection สูงสุด
+	DB.SetMaxOpenConns(25)
+
+	// กำหนดจำนวน Idle connection สูงสุด
+	DB.SetMaxIdleConns(25)
+
+	// กำหนดอายุของ Connection
+	DB.SetConnMaxLifetime(5 * time.Minute)
+
+	dbErr = DB.Ping()
+	if dbErr != nil {
+		log.Fatal("failed to connect to database", dbErr)
+	}
+	log.Println("successfully connected to database")
+}
+
+// ===================== Database Helper Functions =====================
+func GetUserRoles(userID int) ([]string, error) {
+	query := `
+		SELECT r.name
+		FROM roles r
+		JOIN user_roles ur ON r.id = ur.role_id
+		WHERE ur.user_id = $1
+	`
+
+	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roles []string
+	for rows.Next() {
+		var role string
+		if err := rows.Scan(&role); err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+
+	return roles, nil
+}
+
+func CheckUserPermission(userID int, permission string) bool {
+	query := `
+		SELECT COUNT(*)
+		FROM permissions p
+		JOIN role_permissions rp ON p.id = rp.permission_id
+		JOIN user_roles ur ON rp.role_id = ur.role_id
+		WHERE ur.user_id = $1 AND p.name = $2
+	`
+
+	var count int
+	err := DB.QueryRow(query, userID, permission).Scan(&count)
+	if err != nil {
+		log.Printf("Error checking permission: %v", err)
+		return false
+	}
+
+	return count > 0
+}
+
+func StoreRefreshToken(userID int, token string, expiresAt time.Time) error {
+	query := `
+		INSERT INTO refresh_tokens (user_id, token, expires_at)
+		VALUES ($1, $2, $3)
+	`
+	_, err := DB.Exec(query, userID, token, expiresAt)
+	return err
+}
+
+func RevokeRefreshToken(token string) error {
+	query := `
+		UPDATE refresh_tokens
+		SET revoked_at = NOW()
+		WHERE token = $1 AND revoked_at IS NULL
+	`
+	_, err := DB.Exec(query, token)
+	return err
+}
+
+func IsRefreshTokenValid(token string) (int, bool) {
+	query := `
+		SELECT user_id
+		FROM refresh_tokens
+		WHERE token = $1
+		AND expires_at > NOW()
+		AND revoked_at IS NULL
+	`
+
+	var userID int
+	err := DB.QueryRow(query, token).Scan(&userID)
+	if err != nil {
+		return 0, false
+	}
+
+	return userID, true
+}
+
+func LogAudit(userID int, action, resource string, resourceID interface{}, details map[string]interface{}, c *gin.Context) {
+	detailsJSON, _ := json.Marshal(details)
+
+	query := `
+		INSERT INTO audit_logs
+		(user_id, action, resource, resource_id, details, ip_address, user_agent)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+	`
+
+	var resourceIDStr string
+	if resourceID != nil {
+		resourceIDStr = fmt.Sprintf("%v", resourceID)
+	}
+
+	DB.Exec(query,
+		userID,
+		action,
+		resource,
+		resourceIDStr,
+		detailsJSON,
+		c.ClientIP(),
+		c.GetHeader("User-Agent"),
+	)
+}
+
+// ===================== Product Database Functions =====================
+func GetProducts(sort string, maxPrice *float64) ([]models.Product, error) {
+	var args []interface{}
+
+	baseQuery := `
+		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+		FROM products
+		WHERE is_active = true
+	`
+
+	// Add max_price filter if provided
+	if maxPrice != nil {
+		baseQuery += " AND price <= $1"
+		args = append(args, *maxPrice)
+	}
+
+	// Add sorting
+	if sort == "price_asc" {
+		baseQuery += " ORDER BY price ASC"
+	} else if sort == "id_asc" {
+		baseQuery += " ORDER BY id ASC"
+	} else {
+		baseQuery += " ORDER BY id ASC" // Default to ID ascending
+	}
+
+	rows, err := DB.Query(baseQuery, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []models.Product
+	for rows.Next() {
+		var product models.Product
+		err := rows.Scan(
+			&product.ID,
+			&product.CategoryID,
+			&product.Name,
+			&product.Description,
+			&product.Price,
+			&product.Stock,
+			&product.ImageURL,
+			&product.IsActive,
+			&product.CreatedAt,
+			&product.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+
+	return products, nil
+}
+
+func GetFeaturedProducts(limit int) ([]models.Product, error) {
+	query := `
+		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+		FROM products
+		WHERE is_active = true
+		ORDER BY RANDOM()
+		LIMIT $1
+	`
+
+	rows, err := DB.Query(query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []models.Product
+	for rows.Next() {
+		var product models.Product
+		err := rows.Scan(
+			&product.ID,
+			&product.CategoryID,
+			&product.Name,
+			&product.Description,
+			&product.Price,
+			&product.Stock,
+			&product.ImageURL,
+			&product.IsActive,
+			&product.CreatedAt,
+			&product.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+
+	return products, nil
+}
+
+func GetFeaturedCategories() ([]models.Category, error) {
+	query := `
+		SELECT id, parent_id, name, description, image_url, is_featured, created_at
+		FROM categories
+		WHERE parent_id = 1
+		ORDER BY created_at ASC
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var categories []models.Category
+	for rows.Next() {
+		var category models.Category
+		err := rows.Scan(
+			&category.ID,
+			&category.ParentID,
+			&category.Name,
+			&category.Description,
+			&category.ImageURL,
+			&category.IsFeatured,
+			&category.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		categories = append(categories, category)
+	}
+
+	return categories, nil
+}
+
+func GetCategories() ([]models.Category, error) {
+	query := `
+		SELECT id, parent_id, name, description, image_url, is_featured, created_at
+		FROM categories
+		WHERE parent_id IS NULL
+		ORDER BY created_at ASC
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var categories []models.Category
+	for rows.Next() {
+		var category models.Category
+		err := rows.Scan(
+			&category.ID,
+			&category.ParentID,
+			&category.Name,
+			&category.Description,
+			&category.ImageURL,
+			&category.IsFeatured,
+			&category.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		categories = append(categories, category)
+	}
+
+	return categories, nil
+}
+
+func GetProductByID(productID int) (*models.Product, error) {
+	query := `
+		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+		FROM products
+		WHERE id = $1 AND is_active = true
+	`
+
+	var product models.Product
+	err := DB.QueryRow(query, productID).Scan(
+		&product.ID,
+		&product.CategoryID,
+		&product.Name,
+		&product.Description,
+		&product.Price,
+		&product.Stock,
+		&product.ImageURL,
+		&product.IsActive,
+		&product.CreatedAt,
+		&product.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil // Product not found
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &product, nil
+}
+
+func CheckUsernameExists(username string, excludeUserID int) (bool, error) {
+	query := `SELECT COUNT(*) FROM users WHERE username = $1 AND id != $2`
+	var count int
+	err := DB.QueryRow(query, username, excludeUserID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func UpdateUserProfile(userID int, firstName, lastName, username, passwordHash *string) error {
+	query := "UPDATE users SET updated_at = NOW()"
+	args := []interface{}{}
+	argID := 1
+
+	if firstName != nil {
+		query += fmt.Sprintf(", first_name = $%d", argID)
+		args = append(args, *firstName)
+		argID++
+	}
+	if lastName != nil {
+		query += fmt.Sprintf(", last_name = $%d", argID)
+		args = append(args, *lastName)
+		argID++
+	}
+	if username != nil {
+		query += fmt.Sprintf(", username = $%d", argID)
+		args = append(args, *username)
+		argID++
+	}
+	if passwordHash != nil {
+		query += fmt.Sprintf(", password_hash = $%d", argID)
+		args = append(args, *passwordHash)
+		argID++
+	}
+
+	// ถ้าไม่มีอะไรส่งมาให้อัปเดตเลย
+	if len(args) == 0 {
+		return nil
+	}
+
+	query += fmt.Sprintf(" WHERE id = $%d", argID)
+	args = append(args, userID)
+
+	_, err := DB.Exec(query, args...)
+	return err
+}
+
+func GetProductsByCategory(categoryID int) ([]models.Product, error) {
+	query := `
+		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+		FROM products
+		WHERE category_id = $1 AND is_active = true
+		ORDER BY created_at DESC
+	`
+
+	rows, err := DB.Query(query, categoryID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []models.Product
+	for rows.Next() {
+		var product models.Product
+		err := rows.Scan(
+			&product.ID,
+			&product.CategoryID,
+			&product.Name,
+			&product.Description,
+			&product.Price,
+			&product.Stock,
+			&product.ImageURL,
+			&product.IsActive,
+			&product.CreatedAt,
+			&product.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+
+	return products, nil
+}

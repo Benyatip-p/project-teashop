@@ -1,33 +1,83 @@
 package main
 
 import (
-	"backend/config"
-	"backend/routes"
-	"log"
+	_ "backend/docs"
+	"backend/auth"
+	"backend/database"
+	"backend/handlers"
+	"backend/middleware"
+	"net/http"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	swaggerFiles "github.com/swaggo/files"
 )
 
+// @title Tea Shop API
+// @version 1.0
+// @description A tea shop API with user authentication and product management
+// @host localhost:8080
+// @schemes http
+// @BasePath
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
 func main() {
-	config.InitDB()
-	defer config.DB.Close()
+	database.InitDB()
+	defer database.DB.Close()
 
 	r := gin.Default()
 	r.Use(cors.Default())
 
+	// ===================== Public Endpoints =====================
 	// Health check
-	r.GET("/health", func(c *gin.Context) {
-		if err := config.DB.Ping(); err != nil {
-			c.JSON(503, gin.H{"message": "unhealthy", "error": err.Error()})
+	r.GET("/health", func(c *gin.Context){
+		err := database.DB.Ping()
+		if err != nil {
+			c.JSON(http.StatusServiceUnavailable, gin.H{"message":"unhealthy", "error":err.Error()})
 			return
 		}
-		c.JSON(200, gin.H{"message": "healthy"})
+		c.JSON(http.StatusOK, gin.H{"message" : "healthy"})
 	})
 
-	// Routes
-	routes.RegisterAuthRoutes(r)
-	routes.RegisterProductRoutes(r)
+	// Swagger endpoint
+	r.GET("/docs/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	log.Println("Server running on :8081")
-	r.Run(":8081")
+	// ===================== Authentication Endpoints =====================
+	authGroup := r.Group("/auth")
+	{
+		authGroup.POST("/register", auth.Register(database.DB, database.LogAudit))
+		authGroup.POST("/login", auth.Login(database.DB, database.LogAudit))
+		authGroup.POST("/refresh", auth.RefreshTokenHandler(database.DB))
+		authGroup.POST("/logout", auth.Logout(database.DB, database.LogAudit))
+	}
+
+	// ===================== Public API Endpoints =====================
+	api := r.Group("/api/v1")
+	{
+		// Public endpoints
+		api.GET("/products", handlers.GetProductsHandler)
+		api.GET("/products/:id", handlers.GetProductByIDHandler)
+		api.GET("/products/featured", handlers.GetFeaturedProductsHandler)
+		api.GET("/categories", handlers.GetCategoriesHandler)
+		api.GET("/categories/:id/products", handlers.GetProductsByCategoryHandler)
+		api.GET("/categories/featured", handlers.GetFeaturedCategoriesHandler)
+		api.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
+		api.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
+		api.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า
+
+		// Protected endpoints
+		protected := api.Group("/")
+		protected.Use(middleware.AuthMiddleware())
+		{
+			protected.GET("/profile", handlers.GetMyProfileHandler)
+			protected.PUT("/profile", handlers.UpdateProfileHandler)
+		}
+	}
+
+	r.Run(":8080")
 }

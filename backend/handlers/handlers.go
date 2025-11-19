@@ -1,0 +1,440 @@
+package handlers
+
+import (
+	"backend/auth"
+	"backend/database"
+	"backend/models"
+	"database/sql"
+	"log"
+	"strconv"
+
+	"github.com/gin-gonic/gin"
+)
+
+// GetMyProfileHandler godoc
+// @Summary Get current user profile
+// @Description Get the profile information of the currently authenticated user
+// @Tags profile
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} models.UserInfo
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/profile [get]
+func GetMyProfileHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// ดึงข้อมูล user จาก database
+	var user models.User
+	query := `
+		SELECT id, username, email, first_name, last_name, is_active, created_at, updated_at
+		FROM users
+		WHERE id = $1
+	`
+
+	err := database.DB.QueryRow(query, userID).Scan(
+		&user.ID,
+		&user.Username,
+		&user.Email,
+		&user.FirstName,
+		&user.LastName,
+		&user.IsActive,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		c.JSON(404, gin.H{"error": "user not found"})
+		return
+	} else if err != nil {
+		log.Printf("Database error: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		roles = []string{}
+	}
+
+	type UserProfileResponse struct {
+		ID        int      `json:"id"`
+		Username  string   `json:"username"`
+		Email     string   `json:"email"`
+		FirstName *string  `json:"first_name"`
+		LastName  *string  `json:"last_name"`
+		Roles     []string `json:"roles"`
+	}
+
+	// ส่ง response
+	c.JSON(200, UserProfileResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Roles:     roles,
+	})
+}
+
+// GetProductsHandler godoc
+// @Summary Get products
+// @Description Get a list of products with optional filtering
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param sort query string false "Sort order (price_asc, id_asc)" Enums(price_asc,id_asc)
+// @Param max_price query number false "Maximum price filter"
+// @Success 200 {object} object
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products [get]
+func GetProductsHandler(c *gin.Context) {
+	sort := c.Query("sort")
+	maxPriceStr := c.Query("max_price")
+
+	var maxPrice *float64
+	if maxPriceStr != "" {
+		if price, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
+			maxPrice = &price
+		}
+	}
+
+	products, err := database.GetProducts(sort, maxPrice)
+	if err != nil {
+		log.Printf("Error getting products: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"products": products})
+}
+
+// GetFeaturedCategoriesHandler godoc
+// @Summary Get featured categories
+// @Description Get a list of featured tea categories (subcategories of Tea Leaves)
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Success 200 {object} object
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/categories/featured [get]
+func GetFeaturedCategoriesHandler(c *gin.Context) {
+	categories, err := database.GetFeaturedCategories()
+	if err != nil {
+		log.Printf("Error getting featured categories: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"categories": categories})
+}
+
+// GetFeaturedProductsHandler godoc
+// @Summary Get featured products
+// @Description Get random product recommendations
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of products to return (default 6)"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products/featured [get]
+func GetFeaturedProductsHandler(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "6")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		c.JSON(400, gin.H{"error": "invalid limit parameter"})
+		return
+	}
+
+	// Cap the limit to prevent abuse
+	if limit > 20 {
+		limit = 20
+	}
+
+	products, err := database.GetFeaturedProducts(limit)
+	if err != nil {
+		log.Printf("Error getting featured products: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"products": products})
+}
+
+// GetCategoriesHandler godoc
+// @Summary Get parent categories
+// @Description Get a list of parent/main product categories (parent_id = null)
+// @Tags categories
+// @Accept json
+// @Produce json
+// @Success 200 {object} object
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/categories [get]
+func GetCategoriesHandler(c *gin.Context) {
+	categories, err := database.GetCategories()
+	if err != nil {
+		log.Printf("Error getting categories: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"categories": categories})
+}
+
+// GetProductByIDHandler godoc
+// @Summary Get product by ID
+// @Description Get a specific product by its ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products/{id} [get]
+func GetProductByIDHandler(c *gin.Context) {
+	productIDStr := c.Param("id")
+	productID, err := strconv.Atoi(productIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid product id"})
+		return
+	}
+
+	product, err := database.GetProductByID(productID)
+	if err != nil {
+		log.Printf("Error getting product by ID: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	if product == nil {
+		c.JSON(404, gin.H{"error": "product not found"})
+		return
+	}
+
+	c.JSON(200, gin.H{"product": product})
+}
+
+// UpdateProfileHandler godoc
+// @Summary Update user profile
+// @Description Update the profile information of the currently authenticated user
+// @Tags profile
+// @Accept json
+// @Produce json
+// @Param request body models.UpdateProfileRequest true "Profile update data"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 409 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/profile [put]
+func UpdateProfileHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req models.UpdateProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check username uniqueness if provided
+	if req.Username != nil {
+		exists, err := database.CheckUsernameExists(*req.Username, userID.(int))
+		if err != nil {
+			log.Printf("Database error: %v", err)
+			c.JSON(500, gin.H{"error": "internal server error"})
+			return
+		}
+		if exists {
+			c.JSON(409, gin.H{"error": "username already exists"})
+			return
+		}
+	}
+
+	var passwordHash *string
+	if req.Password != nil {
+		hashed, err := auth.HashPassword(*req.Password)
+		if err != nil {
+			c.JSON(500, gin.H{"error": "failed to hash password"})
+			return
+		}
+		passwordHash = &hashed
+	}
+
+	err := database.UpdateUserProfile(userID.(int), req.FirstName, req.LastName, req.Username, passwordHash)
+	if err != nil {
+		log.Printf("Error updating profile: %v", err)
+		c.JSON(500, gin.H{"error": "failed to update profile"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "profile updated successfully"})
+}
+
+// GetProductsByCategoryHandler godoc
+// @Summary Get products by category
+// @Description Get all products belonging to a specific category
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Category ID"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/categories/{id}/products [get]
+func GetProductsByCategoryHandler(c *gin.Context) {
+	categoryIDStr := c.Param("id")
+	categoryID, err := strconv.Atoi(categoryIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid category id"})
+		return
+	}
+
+	products, err := database.GetProductsByCategory(categoryID)
+	if err != nil {
+		log.Printf("Error getting products by category: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"products": products})
+}
+
+// CreateProductHandler godoc
+// @Summary Create a new product
+// @Description Add a new product to the database
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param request body models.Product true "Product data"
+// @Success 201 {object} models.Product
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products [post]
+func CreateProductHandler(c *gin.Context) {
+	var input models.Product
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	query := `INSERT INTO products (category_id, name, description, price, stock, image_url, is_active, created_at, updated_at)
+	          VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW()) RETURNING id`
+
+	var newID int
+	err := database.DB.QueryRow(query, input.CategoryID, input.Name, input.Description, input.Price, input.Stock, input.ImageURL, input.IsActive).Scan(&newID)
+	if err != nil {
+		log.Printf("Error creating product: %v", err)
+		c.JSON(500, gin.H{"error": "failed to create product"})
+		return
+	}
+
+	input.ID = newID
+	c.JSON(201, input)
+}
+// UpdateProductHandler godoc
+// @Summary Update a product
+// @Description Update an existing product by ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Param request body models.Product true "Updated product data"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products/{id} [put]
+func UpdateProductHandler(c *gin.Context) {
+    idStr := c.Param("id")
+    pid, err := strconv.Atoi(idStr)
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid product ID"})
+        return
+    }
+
+    var req models.UpdateProductRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(400, gin.H{"error": err.Error()})
+        return
+    }
+
+    // แปลง ImageURL เป็น sql.NullString
+    var img sql.NullString
+    if req.ImageURL != nil && *req.ImageURL != "" {
+        img = sql.NullString{String: *req.ImageURL, Valid: true}
+    } else {
+        img = sql.NullString{Valid: false}
+    }
+
+    query := `UPDATE products 
+              SET category_id=$1, name=$2, description=$3, price=$4, stock=$5, image_url=$6, is_active=$7, updated_at=NOW()
+              WHERE id=$8`
+
+    res, err := database.DB.Exec(query, req.CategoryID, req.Name, req.Description, req.Price, req.Stock, img, req.IsActive, pid)
+    if err != nil {
+        log.Printf("Error updating product: %v", err)
+        c.JSON(500, gin.H{"error": "failed to update product"})
+        return
+    }
+
+    rowsAffected, _ := res.RowsAffected()
+    if rowsAffected == 0 {
+        c.JSON(404, gin.H{"error": "product not found"})
+        return
+    }
+
+    c.JSON(200, gin.H{"message": "product updated successfully"})
+}
+
+
+// DeleteProductHandler godoc
+// @Summary Delete a product
+// @Description Delete a product by ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products/{id} [delete]
+func DeleteProductHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	pid, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid product ID"})
+		return
+	}
+
+	res, err := database.DB.Exec("DELETE FROM products WHERE id=$1", pid)
+	if err != nil {
+		log.Printf("Error deleting product: %v", err)
+		c.JSON(500, gin.H{"error": "failed to delete product"})
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(404, gin.H{"error": "product not found"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "product deleted successfully"})
+}
