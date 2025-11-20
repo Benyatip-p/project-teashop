@@ -3,32 +3,30 @@ import TeaCard from './ProductCard';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/outline';
 
 const FeaturedTeas = () => {
-  // กำหนด State สำหรับจัดการข้อมูล
   const [featuredTeas, setFeaturedTeas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Static category mapping
+  const categoryIdToName = {
+    3: 'กาชงชา',
+    4: 'ชาเขียว',
+    5: 'ชาอู่หลง',
+    6: 'ชาดำ',
+    7: 'ชาขาว',
+    8: 'อุปกรณ์กรองชา',
+    9: 'ถ้วยชา',
+  };
 
   useEffect(() => {
     const fetchTeas = async () => {
       try {
         setLoading(true);
         
-        // ตรวจสอบว่ามีข้อมูลใน sessionStorage หรือไม่
-        const cachedTeas = sessionStorage.getItem('featuredTeas');
-        
-        if (cachedTeas) {
-          // ถ้ามีข้อมูลใน sessionStorage ใช้ข้อมูลนั้น
-          console.log('Using cached featured teas from sessionStorage');
-          setFeaturedTeas(JSON.parse(cachedTeas));
-          setError(null);
-          setLoading(false);
-          return;
-        }
-        
-        // ถ้าไม่มีข้อมูลใน sessionStorage ให้ดึงจาก API
+        // Fetch featured products
         console.log('Fetching featured teas from API');
-        const response = await fetch('/api/v1/products');
+        const response = await fetch('/api/v1/products/featured');
         console.log('Response:', response);
         
         if (!response.ok) {
@@ -55,32 +53,31 @@ const FeaturedTeas = () => {
         // แปลงข้อมูลให้ตรงกับโครงสร้างที่ใช้ใน frontend
         const formattedProducts = products.map(product => ({
           id: product.id,
-          title: product.name, // แปลง name เป็น title
+          title: product.name,
           name: product.name,
-          category: product.category_name || product.category || 'General',
+          category: categoryIdToName[product.category_id] || 'ทั่วไป', // ✅ ใช้ static mapping
+          categoryId: product.category_id,
           brand: product.brand || 'Tea House',
           price: parseFloat(product.price),
-          originalPrice: product.original_price || parseFloat(product.price),
-          coverImage: product.image_url || '/images/placeholder.jpg', // แปลง image_url เป็น coverImage
-          rating: product.rating || 4.5,
-          reviews: product.reviews || 0,
-          discount: product.discount || null,
-          stock: product.stock || 0,
+          originalPrice: product.original_price ? parseFloat(product.original_price) : null,
+          coverImage: product.image_url
+            ? `/${product.image_url}`
+            : '/images/placeholder.jpg',
+          rating: product.rating || 0,
+          reviews: product.reviews_count || product.reviews || 0,
+          discount: product.discount_percentage || product.discount || null,
+          stock: product.stock,
           description: product.description || '',
-          isActive: product.is_active !== false
+          isActive: product.is_active !== false,
+          isNew: product.is_new || false,
+          createdAt: product.created_at,
+          updatedAt: product.updated_at
         }));
 
         // กรองเฉพาะสินค้าที่ active
         const activeProducts = formattedProducts.filter(p => p.isActive);
         
-        // สุ่มชา 5 รายการ
-        const shuffled = [...activeProducts].sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, 5);
-        
-        // บันทึกลง sessionStorage
-        sessionStorage.setItem('featuredTeas', JSON.stringify(selected));
-        
-        setFeaturedTeas(selected);
+        setFeaturedTeas(activeProducts);
         setError(null);
       } catch (err) {
         setError(err.message);
@@ -90,9 +87,8 @@ const FeaturedTeas = () => {
       }
     };
 
-    // เรียกใช้ฟังก์ชันดึงข้อมูล
     fetchTeas();
-  }, []); // [] = dependency array ว่าง = รันครั้งเดียว
+  }, []);
 
   // ฟังก์ชันเลื่อนไปหน้า
   const handleNext = () => {
@@ -150,7 +146,6 @@ const FeaturedTeas = () => {
     );
   }
 
-  // กรณีแสดงผลข้อมูลปกติ - ใช้ TeaCard พร้อมปุ่มเลื่อน
   return (
     <div className="relative">
       <div className="relative flex items-center gap-4">
@@ -168,7 +163,7 @@ const FeaturedTeas = () => {
           <ChevronLeftIcon className="w-6 h-6 text-gray-700" />
         </button>
 
-        {/* Products Grid - แสดง 4 รายการที่เห็นได้ */}
+        {/* Products Grid */}
         <div className="flex-1 overflow-hidden px-8 md:px-12">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 transition-all duration-300">
             {visibleProducts.map((product) => (
@@ -195,7 +190,7 @@ const FeaturedTeas = () => {
         </button>
       </div>
 
-      {/* Indicator dots - แสดงเฉพาะเมื่อมีมากกว่า 4 รายการ */}
+      {/* Indicator dots */}
       {totalPages > 0 && (
         <div className="flex justify-center gap-2 mt-4">
           {Array.from({ length: totalPages }).map((_, index) => (

@@ -1,25 +1,75 @@
 import React, { useState } from 'react';
 import { useShop } from '../context/ShopContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate  } from 'react-router-dom';
 import { Link, NavLink } from 'react-router-dom';
 import { ShoppingCartIcon, SearchIcon, UserIcon, MenuIcon, XIcon, HeartIcon } from '@heroicons/react/outline';
 
-
-
-
 const Navbar = () => {
      const [isMenuOpen, setIsMenuOpen] = useState(false);
+     const [isSearchOpen, setIsSearchOpen] = useState(false); 
+     const [searchText, setSearchText] = useState('');
      
      const { cartCount } = useShop();
 
      const location = useLocation();
+     const navigate = useNavigate();  
      const isActivePath = (path) => location.pathname.startsWith(path);
 
      const toggleMenu = () => {
           setIsMenuOpen(!isMenuOpen);
      };
 
+     const toggleSearch = () => {
+     setIsSearchOpen((prev) => !prev);
+     setSearchText('');
+     };
+
+     const handleSearchSubmit = (e) => {
+     e.preventDefault();
+     const q = searchText.trim();
+     if (!q) return;
+
+     // ไปหน้า /products พร้อมส่ง query ?search=...
+     navigate(`/products?search=${encodeURIComponent(q)}`);
+     setIsSearchOpen(false);
+     };
+
      return (
+          <>
+      {/* แถบค้นหาแบบ overlay ด้านบน */}
+      {isSearchOpen && (
+        <div className="fixed top-0 left-0 right-0 z-[60] bg-white shadow-md">
+          <form
+            onSubmit={handleSearchSubmit}
+            className="container mx-auto px-4 h-16 flex items-center"
+          >
+            {/* ไอคอน search ด้านซ้าย */}
+            <SearchIcon className="h-5 w-5 text-gray-400 mr-3" />
+
+            {/* ช่อง input */}
+            <input
+              type="text"
+              autoFocus
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="ค้นหาสินค้าของเรา"
+              className="flex-1 outline-none text-gray-800 placeholder-gray-400"
+            />
+
+            {/* ปุ่มปิด (X) ด้านขวา */}
+            <button
+              type="button"
+              onClick={toggleSearch}
+              className="ml-4 text-gray-500 hover:text-gray-700"
+            >
+              <XIcon className="h-5 w-5" />
+            </button>
+          </form>
+
+          {/* เส้นแบ่งด้านล่าง เหมือนในรูป */}
+          <div className="h-10 bg-gray-100" />
+        </div>
+      )}
           <nav className="bg-green-900 shadow-lg sticky top-0 z-50">
                <div className="container mx-auto px-4">
                     <div className="flex justify-between items-center h-16">
@@ -79,10 +129,12 @@ const Navbar = () => {
 
                          {/* Action Buttons */}
                          <div className="flex items-center space-x-4">
-                              <button className="p-2 text-white hover:text-green-600 transition-colors">
+                              <button
+                                   className="p-2 text-white hover:text-green-600 transition-colors"
+                                   onClick={toggleSearch}
+                                   >
                                    <SearchIcon className="h-6 w-6" />
                               </button>
-
                               <button className={`p-2 transition-colors ${isActivePath('/favorites')? 'text-green-600': 'text-white hover:text-green-400'}`}>
                                    <Link to="/favorites">
                                         <HeartIcon className="h-6 w-6" />
@@ -102,7 +154,7 @@ const Navbar = () => {
                               </button>
 
                               <button className={`p-2 transition-colors ${isActivePath('/profile')? 'text-green-600': 'text-white hover:text-green-400'}`}>
-                                   <Link to="/login">
+                                   <Link to="/profile">
                                      <UserIcon className="h-6 w-6" />
                                    </Link>
                               </button>
@@ -164,6 +216,7 @@ const Navbar = () => {
                     </div>
                </div>
           </nav>
+          </>
      );
 };
 

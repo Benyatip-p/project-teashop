@@ -22,6 +22,8 @@ import DeleteTeaPage from './pages/DeleteTeaPage';
 import EditTeaPage from './pages/EditTeaPage/EditTeaPage';
 import AdminDashboardPage from './pages/AdminDashboard/AdminDashboard';
 import AdminProductPage from './pages/AdminDashboard/AdminProductPage';
+import Paymentpage from './pages/Paymentpage';
+import CategoryProductspage from './pages/CategoryProductspage';
 
 // Layout สำหรับ Public Pages
 const PublicLayout = ({ children }) => (
@@ -165,6 +167,8 @@ function App() {
               </PublicLayout>
             }
           />
+          <Route path="/payment" element={<Paymentpage />} />
+          <Route path="/category/:categoryName" element={<CategoryProductspage />} />
 
           {/* 404 Not Found */}
           <Route path="*" element={<NotFound />} />

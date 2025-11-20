@@ -23,9 +23,12 @@ const Homepage = () => {
         <h1 className="text-3xl font-bold mb-8 text-gray-900">
           Good tea
         </h1>
-        <h3 className="text-xl font-semibold mb-8 text-gray-900">
-          คัดสรรแต่สิ่งดี ๆ เพื่อคุณ
-        </h3>
+        <h4 className="text-xl font-normal mb-8 text-gray-900">
+          <p>เราเริ่มต้นจากการเป็นคนหนึ่งที่หลงใหลในเสน่ห์ของชา... 
+          </p>
+          <p>เราเชื่อว่าการชงชาดื่มเองสักกาเป็นการบำบัดจิตใจที่ง่ายและดีที่สุด และยังค้นพบว่าความสุขไม่ได้อยู่แค่ที่รสชาติของชา
+          </p>
+        </h4>
 
         {/* Tea Categories - ใช้ Component */}
         <section className="mb-12">
