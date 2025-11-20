@@ -5,50 +5,52 @@ const FeaturedCategories = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [imageErrors, setImageErrors] = useState({});
+  const [imageErrors, setImageErrors] = useState({}); // เก็บสถานะรูปที่โหลดไม่ได้
 
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-
+        
+        // เรียก API เพื่อดึงข้อมูลหมวดหมู่แนะนำ
         const response = await fetch('/api/v1/categories/featured');
+        console.log('Categories Response:', response);
+        
         if (!response.ok) {
           throw new Error('Failed to fetch featured categories');
         }
-
+        
         const data = await response.json();
-
+        console.log('Categories Data received:', data);
+        
+        // ตรวจสอบว่าข้อมูลเป็น array หรือไม่
         let categoriesData = [];
-        if (data && data.categories && Array.isArray(data.categories)) {
+        if (Array.isArray(data)) {
+          categoriesData = data;
+        } else if (data.categories && Array.isArray(data.categories)) {
           categoriesData = data.categories;
+        } else if (data.data && Array.isArray(data.data)) {
+          categoriesData = data.data;
+        } else if (data.results && Array.isArray(data.results)) {
+          categoriesData = data.results;
         } else {
           throw new Error('Invalid data format from API');
         }
 
-        const formattedCategories = categoriesData.map((category) => {
-          const rawImage =
-            (category.image_url &&
-              category.image_url.Valid &&
-              category.image_url.String) ||
-            category.image ||
-            null;
+        // แปลงข้อมูลให้ตรงกับโครงสร้างที่ใช้ใน frontend
+        const formattedCategories = categoriesData.map(category => ({
+          id: category.id,
+          name: category.name || category.category_name,
+          category: category.name || category.category_name,
+          image: category.image_url || category.image || null,
+          description: category.description || '',
+          isActive: category.is_active !== false
+        }));
 
-          const image = rawImage
-            ? rawImage.startsWith('http')
-              ? rawImage
-              : `/${rawImage}`
-            : null;
-
-          return {
-            id: category.id,
-            name: category.name || category.category_name,
-            image,
-            isActive: category.is_active !== false,
-          };
-        });
-
+        // กรองเฉพาะหมวดหมู่ที่ active
         const activeCategories = formattedCategories.filter(c => c.isActive);
+        
+        // จำกัดไม่เกิน 4 รายการ
         const selected = activeCategories.slice(0, 4);
         
         setCategories(selected);
@@ -61,13 +63,19 @@ const FeaturedCategories = () => {
       }
     };
 
+    // เรียกใช้ฟังก์ชันดึงข้อมูล
     fetchCategories();
   }, []);
 
+  // ฟังก์ชันจัดการเมื่อรูปโหลดไม่ได้
   const handleImageError = (categoryId) => {
-    setImageErrors(prev => ({ ...prev, [categoryId]: true }));
+    setImageErrors(prev => ({
+      ...prev,
+      [categoryId]: true
+    }));
   };
 
+  // กรณีกำลังโหลดข้อมูล
   if (loading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -83,6 +91,7 @@ const FeaturedCategories = () => {
     );
   }
 
+  // กรณีเกิดข้อผิดพลาด
   if (error) {
     return (
       <div className="text-center py-8 text-red-600">
@@ -92,6 +101,7 @@ const FeaturedCategories = () => {
     );
   }
 
+  // กรณีไม่มีข้อมูล
   if (categories.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
@@ -100,12 +110,13 @@ const FeaturedCategories = () => {
     );
   }
 
+  // กรณีแสดงผลข้อมูลปกติ
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {categories.map((category) => (
         <Link
           key={category.id}
-          to={`/category/${encodeURIComponent(category.name)}`}
+          to={`/products?category=${category.category}`}
           className="bg-gray-100 rounded-lg overflow-hidden shadow hover:shadow-lg transition-shadow"
         >
           <div className="aspect-square bg-gray-300 flex items-center justify-center overflow-hidden">

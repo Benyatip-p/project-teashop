@@ -66,14 +66,14 @@ func main() {
 		api.GET("/categories", handlers.GetCategoriesHandler)
 		api.GET("/categories/:id/products", handlers.GetProductsByCategoryHandler)
 		api.GET("/categories/featured", handlers.GetFeaturedCategoriesHandler)
+		api.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
+		api.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
+		api.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า
 
 		// Protected endpoints
 		protected := api.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		{
-			protected.POST("/orders", handlers.CreateOrderHandler)
-			protected.GET("/orders/:id", handlers.GetOrderByIDHandler)
-			protected.GET("/user/orders", handlers.GetUserOrdersHandler)
 			protected.GET("/profile", handlers.GetMyProfileHandler)
 			protected.PUT("/profile", handlers.UpdateProfileHandler)
 		}

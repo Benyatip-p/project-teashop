@@ -1,20 +1,4 @@
 definitions:
-  models.CreateOrderRequest:
-    properties:
-      customer_name:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/models.OrderItemRequest'
-        minItems: 1
-        type: array
-      shipping_address:
-        type: string
-    required:
-    - customer_name
-    - items
-    - shipping_address
-    type: object
   models.ErrorResponse:
     properties:
       message:
@@ -38,53 +22,6 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/models.UserInfo'
-    type: object
-  models.Order:
-    properties:
-      created_at:
-        type: string
-      customer_name:
-        type: string
-      id:
-        type: integer
-      items:
-        items:
-          $ref: '#/definitions/models.OrderItem'
-        type: array
-      shipping_address:
-        type: string
-      status:
-        type: string
-      total_amount:
-        type: number
-      user_id:
-        type: integer
-    type: object
-  models.OrderItem:
-    properties:
-      id:
-        type: integer
-      price_per_unit:
-        type: number
-      product_id:
-        type: integer
-      product_name:
-        type: string
-      quantity:
-        type: integer
-      total_price:
-        type: number
-    type: object
-  models.OrderItemRequest:
-    properties:
-      product_id:
-        type: integer
-      quantity:
-        minimum: 1
-        type: integer
-    required:
-    - product_id
-    - quantity
     type: object
   models.RefreshRequest:
     properties:
@@ -232,82 +169,6 @@ paths:
       summary: Get featured categories
       tags:
       - categories
-  /api/v1/orders:
-    post:
-      consumes:
-      - application/json
-      description: Create a new order with products and shipping information
-      parameters:
-      - description: Order creation data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/models.CreateOrderRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/models.Order'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Create a new order
-      tags:
-      - orders
-  /api/v1/orders/{id}:
-    get:
-      consumes:
-      - application/json
-      description: Get detailed information for a specific order (user can only view
-        their own orders)
-      parameters:
-      - description: Order ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.Order'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get order details by ID
-      tags:
-      - orders
   /api/v1/products:
     get:
       consumes:
@@ -468,31 +329,6 @@ paths:
       summary: Update user profile
       tags:
       - profile
-  /api/v1/user/orders:
-    get:
-      consumes:
-      - application/json
-      description: Get the order history for the authenticated user
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      security:
-      - BearerAuth: []
-      summary: Get user's order history
-      tags:
-      - orders
   /auth/login:
     post:
       consumes:

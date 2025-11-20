@@ -170,113 +170,6 @@ func GetFeaturedProductsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"products": products})
 }
 
-// CreateOrderHandler godoc
-// @Summary Create a new order
-// @Description Create a new order with products and shipping information
-// @Tags orders
-// @Accept json
-// @Produce json
-// @Param request body models.CreateOrderRequest true "Order creation data"
-// @Security BearerAuth
-// @Success 201 {object} models.Order
-// @Failure 400 {object} models.ErrorResponse
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/orders [post]
-func CreateOrderHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(401, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	var req models.CreateOrderRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-
-	order, err := database.CreateOrder(userID.(int), req, database.LogAudit, c)
-	if err != nil {
-		log.Printf("Error creating order: %v", err)
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(201, order)
-}
-
-// GetUserOrdersHandler godoc
-// @Summary Get user's order history
-// @Description Get the order history for the authenticated user
-// @Tags orders
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} object
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/user/orders [get]
-func GetUserOrdersHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(401, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	orders, err := database.GetUserOrders(userID.(int))
-	if err != nil {
-		log.Printf("Error getting user orders: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
-
-	c.JSON(200, gin.H{"orders": orders})
-}
-
-// GetOrderByIDHandler godoc
-// @Summary Get order details by ID
-// @Description Get detailed information for a specific order (user can only view their own orders)
-// @Tags orders
-// @Accept json
-// @Produce json
-// @Param id path int true "Order ID"
-// @Security BearerAuth
-// @Success 200 {object} models.Order
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 403 {object} models.ErrorResponse
-// @Failure 404 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/orders/{id} [get]
-func GetOrderByIDHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(401, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	orderIDStr := c.Param("id")
-	orderID, err := strconv.Atoi(orderIDStr)
-	if err != nil {
-		c.JSON(400, gin.H{"error": "invalid order id"})
-		return
-	}
-
-	order, err := database.GetOrderByID(orderID, userID.(int))
-	if err != nil {
-		log.Printf("Error getting order by ID: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
-
-	if order == nil {
-		c.JSON(404, gin.H{"error": "order not found"})
-		return
-	}
-
-	c.JSON(200, order)
-}
-
 // GetCategoriesHandler godoc
 // @Summary Get parent categories
 // @Description Get a list of parent/main product categories (parent_id = null)
@@ -420,4 +313,128 @@ func GetProductsByCategoryHandler(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"products": products})
+}
+
+// CreateProductHandler godoc
+// @Summary Create a new product
+// @Description Add a new product to the database
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param request body models.Product true "Product data"
+// @Success 201 {object} models.Product
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products [post]
+func CreateProductHandler(c *gin.Context) {
+	var input models.Product
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	query := `INSERT INTO products (category_id, name, description, price, stock, image_url, is_active, created_at, updated_at)
+	          VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW()) RETURNING id`
+
+	var newID int
+	err := database.DB.QueryRow(query, input.CategoryID, input.Name, input.Description, input.Price, input.Stock, input.ImageURL, input.IsActive).Scan(&newID)
+	if err != nil {
+		log.Printf("Error creating product: %v", err)
+		c.JSON(500, gin.H{"error": "failed to create product"})
+		return
+	}
+
+	input.ID = newID
+	c.JSON(201, input)
+}
+// UpdateProductHandler godoc
+// @Summary Update a product
+// @Description Update an existing product by ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Param request body models.Product true "Updated product data"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products/{id} [put]
+func UpdateProductHandler(c *gin.Context) {
+    idStr := c.Param("id")
+    pid, err := strconv.Atoi(idStr)
+    if err != nil {
+        c.JSON(400, gin.H{"error": "invalid product ID"})
+        return
+    }
+
+    var req models.UpdateProductRequest
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(400, gin.H{"error": err.Error()})
+        return
+    }
+
+    // แปลง ImageURL เป็น sql.NullString
+    var img sql.NullString
+    if req.ImageURL != nil && *req.ImageURL != "" {
+        img = sql.NullString{String: *req.ImageURL, Valid: true}
+    } else {
+        img = sql.NullString{Valid: false}
+    }
+
+    query := `UPDATE products 
+              SET category_id=$1, name=$2, description=$3, price=$4, stock=$5, image_url=$6, is_active=$7, updated_at=NOW()
+              WHERE id=$8`
+
+    res, err := database.DB.Exec(query, req.CategoryID, req.Name, req.Description, req.Price, req.Stock, img, req.IsActive, pid)
+    if err != nil {
+        log.Printf("Error updating product: %v", err)
+        c.JSON(500, gin.H{"error": "failed to update product"})
+        return
+    }
+
+    rowsAffected, _ := res.RowsAffected()
+    if rowsAffected == 0 {
+        c.JSON(404, gin.H{"error": "product not found"})
+        return
+    }
+
+    c.JSON(200, gin.H{"message": "product updated successfully"})
+}
+
+
+// DeleteProductHandler godoc
+// @Summary Delete a product
+// @Description Delete a product by ID
+// @Tags products
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products/{id} [delete]
+func DeleteProductHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	pid, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid product ID"})
+		return
+	}
+
+	res, err := database.DB.Exec("DELETE FROM products WHERE id=$1", pid)
+	if err != nil {
+		log.Printf("Error deleting product: %v", err)
+		c.JSON(500, gin.H{"error": "failed to delete product"})
+		return
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		c.JSON(404, gin.H{"error": "product not found"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "product deleted successfully"})
 }

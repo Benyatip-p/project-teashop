@@ -1,7 +1,7 @@
 import React from 'react';
 import { HeartIcon, ShoppingCartIcon, StarIcon } from '@heroicons/react/outline';
 import { HeartIcon as HeartSolidIcon, StarIcon as StarSolidIcon } from '@heroicons/react/solid';
-import { Link, useNavigate } from 'react-router-dom'; 
+import { Link } from 'react-router-dom';
 import { useShop } from '../context/ShopContext';
 
 const ProductCard = ({ product }) => {
@@ -12,33 +12,22 @@ const ProductCard = ({ product }) => {
     isInCart,
   } = useShop();
 
-  const navigate = useNavigate(); 
-
-  const favorite = isFavorite(product.id);
-  const inCart = isInCart(product.id);
-
+  // กดรถเข็น (เฉพาะปุ่ม ไม่ให้ link ทำงาน)
   const handleAddToCart = (e) => {
     e.preventDefault();   
     e.stopPropagation();
     addToCart(product);
   };
 
+  // กดหัวใจ (เฉพาะปุ่ม)
   const handleToggleFavorite = (e) => {
     e.preventDefault();
     e.stopPropagation();
     toggleFavorite(product);
   };
 
-  const handleBottomButtonClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (inCart) {
-      navigate('/cart');
-    } else {
-      addToCart(product);
-    }
-  };
+  const favorite = isFavorite(product.id);
+  const inCart = isInCart(product.id);
 
   return (
     <Link
@@ -90,8 +79,8 @@ const ProductCard = ({ product }) => {
                 onClick={handleAddToCart}
                 className={`p-3 rounded-full transition-colors
                   ${inCart
-                    ? 'bg-green-600 hover:bg-green-700'
-                    : 'bg-white hover:bg-green-50'
+                    ? 'bg-green-500 hover:bg-green-600'   // อยู่ในตะกร้าแล้ว = เขียวค้าง
+                    : 'bg-white hover:bg-green-50'        // ยังไม่อยู่ = พื้นขาว
                   }`}
               >
                 <ShoppingCartIcon
@@ -145,10 +134,12 @@ const ProductCard = ({ product }) => {
             </div>
             
             <button 
-              onClick={handleBottomButtonClick}
-              className="px-4 py-2 rounded-lg font-semibold transition-all duration-200 
-                bg-green-600 hover:bg-green-700 text-white"
-            >
+              onClick={handleAddToCart}
+              className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 
+                ${inCart 
+                  ? 'bg-green-700 text-white hover:bg-green-900' 
+                  : 'bg-green-700 text-white hover:bg-green-900'
+                }`}>
               {inCart ? 'ในตะกร้า' : 'เพิ่มลงตะกร้า'}
             </button>
           </div>
