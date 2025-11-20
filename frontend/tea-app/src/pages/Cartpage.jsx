@@ -67,7 +67,7 @@ const Cartpage = () => {
 
   const shipping = subtotal === 0 ? 0 : (subtotal >= 1000 ? 0 : 50);
 
-  // ส่วนลดจากคูปอง
+  // ส่วนลดจากคูปอง (ใช้เฉพาะตอนมียอด >= 700)
   const couponDiscount =
     appliedCoupon && appliedCoupon.code === 'happy20' && subtotal >= 700
       ? 20
@@ -76,19 +76,25 @@ const Cartpage = () => {
   const totalBeforeDiscount = subtotal + shipping;
   const total = Math.max(totalBeforeDiscount - couponDiscount, 0);
 
-  // ถ้ายอดเปลี่ยนจนไม่ถึง 700 ให้ขึ้น error แต่ยังจำคูปอง
+  // ถ้ามียอดเปลี่ยน ให้เช็กเงื่อนไขของคูปองอัตโนมัติ
   useEffect(() => {
     if (!appliedCoupon) return;
 
+    // ยังไม่ได้เลือกสินค้าเลย
+    if (selectedItems.length === 0) {
+      setCouponError('กรุณาเลือกสินค้าที่ต้องการใช้คูปอง');
+      return;
+    }
+
+    // เลือกสินค้าแล้ว แต่ยอดยังไม่ถึง 700
     if (subtotal < 700) {
       setCouponError('โค้ดส่วนลดนี้ต้องมียอดสั่งซื้อขั้นต่ำ 700 บาท');
       return;
     }
 
-    if (subtotal >= 700) {
-      setCouponError('');
-    }
-  }, [subtotal, appliedCoupon]);
+    // ยอดถึง 700 และเลือกสินค้าแล้ว → ไม่มี error
+    setCouponError('');
+  }, [subtotal, appliedCoupon, selectedItems.length]);
 
   // ---------- handler ต่าง ๆ ----------
 
@@ -125,25 +131,24 @@ const Cartpage = () => {
     const code = couponInput.trim().toLowerCase();
     setCouponError('');
 
+    // ไม่กรอกอะไร → เคลียร์คูปอง
     if (!code) {
       setAppliedCoupon(null);
       return;
     }
 
+    // ใส่โค้ดผิด
     if (code !== 'happy20') {
       setAppliedCoupon(null);
       setCouponError('ไม่พบรหัสส่วนลดนี้');
       return;
     }
 
-    if (subtotal < 700) {
-      setAppliedCoupon(null);
-      setCouponError('โค้ดส่วนลดนี้ต้องมียอดสั่งซื้อขั้นต่ำ 700 บาท');
-      return;
-    }
-
+    // โค้ดถูก → “จำคูปองไว้ทันที” แล้วใช้ useEffect เป็นคนเช็กยอดกับการเลือกสินค้า
     setAppliedCoupon({ code: 'happy20', discount: 20 });
-    setCouponError('');
+
+    // ถ้า ณ ตอนกด ยอดยังไม่ถึง หรือยังไม่ได้เลือกสินค้า
+    // useEffect ด้านบนจะเป็นคนตั้งข้อความ error ให้เอง
   };
 
   // ปุ่มกากบาท ล้างโค้ด
@@ -162,7 +167,12 @@ const Cartpage = () => {
 
     navigate('/payment', {
       state: {
-        selectedItems: selectedItems
+        selectedItems,
+        shipping,
+        couponDiscount,
+        subtotal,
+        totalBeforeDiscount,
+        total,
       }
     });
   };
@@ -190,13 +200,10 @@ const Cartpage = () => {
 
           <div className="space-y-4">
             {cart.length === 0 ? (
-              // ✅ กรณีไม่มีสินค้าในตะกร้า
               <div className="py-10 text-center text-gray-500">
                 ไม่มีสินค้าในตะกร้า
               </div>
             ) : (
-              // ✅ กรณีมีสินค้า แสดงรายการตามเดิม
-              // ✨✨✨ จุดที่แก้ไข ✨✨✨
               [...cart].reverse().map((item, index) => (
                 <div key={item.id}>
                   <div className="flex items-center py-4 gap-4">
@@ -256,7 +263,6 @@ const Cartpage = () => {
                     </div>
                   </div>
 
-                  {/* แก้ไขเงื่อนไขการแสดงเส้นคั่นเล็กน้อยให้ถูกต้อง */}
                   {index !== cart.length - 1 && <hr />}
                 </div>
               ))
@@ -270,7 +276,6 @@ const Cartpage = () => {
           <div>
             <div className="text-sm font-medium mb-2">คูปองส่วนลด</div>
 
-            {/* กล่อง input + ปุ่มกากบาท + ปุ่มใช้คูปอง */}
             <div className="flex items-center">
               <div className="relative flex-1">
                 <input
@@ -280,7 +285,6 @@ const Cartpage = () => {
                   value={couponInput}
                   onChange={(e) => setCouponInput(e.target.value)}
                 />
-                {/* กากบาทด้านขวา */}
                 {couponInput && (
                   <button
                     type="button"
@@ -296,7 +300,6 @@ const Cartpage = () => {
                 className="ml-2 px-4 py-2 bg-gray-500 text-white text-sm"
                 type="button"
                 onClick={handleApplyCoupon}
-                disabled={subtotal === 0}
               >
                 ใช้คูปอง
               </button>
@@ -321,11 +324,14 @@ const Cartpage = () => {
               <span>฿{subtotal.toFixed(2)}</span>
             </div>
 
-            <div className="flex justify-between mb-2">
+            <div className="flex justify-between mb-2 ">
               <span>ค่าจัดส่ง</span>
               <span>
                 {shipping === 0 && subtotal > 0 ? 'ฟรี' : `฿${shipping.toFixed(2)}`}
               </span>
+            </div>
+            <div className="flex justify-between mb-1 text-xs text-gray-500">
+              <span>ยอดรวม 1,000 บาทขึ้นไปฟรีค่าจัดส่ง</span>
             </div>
 
             <hr className="my-4" />
@@ -348,8 +354,8 @@ const Cartpage = () => {
             </div>
 
             <button
-              className="w-full py-3 bg-gray-500 text-white text-sm font-medium"
-              disabled={subtotal === 0}
+              className="w-full py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-medium"
+              disabled={selectedItems.length === 0}
               onClick={handlePayment}
             >
               ชำระเงิน

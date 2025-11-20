@@ -7,6 +7,7 @@ import Footer from './components/Footer';
 import NotFound from './components/Notfound';
 import { ShopProvider } from "./context/ShopContext";
 
+
 // Pages
 import Homepage from './pages/Homepage';
 import ContactPage from './pages/Contactpage';
@@ -17,6 +18,7 @@ import Cartpage from './pages/Cartpage';
 import Profilepage from './pages/Profilepage';
 import ProductDetailpage from './pages/ProductDetailpage';
 import Paymentpage from './pages/Paymentpage';
+import CategoryProductspage from './pages/CategoryProductspage';
 
 
 
@@ -45,6 +47,7 @@ function App() {
                <Route path="/cart" element={<Cartpage />} />
                <Route path="/profile" element={<Profilepage />} />
                <Route path="/payment" element={<Paymentpage />} />
+               <Route path="/category/:categoryName" element={<CategoryProductspage />} />
                <Route path="*" element={<NotFound />} />
              </Routes>
            </main>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ProductCard from '../components/ProductCard';
+import { useLocation } from 'react-router-dom'; 
 import LoadingSpinner from '../components/LoadingSpinner';
 import { ChevronDownIcon } from '@heroicons/react/outline';
 
@@ -19,6 +20,11 @@ const Productpage = () => {
 
   const dropdownRef = useRef(null);
   const sortRef = useRef(null);
+
+  // ดึง query 
+  const location = useLocation(); 
+  const queryParams = new URLSearchParams(location.search);
+  const searchQuery = queryParams.get('search')?.toLowerCase() || '';
 
   // map category_id จาก API -> ชื่อหมวดใน UI / filter
   const categoryIdToName = {
@@ -81,33 +87,30 @@ const Productpage = () => {
         }
 
         const resJson = await response.json();
-
-        // API: { products: [...] }
         const productsArray = resJson.products || [];
 
         const normalized = productsArray.map((p) => {
           const categoryName = categoryIdToName[p.category_id] || 'ชา';
           const rawImg = p.image_url?.String || '';
 
-          const normalizedImg =
-          rawImg.startsWith('http')
+          const normalizedImg = rawImg.startsWith('http')
             ? rawImg
             : rawImg.startsWith('/')
-            ? rawImg                           // เช่น "/images/products/xxx.jpg"
+            ? rawImg                           
             : `/${rawImg}`;  
 
           return {
             ...p,
             id: p.id,
-            title: p.name,          // ProductCard ใช้ product.title
-            coverImage: normalizedImg,  // ProductCard ใช้ product.coverImage
+            title: p.name,          
+            coverImage: normalizedImg,  
             price: p.price,
-            originalPrice: p.price, // ยังไม่มีราคาเดิม, ใช้เท่ากับ price
-            discount: null,         // ยังไม่มีส่วนลด
-            category: categoryName, // ใช้สำหรับแสดงและ filter
-            rating: 5,              // สมมติ rating ไปก่อน (หรือ 0 ถ้าต้องการ)
-            reviews: 0,             // ยังไม่มีใน API
-            isNew: false,           // ถ้าอยากใช้ created_at เช็คความใหม่ ค่อยเพิ่ม logic
+            originalPrice: p.price, 
+            discount: null,       
+            category: categoryName, 
+            rating: 5,            
+            reviews: 0,            
+            isNew: false,        
             createdAt: p.created_at,
           };
         });
@@ -127,6 +130,31 @@ const Productpage = () => {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    if (!products.length) return;
+
+    // ถ้าไม่มีคำค้น ให้ใช้ filter เดิม (ทั้งหมด)
+    if (!searchQuery) {
+      setFilteredProducts(products);
+      setSelectedCategory('all');
+      setCurrentPage(1);
+      return;
+    }
+    //เพิ่ม query เอาไว้ search
+    const filtered = products.filter((p) => {
+      const name = (p.title || p.name || '').toLowerCase();
+      const category = (p.category || '').toLowerCase();
+      return (
+        name.includes(searchQuery) ||
+        category.includes(searchQuery)
+      );
+    });
+
+    setFilteredProducts(filtered);
+    setSelectedCategory('all');
+    setCurrentPage(1);
+  }, [products, searchQuery]);
+
   const handleCategoryFilter = (category) => {
     setSelectedCategory(category);
 
@@ -135,7 +163,6 @@ const Productpage = () => {
     }
     // หมวดใหญ่ เช่น "ชา", "กาชงชา", "อุปกรณ์ชา"
     else if (categories[category] !== undefined) {
-      // ถ้ามีหมวดย่อย -> filter จาก subCategories
       if (categories[category].length > 0) {
         const subCats = categories[category].map((c) => c.toLowerCase());
         const filtered = products.filter((product) =>
@@ -143,14 +170,14 @@ const Productpage = () => {
         );
         setFilteredProducts(filtered);
       } else {
-        // ไม่มีหมวดย่อย (เช่น กาชงชา) -> filter ตรงกับชื่อหมวดใหญ่เลย
+ 
         const filtered = products.filter(
           (product) => product.category.toLowerCase() === category.toLowerCase()
         );
         setFilteredProducts(filtered);
       }
     }
-    // เลือกเป็นหมวดย่อยโดยตรง เช่น "ชาเขียว", "ถ้วยชา"
+
     else {
       const filtered = products.filter(
         (product) => product.category.toLowerCase() === category.toLowerCase()

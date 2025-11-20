@@ -90,7 +90,7 @@ const ProductCard = ({ product }) => {
                 onClick={handleAddToCart}
                 className={`p-3 rounded-full transition-colors
                   ${inCart
-                    ? 'bg-green-500 hover:bg-green-600'
+                    ? 'bg-green-600 hover:bg-green-700'
                     : 'bg-white hover:bg-green-50'
                   }`}
               >
@@ -147,7 +147,7 @@ const ProductCard = ({ product }) => {
             <button 
               onClick={handleBottomButtonClick}
               className="px-4 py-2 rounded-lg font-semibold transition-all duration-200 
-                bg-green-700 text-white hover:bg-green-900"
+                bg-green-600 hover:bg-green-700 text-white"
             >
               {inCart ? 'ในตะกร้า' : 'เพิ่มลงตะกร้า'}
             </button>

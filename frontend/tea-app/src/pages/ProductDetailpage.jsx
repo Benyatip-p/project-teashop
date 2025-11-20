@@ -217,10 +217,10 @@ const ProductDetailpage = () => {
               <div className="pt-4 border-t border-gray-200 mt-4 max-w-lg">
                 <div className="flex items-center gap-4">
                   <button
-                    className="bg-gray-400 rounded-lg text-white px-20 py-3 text-center font-semibold hover:bg-gray-800 transition"
+                    className="bg-green-600 hover:bg-green-700 rounded-lg text-white px-20 py-3 text-center font-semibold transition"
                     onClick={handleAddToCart}
                   >
-                    เพิ่มในรถเข็น
+                    เพิ่มลงตะกร้า
                   </button>
 
                   <button
