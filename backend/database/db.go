@@ -224,6 +224,101 @@ func GetProducts(sort string, maxPrice *float64) ([]models.Product, error) {
 	return products, nil
 }
 
+func GetVariantsByProductID(productID int) ([]models.ProductVariant, error) {
+	query := `
+		SELECT id, product_id, quantity, price, stock, is_active, created_at, updated_at
+		FROM product_variants
+		WHERE product_id = $1 AND is_active = true
+		ORDER BY quantity ASC
+	`
+
+	rows, err := DB.Query(query, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var variants []models.ProductVariant
+	for rows.Next() {
+		var variant models.ProductVariant
+		err := rows.Scan(
+			&variant.ID,
+			&variant.ProductID,
+			&variant.Quantity,
+			&variant.Price,
+			&variant.Stock,
+			&variant.IsActive,
+			&variant.CreatedAt,
+			&variant.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		variants = append(variants, variant)
+	}
+
+	return variants, nil
+}
+
+func CreateVariant(productID int, quantity float64, price float64, stock int, isActive bool) (int, error) {
+	query := `
+		INSERT INTO product_variants (product_id, quantity, price, stock, is_active, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+		RETURNING id
+	`
+
+	var newID int
+	err := DB.QueryRow(query, productID, quantity, price, stock, isActive).Scan(&newID)
+	if err != nil {
+		return 0, err
+	}
+
+	return newID, nil
+}
+
+func UpdateVariant(variantID int, quantity *float64, price *float64, stock *int, isActive *bool) error {
+	query := "UPDATE product_variants SET updated_at = NOW()"
+	args := []interface{}{}
+	argID := 1
+
+	if quantity != nil {
+		query += fmt.Sprintf(", quantity = $%d", argID)
+		args = append(args, *quantity)
+		argID++
+	}
+	if price != nil {
+		query += fmt.Sprintf(", price = $%d", argID)
+		args = append(args, *price)
+		argID++
+	}
+	if stock != nil {
+		query += fmt.Sprintf(", stock = $%d", argID)
+		args = append(args, *stock)
+		argID++
+	}
+	if isActive != nil {
+		query += fmt.Sprintf(", is_active = $%d", argID)
+		args = append(args, *isActive)
+		argID++
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query += fmt.Sprintf(" WHERE id = $%d", argID)
+	args = append(args, variantID)
+
+	_, err := DB.Exec(query, args...)
+	return err
+}
+
+func DeleteVariant(variantID int) error {
+	query := "DELETE FROM product_variants WHERE id = $1"
+	_, err := DB.Exec(query, variantID)
+	return err
+}
+
 func GetFeaturedProducts(limit int) ([]models.Product, error) {
 	query := `
 		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at

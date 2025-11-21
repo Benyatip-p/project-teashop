@@ -129,6 +129,19 @@ CREATE TABLE products (
 CREATE INDEX idx_products_category ON products(category_id);
 CREATE INDEX idx_products_name ON products(name);
 
+-- รูปแบบสินค้า (variants)
+CREATE TABLE product_variants (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    quantity NUMERIC(10, 2) NOT NULL,
+    price NUMERIC(10, 2) NOT NULL,
+    stock INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_product_variants_product ON product_variants(product_id);
+
 -- คำสั่งซื้อ
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
@@ -147,6 +160,7 @@ CREATE TABLE order_items (
     id SERIAL PRIMARY KEY,
     order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     product_id INTEGER NOT NULL REFERENCES products(id),
+    variant_id INTEGER REFERENCES product_variants(id), -- Optional variant
     quantity INTEGER NOT NULL,
     price_per_unit NUMERIC(10, 2) NOT NULL -- ราคา ณ ตอนที่ซื้อ
 );
@@ -220,7 +234,7 @@ INSERT INTO categories (name, description, parent_id, image_url, is_featured) VA
 ('ชาเขียว', 'ชาเขียวรสชาตินุ่มนวลจากญี่ปุ่นและจีน', 1, 'images/categories/green-tea.jpg', true),
 ('ชาอู่หลง', 'ชาอู่หลงกลิ่นหอมดอกไม้', 1, 'images/categories/oolong-tea.jpg', true),
 ('ชาดำ', 'ชาดำเข้มข้น รสชาติหนักแน่น', 1, 'images/categories/black-tea.jpg', false),
-('ชาขาว', 'ชารสชาติเบาบาง ละเอียดอ่อน', 1, NULL, false);
+('ชาขาว', 'ชารสชาติเบาบาง ละเอียดอ่อน', 1, 'images/categories/white-tea.jpg', false);
 
 -- เพิ่มหมวดหมู่ย่อย ภายใต้ "อุปกรณ์ชงชา" (parent_id = 2)
 INSERT INTO categories (name, description, parent_id, image_url, is_featured) VALUES
@@ -242,6 +256,48 @@ INSERT INTO products (category_id, name, description, price, stock, image_url) V
 INSERT INTO products (category_id, name, description, price, stock, image_url) VALUES
 (6, 'ชาดำเอิร์ลเกรย์', 'ชาดำคลาสสิกผสมกลิ่นมะกรูด (Bergamot)', 320.00, 70, 'images/products/earl-grey.jpg'), -- product_id = 6
 (6, 'ชาดำอังกฤษ', 'ชาดำรสเข้มข้น เหมาะสำหรับดื่มตอนเช้า', 300.00, 60, 'images/products/english-breakfast.jpg'); -- product_id = 7
+
+-- Variants สำหรับชาอู่หลงก้านอ่อน (product_id = 1)
+INSERT INTO product_variants (product_id, quantity, price, stock) VALUES
+(1, 50.00, 175.00, 80),
+(1, 100.00, 325.00, 60),
+(1, 250.00, 700.00, 40);
+
+-- Variants สำหรับชาอู่หลงไต้หวัน (product_id = 2)
+INSERT INTO product_variants (product_id, quantity, price, stock) VALUES
+(2, 50.00, 200.00, 70),
+(2, 100.00, 380.00, 50),
+(2, 250.00, 850.00, 35);
+
+-- Variants สำหรับชาเขียวมัทฉะ (product_id = 3)
+INSERT INTO product_variants (product_id, quantity, price, stock) VALUES
+(3, 20.00, 250.00, 100),
+(3, 50.00, 500.00, 50),
+(3, 100.00, 900.00, 30);
+
+-- Variants สำหรับชาเขียวโฮจิฉะ (product_id = 4)
+INSERT INTO product_variants (product_id, quantity, price, stock) VALUES
+(4, 50.00, 140.00, 90),
+(4, 100.00, 260.00, 70),
+(4, 250.00, 580.00, 45);
+
+-- Variants สำหรับชาเขียวเซนฉะ (product_id = 5)
+INSERT INTO product_variants (product_id, quantity, price, stock) VALUES
+(5, 50.00, 150.00, 85),
+(5, 100.00, 280.00, 65),
+(5, 250.00, 620.00, 40);
+
+-- Variants สำหรับชาดำเอิร์ลเกรย์ (product_id = 6)
+INSERT INTO product_variants (product_id, quantity, price, stock) VALUES
+(6, 50.00, 160.00, 75),
+(6, 100.00, 300.00, 55),
+(6, 250.00, 650.00, 35);
+
+-- Variants สำหรับชาดำอังกฤษ (product_id = 7)
+INSERT INTO product_variants (product_id, quantity, price, stock) VALUES
+(7, 50.00, 150.00, 80),
+(7, 100.00, 280.00, 60),
+(7, 250.00, 600.00, 40);
 
 -- สินค้าใน "กาชงชา"
 INSERT INTO products (category_id, name, description, price, stock, image_url) VALUES

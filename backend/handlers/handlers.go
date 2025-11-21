@@ -222,7 +222,19 @@ func GetProductByIDHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"product": product})
+	// Get variants for this product
+	variants, err := database.GetVariantsByProductID(productID)
+	if err != nil {
+		log.Printf("Error getting variants: %v", err)
+		variants = []models.ProductVariant{}
+	}
+
+	response := gin.H{
+		"product":  product,
+		"variants": variants,
+	}
+
+	c.JSON(200, response)
 }
 
 // UpdateProfileHandler godoc
@@ -437,4 +449,144 @@ func DeleteProductHandler(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"message": "product deleted successfully"})
+}
+
+// GetVariantsByProductHandler godoc
+// @Summary Get variants for a product
+// @Description Get all active variants for a specific product
+// @Tags variants
+// @Accept json
+// @Produce json
+// @Param product_id path int true "Product ID"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/variants/product/{product_id} [get]
+func GetVariantsByProductHandler(c *gin.Context) {
+	productIDStr := c.Param("product_id")
+	productID, err := strconv.Atoi(productIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid product id"})
+		return
+	}
+
+	variants, err := database.GetVariantsByProductID(productID)
+	if err != nil {
+		log.Printf("Error getting variants: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"variants": variants})
+}
+
+// CreateVariantHandler godoc
+// @Summary Create a new variant
+// @Description Add a new variant for a product
+// @Tags variants
+// @Accept json
+// @Produce json
+// @Param product_id path int true "Product ID"
+// @Param request body models.CreateVariantRequest true "Variant data"
+// @Success 201 {object} models.ProductVariant
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/variants/product/{product_id} [post]
+func CreateVariantHandler(c *gin.Context) {
+	productIDStr := c.Param("product_id")
+	productID, err := strconv.Atoi(productIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid product id"})
+		return
+	}
+
+	var req models.CreateVariantRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	newID, err := database.CreateVariant(productID, req.Quantity, req.Price, req.Stock, req.IsActive)
+	if err != nil {
+		log.Printf("Error creating variant: %v", err)
+		c.JSON(500, gin.H{"error": "failed to create variant"})
+		return
+	}
+
+	variant := models.ProductVariant{
+		ID:        newID,
+		ProductID: productID,
+		Quantity:  req.Quantity,
+		Price:     req.Price,
+		Stock:     req.Stock,
+		IsActive:  req.IsActive,
+	}
+
+	c.JSON(201, variant)
+}
+
+// UpdateVariantHandler godoc
+// @Summary Update a variant
+// @Description Update an existing variant by ID
+// @Tags variants
+// @Accept json
+// @Produce json
+// @Param id path int true "Variant ID"
+// @Param request body models.UpdateVariantRequest true "Updated variant data"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/variants/{id} [put]
+func UpdateVariantHandler(c *gin.Context) {
+	variantIDStr := c.Param("id")
+	variantID, err := strconv.Atoi(variantIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid variant id"})
+		return
+	}
+
+	var req models.UpdateVariantRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = database.UpdateVariant(variantID, req.Quantity, req.Price, req.Stock, req.IsActive)
+	if err != nil {
+		log.Printf("Error updating variant: %v", err)
+		c.JSON(500, gin.H{"error": "failed to update variant"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "variant updated successfully"})
+}
+
+// DeleteVariantHandler godoc
+// @Summary Delete a variant
+// @Description Delete a variant by ID
+// @Tags variants
+// @Accept json
+// @Produce json
+// @Param id path int true "Variant ID"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/variants/{id} [delete]
+func DeleteVariantHandler(c *gin.Context) {
+	variantIDStr := c.Param("id")
+	variantID, err := strconv.Atoi(variantIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid variant id"})
+		return
+	}
+
+	err = database.DeleteVariant(variantID)
+	if err != nil {
+		log.Printf("Error deleting variant: %v", err)
+		c.JSON(500, gin.H{"error": "failed to delete variant"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "variant deleted successfully"})
 }

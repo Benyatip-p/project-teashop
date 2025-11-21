@@ -66,9 +66,10 @@ func main() {
 		api.GET("/categories", handlers.GetCategoriesHandler)
 		api.GET("/categories/:id/products", handlers.GetProductsByCategoryHandler)
 		api.GET("/categories/featured", handlers.GetFeaturedCategoriesHandler)
-		api.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
-		api.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
-		api.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า
+		api.GET("/variants/product/:product_id", handlers.GetVariantsByProductHandler)
+		api.POST("/variants/product/:product_id", handlers.CreateVariantHandler)
+		api.PUT("/variants/:id", handlers.UpdateVariantHandler)
+		api.DELETE("/variants/:id", handlers.DeleteVariantHandler)
 
 		// Protected endpoints
 		protected := api.Group("/")
@@ -76,6 +77,9 @@ func main() {
 		{
 			protected.GET("/profile", handlers.GetMyProfileHandler)
 			protected.PUT("/profile", handlers.UpdateProfileHandler)
+			api.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
+			api.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
+			api.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า
 		}
 	}
 
