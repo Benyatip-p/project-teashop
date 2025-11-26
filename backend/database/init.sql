@@ -164,7 +164,8 @@ CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL REFERENCES users(id),
     total_amount NUMERIC(10, 2) NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending', -- pending, processing, shipped, completed, cancelled
+    status VARCHAR(20) DEFAULT 'pending', -- pending, paid, shipped, completed, cancelled, refunded
+    tracking_number VARCHAR(100),
     customer_name VARCHAR(100),
     shipping_address TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -348,8 +349,8 @@ INSERT INTO products (category_id, name, description, price, stock, image_url) V
 
 -- 8. เพิ่ม คำสั่งซื้อตัวอย่าง (Optional)
 INSERT INTO orders (user_id, total_amount, status, customer_name, shipping_address)
-VALUES 
-(2, 1150.00, 'processing', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110'),
+VALUES
+(2, 1150.00, 'completed', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110'),
 (2, 800.00, 'pending', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110');
 
 -- รายการสินค้าในคำสั่งซื้อ

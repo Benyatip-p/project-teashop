@@ -224,6 +224,182 @@ func GetProducts(sort string, maxPrice *float64) ([]models.Product, error) {
 	return products, nil
 }
 
+// ===================== Order Database Functions =====================
+func UpdateOrderStatus(orderID int, status string, trackingNumber *string) error {
+	query := "UPDATE orders SET status = $1"
+	args := []interface{}{status}
+	argID := 2
+
+	if trackingNumber != nil {
+		query += ", tracking_number = $2"
+		args = append(args, *trackingNumber)
+		argID++
+	}
+
+	query += fmt.Sprintf(" WHERE id = $%d", argID)
+	args = append(args, orderID)
+
+	_, err := DB.Exec(query, args...)
+	return err
+}
+
+func CancelOrder(orderID int) error {
+	// First, get the order items to restore stock
+	orderItems, err := GetOrderItemsByOrderID(orderID)
+	if err != nil {
+		return err
+	}
+
+	// Restore stock for each item
+	for _, item := range orderItems {
+		if item.VariantID != nil {
+			// Restore stock in product_variants
+			err = RestoreVariantStock(*item.VariantID, item.Weight)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Update order status to cancelled
+	return UpdateOrderStatus(orderID, "cancelled", nil)
+}
+
+func GetOrderItemsByOrderID(orderID int) ([]OrderItem, error) {
+	query := `
+		SELECT id, order_id, product_id, variant_id, weight, price_per_unit
+		FROM order_items
+		WHERE order_id = $1
+	`
+
+	rows, err := DB.Query(query, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []OrderItem
+	for rows.Next() {
+		var item OrderItem
+		err := rows.Scan(
+			&item.ID,
+			&item.OrderID,
+			&item.ProductID,
+			&item.VariantID,
+			&item.Weight,
+			&item.PricePerUnit,
+		)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+
+	return items, nil
+}
+
+func RestoreVariantStock(variantID int, weight int) error {
+	query := "UPDATE product_variants SET stock = stock + $1 WHERE id = $2"
+	_, err := DB.Exec(query, weight, variantID)
+	return err
+}
+
+func GetOrderByID(orderID int) (*models.Order, error) {
+	query := `
+		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
+		FROM orders
+		WHERE id = $1
+	`
+
+	var order models.Order
+	err := DB.QueryRow(query, orderID).Scan(
+		&order.ID,
+		&order.UserID,
+		&order.TotalAmount,
+		&order.Status,
+		&order.TrackingNumber,
+		&order.CustomerName,
+		&order.ShippingAddress,
+		&order.CreatedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &order, nil
+}
+
+func CheckOrderOwnership(orderID, userID int) (bool, error) {
+	query := "SELECT COUNT(*) FROM orders WHERE id = $1 AND user_id = $2"
+	var count int
+	err := DB.QueryRow(query, orderID, userID).Scan(&count)
+	return count > 0, err
+}
+
+func GetOrdersByUserID(userID int) ([]models.Order, error) {
+	query := `
+		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
+		FROM orders
+		WHERE user_id = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var order models.Order
+		err := rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.TotalAmount,
+			&order.Status,
+			&order.TrackingNumber,
+			&order.CustomerName,
+			&order.ShippingAddress,
+			&order.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
+func GetTotalSpending(userID int) (float64, error) {
+	query := "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE user_id = $1 AND status = 'completed'"
+	var total float64
+	err := DB.QueryRow(query, userID).Scan(&total)
+	return total, err
+}
+
+func GetTotalSpendingAllUsers() (float64, error) {
+	query := "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'completed'"
+	var total float64
+	err := DB.QueryRow(query).Scan(&total)
+	return total, err
+}
+
+// OrderItem struct (since it's not in models)
+type OrderItem struct {
+	ID            int     `json:"id"`
+	OrderID       int     `json:"order_id"`
+	ProductID     int     `json:"product_id"`
+	VariantID     *int    `json:"variant_id"`
+	Weight        int     `json:"weight"`
+	PricePerUnit  float64 `json:"price_per_unit"`
+}
+
 // ===================== Review Database Functions =====================
 func CreateReview(productID, userID, rating int) (int, error) {
 	query := `

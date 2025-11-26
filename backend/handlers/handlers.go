@@ -265,6 +265,360 @@ func GetProductByIDHandler(c *gin.Context) {
 	c.JSON(200, response)
 }
 
+// UpdateOrderStatusHandler godoc
+// @Summary Update order status
+// @Description Update the status of an order (Admin only). If status is 'shipped', tracking_number is required.
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param request body models.UpdateOrderStatusRequest true "Status update data"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders/{id}/status [put]
+func UpdateOrderStatusHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if user is admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	orderIDStr := c.Param("id")
+	orderID, err := strconv.Atoi(orderIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	var req models.UpdateOrderStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate tracking_number for shipped status
+	if req.Status == "shipped" && (req.TrackingNumber == nil || *req.TrackingNumber == "") {
+		c.JSON(400, gin.H{"error": "tracking_number is required when status is shipped"})
+		return
+	}
+
+	// Check if order exists
+	order, err := database.GetOrderByID(orderID)
+	if err != nil {
+		log.Printf("Error getting order: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if order == nil {
+		c.JSON(404, gin.H{"error": "order not found"})
+		return
+	}
+
+	err = database.UpdateOrderStatus(orderID, req.Status, req.TrackingNumber)
+	if err != nil {
+		log.Printf("Error updating order status: %v", err)
+		c.JSON(500, gin.H{"error": "failed to update order status"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "order status updated successfully"})
+}
+
+// CancelOrderHandler godoc
+// @Summary Cancel an order
+// @Description Cancel an order and restore stock (User/Admin). Only the order owner or admin can cancel.
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders/{id}/cancel [post]
+func CancelOrderHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	orderIDStr := c.Param("id")
+	orderID, err := strconv.Atoi(orderIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	// Check ownership or admin
+	isOwner, err := database.CheckOrderOwnership(orderID, userID.(int))
+	if err != nil {
+		log.Printf("Error checking ownership: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+
+	if !isOwner && !isAdmin {
+		c.JSON(403, gin.H{"error": "access denied"})
+		return
+	}
+
+	// Check if order exists and is cancellable
+	order, err := database.GetOrderByID(orderID)
+	if err != nil {
+		log.Printf("Error getting order: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if order == nil {
+		c.JSON(404, gin.H{"error": "order not found"})
+		return
+	}
+
+	// Only allow cancellation if status is pending or paid
+	if order.Status != "pending" && order.Status != "paid" {
+		c.JSON(400, gin.H{"error": "order cannot be cancelled"})
+		return
+	}
+
+	err = database.CancelOrder(orderID)
+	if err != nil {
+		log.Printf("Error cancelling order: %v", err)
+		c.JSON(500, gin.H{"error": "failed to cancel order"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "order cancelled successfully"})
+}
+
+// GetUserOrdersHandler godoc
+// @Summary Get user order history
+// @Description Get all orders for the authenticated user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders [get]
+func GetUserOrdersHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	orders, err := database.GetOrdersByUserID(userID.(int))
+	if err != nil {
+		log.Printf("Error getting orders: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"orders": orders})
+}
+
+// GetOrderDetailsHandler godoc
+// @Summary Get order details
+// @Description Get detailed information about a specific order
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders/{id} [get]
+func GetOrderDetailsHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	orderIDStr := c.Param("id")
+	orderID, err := strconv.Atoi(orderIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	// Check ownership or admin
+	isOwner, err := database.CheckOrderOwnership(orderID, userID.(int))
+	if err != nil {
+		log.Printf("Error checking ownership: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+
+	if !isOwner && !isAdmin {
+		c.JSON(403, gin.H{"error": "access denied"})
+		return
+	}
+
+	order, err := database.GetOrderByID(orderID)
+	if err != nil {
+		log.Printf("Error getting order: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if order == nil {
+		c.JSON(404, gin.H{"error": "order not found"})
+		return
+	}
+
+	// Get order items
+	items, err := database.GetOrderItemsByOrderID(orderID)
+	if err != nil {
+		log.Printf("Error getting order items: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	response := gin.H{
+		"order": *order,
+		"items": items,
+	}
+
+	c.JSON(200, response)
+}
+
+// GetUserSpendingHandler godoc
+// @Summary Get user total spending
+// @Description Get the total amount spent on completed orders for the authenticated user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/spending [get]
+func GetUserSpendingHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	total, err := database.GetTotalSpending(userID.(int))
+	if err != nil {
+		log.Printf("Error getting total spending: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"total_spending": total})
+}
+
+// GetAllUsersSpendingHandler godoc
+// @Summary Get total spending of all users (Admin only)
+// @Description Get the total amount spent on completed orders by all users
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/spending [get]
+func GetAllUsersSpendingHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	total, err := database.GetTotalSpendingAllUsers()
+	if err != nil {
+		log.Printf("Error getting total spending: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"total_spending_all_users": total})
+}
+
 // UpdateProfileHandler godoc
 // @Summary Update user profile
 // @Description Update the profile information of the currently authenticated user

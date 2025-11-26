@@ -159,6 +159,23 @@ type UpdateAddressRequest struct {
 	IsDefault     *bool   `json:"is_default"`
 }
 
+// ===================== Order Models =====================
+type Order struct {
+	ID             int       `json:"id"`
+	UserID         int       `json:"user_id"`
+	TotalAmount    float64   `json:"total_amount"`
+	Status         string    `json:"status"`
+	TrackingNumber *string   `json:"tracking_number"`
+	CustomerName   *string   `json:"customer_name"`
+	ShippingAddress *string  `json:"shipping_address"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type UpdateOrderStatusRequest struct {
+	Status         string  `json:"status" binding:"required,oneof=pending paid shipped completed cancelled refunded"`
+	TrackingNumber *string `json:"tracking_number"`
+}
+
 // ===================== Review Models =====================
 type Review struct {
 	ID        int       `json:"id"`
