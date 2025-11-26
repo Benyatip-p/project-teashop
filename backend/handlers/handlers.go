@@ -97,22 +97,23 @@ func GetMyProfileHandler(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/products [get]
 func GetProductsHandler(c *gin.Context) {
-	sort := c.Query("sort")
-	maxPriceStr := c.Query("max_price")
+    sort := c.Query("sort")
+    maxPriceStr := c.Query("max_price")
+    search := c.Query("search")
 
-	var maxPrice *float64
-	if maxPriceStr != "" {
-		if price, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
-			maxPrice = &price
-		}
-	}
+    var maxPrice *float64
+    if maxPriceStr != "" {
+        if price, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
+            maxPrice = &price
+        }
+    }
 
-	products, err := database.GetProducts(sort, maxPrice)
-	if err != nil {
-		log.Printf("Error getting products: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
+    products, err := database.GetProducts(sort, maxPrice, search)
+    if err != nil {
+        log.Printf("Error getting products: %v", err)
+        c.JSON(500, gin.H{"error": "internal server error"})
+        return
+    }
 
 	// Add average rating to each product
 	type ProductWithRating struct {

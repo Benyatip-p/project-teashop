@@ -1,48 +1,42 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
-// Components
-import Navbar from './components/Navbar';
-import Footer from './components/Footer';
-import NotFound from './components/Notfound';
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import NotFound from "./components/Notfound";
 import { ShopProvider } from "./context/ShopContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Pages
-import Homepage from './pages/Homepage';
-import ContactPage from './pages/Contactpage';
-import Aboutpage from './pages/Aboutpage';
-import Productpage from './pages/Productpage';
-import Favoritepage from './pages/Favoritepage';
-import Cartpage from './pages/Cartpage';
-import Profilepage from './pages/Profilepage';
-import ProductDetailpage from './pages/ProductDetailpage';
-import LoginPage from './pages/LoginPage';
-import DeleteTeaPage from './pages/DeleteTeaPage';
-import EditTeaPage from './pages/EditTeaPage/EditTeaPage';
-import AdminDashboardPage from './pages/AdminDashboard/AdminDashboard';
-import AdminProductPage from './pages/AdminDashboard/AdminProductPage';
-import Paymentpage from './pages/Paymentpage';
-import CategoryProductspage from './pages/CategoryProductspage';
+import Homepage from "./pages/Homepage";
+import ContactPage from "./pages/Contactpage";
+import Aboutpage from "./pages/Aboutpage";
+import Productpage from "./pages/Productpage";
+import Favoritepage from "./pages/Favoritepage";
+import Cartpage from "./pages/Cartpage";
+import Profilepage from "./pages/Profilepage";
+import ProductDetailpage from "./pages/ProductDetailpage";
+import LoginPage from "./pages/LoginPage";
+import DeleteTeaPage from "./pages/DeleteTeaPage";
+import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
+import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
+import AdminProductPage from "./pages/AdminDashboard/AdminProductPage";
+import Paymentpage from "./pages/Paymentpage";
+import CategoryProductspage from "./pages/CategoryProductspage";
 
-// Layout สำหรับ Public Pages
 const PublicLayout = ({ children }) => (
-  <div className="flex flex-col min-h-screen">
+  <div className="flex flex-col min-h-screen bg-gray-50">
     <Navbar />
-    <main className="flex-grow bg-gray-50">{children}</main>
+    <main className="flex-grow">{children}</main>
     <Footer />
   </div>
 );
 
-// Layout สำหรับ Login Page
-const LoginLayout = ({ children }) => (
-  <div className="flex flex-col min-h-screen">
-    <Navbar />
-    <main className="flex-grow bg-gray-50">{children}</main>
+const AuthLayout = ({ children }) => (
+  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    {children}
   </div>
 );
 
-// Layout สำหรับ Admin Page (ไม่มี Navbar/ Footer)
 const AdminLayout = ({ children }) => <>{children}</>;
 
 function App() {
@@ -50,17 +44,15 @@ function App() {
     <ShopProvider>
       <Router>
         <Routes>
-          {/* Login Page */}
           <Route
             path="/login"
             element={
-              <LoginLayout>
+              <AuthLayout>
                 <LoginPage />
-              </LoginLayout>
+              </AuthLayout>
             }
           />
 
-          {/* Admin Pages */}
           <Route
             path="/store-manager/dashboard"
             element={
@@ -102,7 +94,6 @@ function App() {
             }
           />
 
-          {/* Public Pages */}
           <Route
             path="/"
             element={
@@ -167,10 +158,23 @@ function App() {
               </PublicLayout>
             }
           />
-          <Route path="/payment" element={<Paymentpage />} />
-          <Route path="/category/:categoryName" element={<CategoryProductspage />} />
+          <Route
+            path="/payment"
+            element={
+              <PublicLayout>
+                <Paymentpage />
+              </PublicLayout>
+            }
+          />
+          <Route
+            path="/category/:categoryName"
+            element={
+              <PublicLayout>
+                <CategoryProductspage />
+              </PublicLayout>
+            }
+          />
 
-          {/* 404 Not Found */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>

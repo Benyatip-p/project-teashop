@@ -1,145 +1,113 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { getFeaturedCategories } from '../api/product/categories'
 
 const FeaturedCategories = () => {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [imageErrors, setImageErrors] = useState({}); // เก็บสถานะรูปที่โหลดไม่ได้
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [imageErrors, setImageErrors] = useState({})
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    let isMounted = true
+
+    const load = async () => {
       try {
-        setLoading(true);
-        
-        // เรียก API เพื่อดึงข้อมูลหมวดหมู่แนะนำ
-        const response = await fetch('/api/v1/categories/featured');
-        console.log('Categories Response:', response);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch featured categories');
-        }
-        
-        const data = await response.json();
-        console.log('Categories Data received:', data);
-        
-        // ตรวจสอบว่าข้อมูลเป็น array หรือไม่
-        let categoriesData = [];
-        if (Array.isArray(data)) {
-          categoriesData = data;
-        } else if (data.categories && Array.isArray(data.categories)) {
-          categoriesData = data.categories;
-        } else if (data.data && Array.isArray(data.data)) {
-          categoriesData = data.data;
-        } else if (data.results && Array.isArray(data.results)) {
-          categoriesData = data.results;
-        } else {
-          throw new Error('Invalid data format from API');
-        }
-
-        // แปลงข้อมูลให้ตรงกับโครงสร้างที่ใช้ใน frontend
-        const formattedCategories = categoriesData.map(category => ({
-          id: category.id,
-          name: category.name || category.category_name,
-          category: category.name || category.category_name,
-          image: category.image_url || category.image || null,
-          description: category.description || '',
-          isActive: category.is_active !== false
-        }));
-
-        // กรองเฉพาะหมวดหมู่ที่ active
-        const activeCategories = formattedCategories.filter(c => c.isActive);
-        
-        // จำกัดไม่เกิน 4 รายการ
-        const selected = activeCategories.slice(0, 4);
-        
-        setCategories(selected);
-        setError(null);
+        setLoading(true)
+        const list = await getFeaturedCategories()
+        if (!isMounted) return
+        setCategories(list.slice(0, 4))
+        setError(null)
       } catch (err) {
-        setError(err.message);
-        console.error('Error fetching categories:', err);
+        if (!isMounted) return
+        const message = err?.message || 'Error loading categories'
+        setError(message)
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false)
       }
-    };
+    }
 
-    // เรียกใช้ฟังก์ชันดึงข้อมูล
-    fetchCategories();
-  }, []);
+    load()
 
-  // ฟังก์ชันจัดการเมื่อรูปโหลดไม่ได้
-  const handleImageError = (categoryId) => {
-    setImageErrors(prev => ({
-      ...prev,
-      [categoryId]: true
-    }));
-  };
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
-  // กรณีกำลังโหลดข้อมูล
+  const handleImageError = (id) => {
+    setImageErrors((prev) => ({ ...prev, [id]: true }))
+  }
+
   if (loading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, index) => (
-          <div key={index} className="bg-gray-200 rounded-lg overflow-hidden animate-pulse">
-            <div className="aspect-square bg-gray-300"></div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-2xl bg-gray-100 overflow-hidden shadow animate-pulse"
+          >
+            <div className="aspect-square bg-gray-300" />
             <div className="p-4">
-              <div className="h-4 bg-gray-300 rounded w-3/4 mx-auto"></div>
+              <div className="h-4 w-3/4 bg-gray-300 rounded mx-auto" />
             </div>
           </div>
         ))}
       </div>
-    );
+    )
   }
 
-  // กรณีเกิดข้อผิดพลาด
   if (error) {
     return (
-      <div className="text-center py-8 text-red-600">
-        <p className="text-lg font-semibold">เกิดข้อผิดพลาด</p>
+      <div className="py-8 text-center text-red-600">
+        <p className="font-semibold text-lg">เกิดข้อผิดพลาด</p>
         <p className="text-sm">{error}</p>
       </div>
-    );
+    )
   }
 
-  // กรณีไม่มีข้อมูล
   if (categories.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        <p>ไม่พบหมวดหมู่</p>
+      <div className="py-8 text-center text-gray-500">
+        ไม่พบหมวดหมู่
       </div>
-    );
+    )
   }
 
-  // กรณีแสดงผลข้อมูลปกติ
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
       {categories.map((category) => (
         <Link
           key={category.id}
-          to={`/products?category=${category.category}`}
-          className="bg-gray-100 rounded-lg overflow-hidden shadow hover:shadow-lg transition-shadow"
+          to={`/products?category=${encodeURIComponent(category.slug)}`}
+          className="group rounded-2xl bg-white overflow-hidden shadow-md hover:shadow-xl transition-all"
         >
-          <div className="aspect-square bg-gray-300 flex items-center justify-center overflow-hidden">
+          <div className="relative aspect-square overflow-hidden bg-gray-200 flex items-center justify-center">
             {category.image && !imageErrors[category.id] ? (
-              <img
-                src={category.image}
-                alt={category.name}
-                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                onError={() => handleImageError(category.id)}
-              />
+              <>
+                <img
+                  src={category.image}
+                  alt={category.name}
+                  onError={() => handleImageError(category.id)}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 group-hover:rotate-1"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-40 group-hover:opacity-70 transition-opacity duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/0 to-transparent -translate-x-full group-hover:translate-x-full group-hover:via-white/25 transition-all duration-700 pointer-events-none" />
+              </>
             ) : (
               <span className="text-4xl">🍵</span>
             )}
           </div>
-          <div className="p-4 text-center bg-white">
-            <h3 className="font-semibold text-gray-900">
+
+          <div className="bg-white text-center py-6">
+            <h3 className="text-base font-semibold text-gray-900 tracking-wide">
               {category.name}
             </h3>
           </div>
         </Link>
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default FeaturedCategories;
+export default FeaturedCategories

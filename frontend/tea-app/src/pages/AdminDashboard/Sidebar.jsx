@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   MenuAlt2Icon,
   LogoutIcon,
@@ -10,56 +10,109 @@ import {
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen, handleLogout }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const navItems = [
+    { name: "Dashboard", icon: HomeIcon, path: "/store-manager/dashboard" },
+    { name: "รายงาน", icon: ChartBarIcon, path: "/reports" },
+    { name: "จัดการสินค้า", icon: CollectionIcon, path: "/store-manager/products" },
+  ];
+
+  const isActive = (path) => location.pathname.startsWith(path);
 
   return (
-    <aside className={`bg-viridian-700 text-white h-screen transition-all duration-300 ${sidebarOpen ? "w-64" : "w-16"}`}>
-  <div className="flex items-center justify-between p-4">
-    <div className="flex items-center space-x-3">
-      <img src="/images/logo.svg" alt="logo" className={`h-8 ${sidebarOpen ? "block" : "hidden"}`} />
-      <span className={`font-bold text-lg ${sidebarOpen ? "block" : "hidden"}`}>GOODTEA</span>
-    </div>
-    <button
-      aria-label="Toggle sidebar"
-      onClick={() => setSidebarOpen(!sidebarOpen)}
-      className="p-2 rounded-md hover:bg-green-600 transition-colors duration-200"
+    <aside
+      className={`h-screen bg-viridian-800 text-white flex flex-col transition-all duration-300 shadow-xl ${
+        sidebarOpen ? "w-64" : "w-20"
+      }`}
     >
-      <MenuAlt2Icon className="h-5 w-5 text-white" />
-    </button>
-  </div>
+      <div className="flex items-center justify-between px-4 py-4 border-b border-viridian-700">
+        <div className="flex items-center space-x-3">
+          <img
+            src="/images/logo.svg"
+            alt="GOODTEA"
+            className="h-9 w-9 rounded-full bg-emerald-100 p-1"
+          />
+          {sidebarOpen && (
+            <div>
+              <p className="font-semibold text-lg tracking-wide">GOODTEA</p>
+              <p className="text-xs text-emerald-100/70">แผงควบคุมร้านค้า</p>
+            </div>
+          )}
+        </div>
 
-  <nav className="mt-6 px-2 flex flex-col gap-2">
-    {[
-      { name: "Dashboard", icon: HomeIcon, path: "/" },
-      { name: "รายงาน", icon: ChartBarIcon, path: "/reports" },
-      { name: "จัดการสินค้า", icon: CollectionIcon, path: "/store-manager/products" },
-    ].map((item, idx) => (
-      <button
-        key={idx}
-        onClick={() => navigate(item.path)}
-        className={`group flex items-center p-2 rounded-md hover:bg-green-600 transition-all duration-200 ${sidebarOpen ? "justify-start" : "justify-center"}`}
-      >
-        <item.icon className="h-5 w-5 text-white" />
-        <span className={`ml-3 ${sidebarOpen ? "inline" : "hidden"}`}>{item.name}</span>
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="h-9 w-9 flex items-center justify-center rounded-md hover:bg-viridian-700"
+        >
+          <MenuAlt2Icon className="h-5 w-5 text-white" />
+        </button>
+      </div>
 
-        {!sidebarOpen && (
-          <span className="absolute left-full ml-2 bg-black text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100">
-            {item.name}
-          </span>
-        )}
-      </button>
-    ))}
+      <nav className="flex-1 px-2 py-6 space-y-2">
+        {navItems.map((item) => {
+          const active = isActive(item.path);
+          const Icon = item.icon;
 
-    <div className="mt-6 border-t border-green-600 pt-4">
-      <button
-        onClick={handleLogout}
-        className={`flex items-center w-full p-2 rounded-md hover:bg-red-600 transition-all duration-200 text-white`}
-      >
-        <LogoutIcon className="h-5 w-5" />
-        <span className={`ml-3 ${sidebarOpen ? "inline" : "hidden"}`}>ออกจากระบบ</span>
-      </button>
-    </div>
-  </nav>
-</aside>
+          return (
+            <button
+              key={item.name}
+              onClick={() => navigate(item.path)}
+              className={`group relative flex items-center rounded-lg transition-all duration-200 px-3 py-3 w-full ${
+                sidebarOpen ? "justify-start" : "justify-center"
+              }`}
+            >
+              <div
+                className={`absolute left-0 top-0 h-full w-1 rounded-r-full transition-all duration-300 ${
+                  active ? "bg-emerald-400" : "bg-transparent group-hover:bg-emerald-300/40"
+                }`}
+              />
+
+              <Icon
+                className={`h-6 w-6 transition-colors ${
+                  active ? "text-emerald-300" : "text-emerald-100 group-hover:text-white"
+                }`}
+              />
+
+              {sidebarOpen && (
+                <span
+                  className={`ml-3 text-sm font-medium transition-colors ${
+                    active ? "text-white" : "text-emerald-100 group-hover:text-white"
+                  }`}
+                >
+                  {item.name}
+                </span>
+              )}
+
+              {!sidebarOpen && (
+                <span className="absolute left-full ml-3 rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 whitespace-nowrap">
+                  {item.name}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-viridian-700 px-2 py-4">
+        <button
+          onClick={handleLogout}
+          className={`group relative flex items-center px-3 py-3 rounded-lg text-rose-100 hover:bg-rose-600/20 w-full ${
+            sidebarOpen ? "justify-start" : "justify-center"
+          }`}
+        >
+          <LogoutIcon className="h-6 w-6" />
+          {sidebarOpen && (
+            <span className="ml-3 text-sm font-medium">ออกจากระบบ</span>
+          )}
+          {!sidebarOpen && (
+            <span className="absolute left-full ml-3 rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 whitespace-nowrap">
+              ออกจากระบบ
+            </span>
+          )}
+        </button>
+      </div>
+    </aside>
   );
 };
 

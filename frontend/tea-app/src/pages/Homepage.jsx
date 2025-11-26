@@ -1,69 +1,91 @@
 import React from 'react'
-import { Link } from 'react-router-dom';
-import { ArrowRightIcon } from '@heroicons/react/outline';
-import FeaturedTeas from '../components/FeaturedTeas'; 
-import FeaturedCategories from '../components/FeaturedCategories';
+import { Link } from 'react-router-dom'
+import { ArrowRightIcon } from '@heroicons/react/outline'
+import FeaturedTeas from '../components/FeaturedTeas'
+import FeaturedCategories from '../components/FeaturedCategories'
 
 const Homepage = () => {
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero Image */}
-      <section className="w-full h-64 md:h-80">
+      <section className="relative w-full min-h-[420px] md:min-h-[520px] lg:min-h-[600px] flex items-center justify-center overflow-hidden">
         <img
           src="/images/headHomePage.jpg"
           alt="Good tea"
-          className="w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-cover"
         />
-      </section>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-4 py-8 bg-white">
-        
-        {/* Title */}
-        <h1 className="text-3xl font-bold mb-8 text-gray-900">
-          Good tea
-        </h1>
-        <h4 className="text-xl font-normal mb-8 text-gray-900">
-          <p>เราเริ่มต้นจากการเป็นคนหนึ่งที่หลงใหลในเสน่ห์ของชา... 
+        <div className="absolute inset-0 bg-green-900/40" />
+
+        <div className="relative z-10 mx-auto max-w-3xl px-4 text-center animate-fadeUp">
+          <h1 className="text-4xl font-bold md:text-5xl text-white drop-shadow-lg">
+            ค้นพบความงามของชาคุณภาพ
+          </h1>
+
+          <p className="mt-4 text-lg md:text-xl text-white drop-shadow-lg">
+            จากสวนชาบนยอดเขาสู่ถ้วยชาของคุณ
           </p>
-          <p>เราเชื่อว่าการชงชาดื่มเองสักกาเป็นการบำบัดจิตใจที่ง่ายและดีที่สุด และยังค้นพบว่าความสุขไม่ได้อยู่แค่ที่รสชาติของชา
-          </p>
-        </h4>
 
-        {/* Tea Categories - ใช้ Component */}
-        <section className="mb-12">
-          <h2 className="text-xl font-bold mb-6 text-gray-900">
-            ประเภทของชา
-          </h2>
-          
-          {/* ใช้ FeaturedCategories Component */}
-          <FeaturedCategories />
-        </section>
-
-        {/* Featured Products - ใช้ Component */}
-        <section className="mb-12">
-          <h2 className="text-xl font-bold mb-6 text-gray-900">
-            สินค้าแนะนำ
-          </h2>
-          
-          {/* ใช้ FeaturedTeas Component */}
-          <FeaturedTeas />
-        </section>
-
-        {/* View All Button */}
-        <div className="text-center mb-12">
           <Link
             to="/products"
-            className="inline-flex items-center gap-2 bg-green-700 text-white px-8 py-3 rounded-lg hover:bg-green-800 transition-colors font-semibold text-lg"
+            className="group relative mt-8 inline-flex items-center justify-center px-10 py-4 rounded-xl font-semibold text-white bg-[#0b2f27] transition-all duration-300 hover:bg-[#13493d] hover:scale-[1.02] overflow-hidden"
           >
-            ดูสินค้าทั้งหมด
-            <ArrowRightIcon className="w-5 h-5" />
+            <span className="relative z-10 tracking-wide">สำรวจสินค้า</span>
+
+            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
           </Link>
         </div>
+      </section>
 
-      </div>
+      <main className="bg-white">
+        <div className="container mx-auto max-w-[1400px] px-8 pt-12 pb-20">
+          <section className="mb-12 text-center">
+            <h2 className="mt-2 text-xl md:text-2xl font-semibold text-gray-900">
+              Good tea
+            </h2>
+
+            <div className="mt-3 max-w-3xl mx-auto text-base text-gray-700 leading-relaxed space-y-1">
+              <p>เราศรัทธาในพลังที่เรียบง่ายของชาและความสงบที่มันมอบให้</p>
+              <p>
+                ทุกใบชาที่คัดสรรมาจากเรา ถูกตั้งใจส่งต่อให้คุณได้สัมผัสความผ่อนคลายและรสชาติที่แท้จริง
+              </p>
+            </div>
+          </section>
+
+          <section className="mb-16">
+            <div className="text-center mb-3">
+              <p className="text-xs font-medium tracking-[0.18em] text-viridian-500 uppercase">
+                เลือกชาที่ใช่สำหรับคุณ
+              </p>
+            </div>
+
+            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-6">
+              ประเภทของชา
+            </h2>
+
+            <FeaturedCategories />
+          </section>
+
+          <section className="mb-16 pb-4">
+            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-6">
+              สินค้าแนะนำ
+            </h2>
+
+            <FeaturedTeas />
+          </section>
+
+          <div className="text-center">
+            <Link
+              to="/products"
+              className="inline-flex items-center gap-2 bg-[#0b2f27] text-white text-lg font-semibold rounded-lg px-8 py-3 hover:bg-[#13493d] transition-colors"
+            >
+              ดูสินค้าทั้งหมด
+              <ArrowRightIcon className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </main>
     </div>
   )
 }
 
-export default Homepage;
+export default Homepage

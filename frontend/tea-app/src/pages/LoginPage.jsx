@@ -1,7 +1,12 @@
-// src/pages/LoginPage.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { LockClosedIcon, UserIcon, EyeIcon, EyeOffIcon } from "@heroicons/react/outline";
+import axios from "axios";
+import {
+  LockClosedIcon,
+  UserIcon,
+  EyeIcon,
+  EyeOffIcon,
+} from "@heroicons/react/outline";
 
 const LoginPage = () => {
   const [username, setUsername] = useState("");
@@ -12,11 +17,11 @@ const LoginPage = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("access_token");
     if (token) {
-      navigate("/store-manager/dashboard");
+      navigate("/store-manager/dashboard", { replace: true });
     }
-  }, []);
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,43 +29,75 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const res = await fetch("http://localhost:8080/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+      const res = await axios.post("http://localhost:8080/auth/login", {
+        username,
+        password,
       });
 
-      const data = await res.json();
+      localStorage.setItem("access_token", res.data.access_token);
+      localStorage.setItem("adminUser", JSON.stringify(res.data.user));
 
-      if (res.ok) {
-        localStorage.setItem("token", data.access_token);
-        localStorage.setItem("adminUser", JSON.stringify(data.user));
-        navigate("/store-manager/dashboard");
-      } else {
-        setError(data.error || "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
-      }
+      navigate("/store-manager/dashboard", { replace: true });
     } catch (err) {
-      console.error(err);
-      setError("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง";
+      setError(msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-r from-viridian-700 to-green-700 text-black p-4 shadow-md">
-      <div className="container mx-auto max-w-md px-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          {/* Logo */}
-          <div className="text-center mb-6">
-            <Link to="/">
-              <img src="/images/logo.svg" alt="Logo" className="mx-auto h-16 w-16" />
+    <div className="flex items-center justify-center py-12 px-4">
+      <div className="w-full max-w-3xl bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden grid md:grid-cols-2">
+        <div className="hidden md:flex flex-col justify-between bg-viridian-900 text-emerald-50 p-8">
+          <div>
+            <Link to="/" className="inline-flex items-center gap-3">
+              <img
+                src="/images/logo.svg"
+                alt="GOODTEA"
+                className="h-9 w-9 rounded-full bg-emerald-50 p-1"
+              />
+              <span className="text-lg font-semibold tracking-wide">
+                GOODTEA
+              </span>
             </Link>
-            <p className="mt-2 text-green-800 font-semibold">เข้าสู่ระบบ BackOffice</p>
-            <p className="text-green-600 text-sm">สำหรับผู้ดูแลระบบเท่านั้น</p>
+            <p className="mt-6 text-sm text-emerald-100/90 leading-relaxed">
+              เข้าสู่ระบบเพื่อจัดการคำสั่งซื้อของคุณ ดูประวัติการสั่งซื้อ
+              และเก็บรายการโปรดของคุณไว้ในที่เดียว
+            </p>
+          </div>
+          <p className="mt-8 text-[11px] text-emerald-100/70">
+            ช่วงเวลาจิบชาที่ดี เริ่มจากการเลือกถ้วยโปรดของคุณ
+          </p>
+        </div>
+
+        <div className="p-8 md:p-10">
+          <div className="mb-6 md:mb-8 md:hidden">
+            <Link to="/" className="flex items-center gap-3">
+              <img
+                src="/images/logo.svg"
+                alt="GOODTEA"
+                className="h-9 w-9 rounded-full bg-viridian-900/5 p-1"
+              />
+              <span className="text-lg font-semibold text-viridian-900">
+                GOODTEA
+              </span>
+            </Link>
           </div>
 
-          {/* Form */}
+          <div className="mb-6 md:mb-8">
+            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+              เข้าสู่ระบบ
+            </h1>
+            <p className="mt-2 text-sm text-gray-500">
+              ล็อกอินด้วยบัญชีของคุณเพื่อดำเนินการสั่งซื้อ
+              และจัดการข้อมูลส่วนตัวได้อย่างสะดวก
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-2 rounded-lg text-sm">
@@ -68,90 +105,114 @@ const LoginPage = () => {
               </div>
             )}
 
-            {/* Username */}
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-green-700 mb-1">
-                Username
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                ชื่อผู้ใช้
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <UserIcon className="h-5 w-5 text-green-700" />
+                  <UserIcon className="h-5 w-5 text-viridian-800" />
                 </div>
                 <input
                   type="text"
                   id="username"
-                  name="username"               // เพิ่ม name
-                  autoComplete="username"       // เพิ่ม autocomplete
+                  name="username"
+                  autoComplete="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="กรอกชื่อผู้ใช้"
+                  placeholder="กรอกชื่อผู้ใช้ของคุณ"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-green-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-viridian-500 focus:border-viridian-500 bg-white"
                 />
               </div>
             </div>
 
-            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-green-700 mb-1">
-                Password
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                รหัสผ่าน
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <LockClosedIcon className="h-5 w-5 text-green-700" />
+                  <LockClosedIcon className="h-5 w-5 text-viridian-800" />
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
-                  name="password"                  // เพิ่ม name
-                  autoComplete="current-password"  // เพิ่ม autocomplete
+                  name="password"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="กรอกรหัสผ่าน"
                   required
-                  className="w-full pl-10 pr-10 py-3 border border-green-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-green-400"
+                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-viridian-500 focus:border-viridian-500 bg-white"
                 />
-                <div
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center cursor-pointer"
-                  onClick={() => setShowPassword(!showPassword)}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 >
                   {showPassword ? (
-                    <EyeOffIcon className="h-5 w-5 text-green-700" />
+                    <EyeOffIcon className="h-5 w-5 text-viridian-800" />
                   ) : (
-                    <EyeIcon className="h-5 w-5 text-green-700" />
+                    <EyeIcon className="h-5 w-5 text-viridian-800" />
                   )}
-                </div>
+                </button>
               </div>
             </div>
 
-            {/* Remember + Forgot */}
-            <div className="flex items-center justify-between text-sm text-green-700">
+            <div className="flex items-center justify-between text-xs md:text-sm text-gray-600">
               <label className="flex items-center gap-2">
-                <input type="checkbox" checked readOnly className="form-checkbox h-4 w-4 text-green-600" />
-                Remember this Device
+                <input
+                  type="checkbox"
+                  checked
+                  readOnly
+                  className="form-checkbox h-4 w-4 text-viridian-700"
+                />
+                <span>จดจำการเข้าสู่ระบบบนอุปกรณ์นี้</span>
               </label>
-              <Link to="/" className="text-green-600 hover:underline">
-                Forgot Password?
+              <Link
+                to="/"
+                className="text-viridian-800 hover:text-viridian-900 hover:underline"
+              >
+                ลืมรหัสผ่าน?
               </Link>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3 text-white font-semibold rounded-xl transition-colors ${
-                loading ? "bg-green-400 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"
+              className={`w-full py-3 text-white font-semibold rounded-xl text-sm md:text-base transition-colors ${
+                loading
+                  ? "bg-viridian-300 cursor-not-allowed"
+                  : "bg-viridian-900 hover:bg-viridian-800"
               }`}
             >
-              {loading ? "Loading..." : "Sign In"}
+              {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
             </button>
           </form>
 
-          {/* Register */}
-          <div className="mt-6 text-center text-green-800 text-sm">
-            <span>New Admin? </span>
-            <Link to="/register" className="text-green-700 font-semibold hover:underline">
-              Create an account
+          <div className="mt-6 text-center text-sm text-gray-600">
+            <span>ยังไม่มีบัญชี? </span>
+            <Link
+              to="/register"
+              className="text-viridian-800 font-semibold hover:underline"
+            >
+              สมัครสมาชิกใหม่
+            </Link>
+          </div>
+
+          <div className="mt-4 text-center">
+            <Link
+              to="/"
+              className="text-xs text-gray-400 hover:text-gray-600 hover:underline"
+            >
+              ← กลับไปหน้าแรก
             </Link>
           </div>
         </div>
