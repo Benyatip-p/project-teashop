@@ -572,8 +572,8 @@ func GetUserSpendingHandler(c *gin.Context) {
 }
 
 // GetAllUsersSpendingHandler godoc
-// @Summary Get total spending of all users (Admin only)
-// @Description Get the total amount spent on completed orders by all users
+// @Summary Get spending of all users (Admin only)
+// @Description Get the amount spent on completed orders by each user
 // @Tags admin
 // @Accept json
 // @Produce json
@@ -609,14 +609,14 @@ func GetAllUsersSpendingHandler(c *gin.Context) {
 		return
 	}
 
-	total, err := database.GetTotalSpendingAllUsers()
+	usersSpending, err := database.GetAllUsersSpending()
 	if err != nil {
-		log.Printf("Error getting total spending: %v", err)
+		log.Printf("Error getting users spending: %v", err)
 		c.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
 
-	c.JSON(200, gin.H{"total_spending_all_users": total})
+	c.JSON(200, gin.H{"users_spending": usersSpending})
 }
 
 // GetDailySalesHandler godoc

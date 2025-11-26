@@ -390,6 +390,41 @@ func GetTotalSpendingAllUsers() (float64, error) {
 	return total, err
 }
 
+type UserSpending struct {
+	UserID   int     `json:"user_id"`
+	Username string  `json:"username"`
+	Email    string  `json:"email"`
+	Spending float64 `json:"spending"`
+}
+
+func GetAllUsersSpending() ([]UserSpending, error) {
+	query := `
+		SELECT u.id, u.username, u.email, COALESCE(SUM(o.total_amount), 0) as spending
+		FROM users u
+		LEFT JOIN orders o ON u.id = o.user_id AND o.status = 'completed'
+		GROUP BY u.id, u.username, u.email
+		ORDER BY spending DESC
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var usersSpending []UserSpending
+	for rows.Next() {
+		var us UserSpending
+		err := rows.Scan(&us.UserID, &us.Username, &us.Email, &us.Spending)
+		if err != nil {
+			return nil, err
+		}
+		usersSpending = append(usersSpending, us)
+	}
+
+	return usersSpending, nil
+}
+
 func GetDailySales() (float64, error) {
 	query := "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'completed' AND DATE(created_at) = CURRENT_DATE"
 	var total float64

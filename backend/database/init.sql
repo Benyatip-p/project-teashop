@@ -224,6 +224,15 @@ INSERT INTO users (username, email, first_name, last_name, password_hash, is_act
     true
 );
 
+INSERT INTO users (username, email, first_name, last_name, password_hash, is_active, created_at) VALUES
+('john', 'john@example.com', 'John', 'Doe', '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2', true, CURRENT_DATE - INTERVAL '2 months'),
+('jane', 'jane@example.com', 'Jane', 'Smith', '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2', true, CURRENT_DATE - INTERVAL '2 months'),
+('bob', 'bob@example.com', 'Bob', 'Wilson', '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2', true, CURRENT_DATE - INTERVAL '1 month'),
+('alice', 'alice@example.com', 'Alice', 'Brown', '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2', true, CURRENT_DATE - INTERVAL '1 month'),
+('charlie', 'charlie@example.com', 'Charlie', 'Davis', '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2', true, CURRENT_DATE - INTERVAL '1 month'),
+('diana', 'diana@example.com', 'Diana', 'Evans', '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2', true, CURRENT_DATE - INTERVAL '3 months'),
+('frank', 'frank@example.com', 'Frank', 'Garcia', '$2a$12$SGT5hg1kZVzPf4tJilY.1ODqqk8C3Vnf.ia9uW3p7Yalh2PT3PCu2', true, CURRENT_DATE - INTERVAL '3 months');
+
 -- 3. ผูก User กับ Role
 -- (user_id 1 = 'admin', role_id 1 = 'admin')
 INSERT INTO user_roles (user_id, role_id, assigned_by) VALUES
@@ -231,6 +240,9 @@ INSERT INTO user_roles (user_id, role_id, assigned_by) VALUES
 -- (user_id 2 = 'user', role_id 2 = 'user')
 INSERT INTO user_roles (user_id, role_id, assigned_by) VALUES
 (2, 2, 1);
+
+INSERT INTO user_roles (user_id, role_id, assigned_by) VALUES
+(3, 2, 1), (4, 2, 1), (5, 2, 1), (6, 2, 1), (7, 2, 1), (8, 2, 1), (9, 2, 1);
 
 -- 4. เพิ่ม Addresses
 INSERT INTO addresses (user_id, recipient_name, phone_number, address, province, postal_code, is_default) VALUES
@@ -256,7 +268,6 @@ SELECT 1, id FROM permissions;
 
 
 -- 6. เพิ่ม หมวดหมู่สินค้า
-
 -- เพิ่มหมวดหมู่หลัก (parent_id เป็น NULL)
 INSERT INTO categories (name, description, parent_id, image_url, is_featured) VALUES
 ('ชาใบ', 'ชาคุณภาพสูงจากแหล่งต่างๆ', NULL, 'images/categories/tea-leaves.jpg', true), -- (ID = 1)
@@ -351,16 +362,40 @@ INSERT INTO products (category_id, name, description, price, stock, image_url) V
 INSERT INTO orders (user_id, total_amount, status, customer_name, shipping_address)
 VALUES
 (2, 1150.00, 'completed', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110'),
-(2, 800.00, 'pending', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110');
+(2, 800.00, 'pending', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110'),
+(3, 500.00, 'completed', 'John Doe', '456 Main St, Bangkok 10100'),
+(4, 750.00, 'shipped', 'Jane Smith', '789 Oak Ave, Bangkok 10200'),
+(5, 320.00, 'completed', 'Bob Wilson', '321 Pine St, Bangkok 10300'),
+(6, 950.00, 'processing', 'Alice Brown', '654 Elm St, Bangkok 10400'),
+(7, 600.00, 'completed', 'Charlie Davis', '987 Maple St, Bangkok 10500'),
+(8, 1200.00, 'pending', 'Diana Evans', '147 Birch St, Bangkok 10600'),
+(9, 850.00, 'completed', 'Frank Garcia', '258 Cedar St, Bangkok 10700');
 
 -- รายการสินค้าในคำสั่งซื้อ
 INSERT INTO order_items (order_id, product_id, weight, price_per_unit) VALUES
 (1, 1, 2, 350.00),  -- สินค้า: ชาอู่หลงก้านอ่อน จำนวน 2 แพ็ค
-(1, 3, 1, 500.00),  -- สินค้า: ชาเขียวมัทฉะ จำนวน 1 แพ็ค
-(2, 10, 1, 800.00); -- สินค้า: กาชงชาแก้วทนความร้อน จำนวน 1 ชิ้น
+(1, 3, 1, 500.00),  
+(2, 10, 1, 800.00), 
+(3, 3, 1, 500.00),  
+(4, 4, 1, 280.00),  
+(4, 6, 1, 320.00),  
+(5, 6, 1, 320.00),  
+(6, 8, 1, 950.00),  
+(7, 5, 2, 300.00),  
+(8, 9, 1, 1200.00),
+(9, 7, 2, 300.00),
+(9, 11, 1, 250.00);
 
 -- เพิ่มรีวิวตัวอย่าง
 INSERT INTO reviews (product_id, user_id, rating) VALUES
 (1, 2, 5),  -- ชาอู่หลงก้านอ่อน
 (2, 2, 4),  -- ชาอู่หลงไต้หวัน
-(3, 2, 5);  -- ชาเขียวมัทฉะ
+(3, 2, 5),  -- ชาเขียวมัทฉะ
+(1, 3, 4),  -- ชาอู่หลงก้านอ่อน
+(4, 5, 3),  -- ชาเขียวโฮจิฉะ
+(5, 6, 4),  -- ชาเขียวเซนฉะ
+(6, 7, 5),  -- ชาดำเอิร์ลเกรย์
+(7, 8, 4),  -- ชาดำอังกฤษ
+(8, 9, 5),  -- กาชงชาดินเผา
+(9, 3, 4),  -- กาชงชากระเบื้องญี่ปุ่น
+(10, 4, 5); -- กาชงชาแก้วทนความร้อน
