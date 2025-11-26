@@ -91,11 +91,13 @@ func main() {
 			protected.GET("/admin/sales/daily", handlers.GetDailySalesHandler)
 			protected.GET("/admin/sales/monthly", handlers.GetMonthlySalesHandler)
 			protected.GET("/admin/sales/yearly", handlers.GetYearlySalesHandler)
+			protected.GET("/admin/products/top-selling", handlers.GetTopSellingProductsHandler)
+			protected.GET("/admin/variants/low-stock", handlers.GetLowStockVariantsHandler)
 			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler)
 			protected.POST("/orders/:id/cancel", handlers.CancelOrderHandler)
-			api.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
-			api.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
-			api.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า
+			protected.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
+			protected.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
+			protected.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า
 		}
 	}
 

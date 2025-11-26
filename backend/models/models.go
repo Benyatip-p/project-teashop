@@ -188,3 +188,19 @@ type Review struct {
 type CreateReviewRequest struct {
 	Rating int `json:"rating" binding:"required,min=1,max=5"`
 }
+
+// ===================== Top Selling Product Model =====================
+type TopSellingProduct struct {
+	ProductID   int     `json:"product_id"`
+	Name        string  `json:"name"`
+	ImageURL    *string `json:"image_url"`
+	TotalSold   float64 `json:"total_sold"`
+	TotalRevenue float64 `json:"total_revenue"`
+}
+
+// ===================== Low Stock Variant Model =====================
+type LowStockVariant struct {
+	ProductName string  `json:"product_name"`
+	Weight      float64 `json:"weight"`
+	Stock       int     `json:"stock"`
+}

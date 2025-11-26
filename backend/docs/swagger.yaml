@@ -449,6 +449,36 @@ paths:
       summary: Get default address
       tags:
       - addresses
+  /api/v1/admin/products/top-selling:
+    get:
+      consumes:
+      - application/json
+      description: Get the top 5 best-selling products based on total quantity sold
+        from completed orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get top 5 selling products (Admin only)
+      tags:
+      - admin
   /api/v1/admin/sales/daily:
     get:
       consumes:
@@ -563,6 +593,35 @@ paths:
       security:
       - BearerAuth: []
       summary: Get total spending of all users (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/variants/low-stock:
+    get:
+      consumes:
+      - application/json
+      description: Get product variants with stock less than 10, sorted by stock ascending
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get low stock variants (Admin only)
       tags:
       - admin
   /api/v1/categories:
@@ -828,7 +887,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Add a new product to the database
+      description: Add a new product to the database (Admin only)
       parameters:
       - description: Product data
         in: body
@@ -847,10 +906,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Create a new product
       tags:
       - products
@@ -858,7 +927,7 @@ paths:
     delete:
       consumes:
       - application/json
-      description: Delete a product by ID
+      description: Delete a product by ID (Admin only)
       parameters:
       - description: Product ID
         in: path
@@ -876,6 +945,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -884,13 +961,15 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete a product
       tags:
       - products
     put:
       consumes:
       - application/json
-      description: Update an existing product by ID
+      description: Update an existing product by ID (Admin only)
       parameters:
       - description: Product ID
         in: path
@@ -914,6 +993,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -922,6 +1009,8 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Update a product
       tags:
       - products

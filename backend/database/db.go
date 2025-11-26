@@ -422,6 +422,80 @@ func GetYearlySales() (float64, error) {
 	return total, err
 }
 
+func GetTopSellingProducts() ([]models.TopSellingProduct, error) {
+	query := `
+		SELECT
+			p.id,
+			p.name,
+			p.image_url,
+			COALESCE(SUM(oi.weight), 0) as total_sold,
+			COALESCE(SUM(oi.weight * oi.price_per_unit), 0) as total_revenue
+		FROM products p
+		LEFT JOIN order_items oi ON p.id = oi.product_id
+		LEFT JOIN orders o ON oi.order_id = o.id AND o.status = 'completed'
+		WHERE p.is_active = true
+		GROUP BY p.id, p.name, p.image_url
+		ORDER BY total_sold DESC
+		LIMIT 5
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var products []models.TopSellingProduct
+	for rows.Next() {
+		var product models.TopSellingProduct
+		err := rows.Scan(
+			&product.ProductID,
+			&product.Name,
+			&product.ImageURL,
+			&product.TotalSold,
+			&product.TotalRevenue,
+		)
+		if err != nil {
+			return nil, err
+		}
+		products = append(products, product)
+	}
+
+	return products, nil
+}
+
+func GetLowStockVariants() ([]models.LowStockVariant, error) {
+	query := `
+		SELECT p.name, pv.weight, pv.stock
+		FROM products p
+		JOIN product_variants pv ON p.id = pv.product_id
+		WHERE pv.stock < 10 AND pv.is_active = true AND p.is_active = true
+		ORDER BY pv.stock ASC
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	variants := []models.LowStockVariant{}
+	for rows.Next() {
+		var variant models.LowStockVariant
+		err := rows.Scan(
+			&variant.ProductName,
+			&variant.Weight,
+			&variant.Stock,
+		)
+		if err != nil {
+			return nil, err
+		}
+		variants = append(variants, variant)
+	}
+
+	return variants, nil
+}
+
 // OrderItem struct (since it's not in models)
 type OrderItem struct {
 	ID            int     `json:"id"`
