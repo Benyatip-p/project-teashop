@@ -523,6 +523,36 @@ func CreateReview(productID, userID, rating int) (int, error) {
 	return newID, nil
 }
 
+// ===================== User Statistics Database Functions =====================
+func GetTotalUserCount() (int, error) {
+	query := `SELECT COUNT(*) FROM users`
+	var count int
+	err := DB.QueryRow(query).Scan(&count)
+	return count, err
+}
+
+func GetNewUsersThisMonth() (int, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM users
+		WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)
+	`
+	var count int
+	err := DB.QueryRow(query).Scan(&count)
+	return count, err
+}
+
+func GetNewUsersLastMonth() (int, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM users
+		WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+	`
+	var count int
+	err := DB.QueryRow(query).Scan(&count)
+	return count, err
+}
+
 func GetReviewsByProductID(productID int) ([]models.Review, error) {
 	query := `
 		SELECT id, product_id, user_id, rating, created_at

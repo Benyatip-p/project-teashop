@@ -859,6 +859,88 @@ func GetLowStockVariantsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"low_stock_variants": variants})
 }
 
+// GetUserStatsHandler godoc
+// @Summary Get user account statistics (Admin only)
+// @Description Get total user count and new users this month with growth percentage
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/users/stats [get]
+func GetUserStatsHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	// Get total users
+	totalUsers, err := database.GetTotalUserCount()
+	if err != nil {
+		log.Printf("Error getting total user count: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	// Get new users this month
+	newUsersThisMonth, err := database.GetNewUsersThisMonth()
+	if err != nil {
+		log.Printf("Error getting new users this month: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	// Get new users last month for growth calculation
+	newUsersLastMonth, err := database.GetNewUsersLastMonth()
+	if err != nil {
+		log.Printf("Error getting new users last month: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	// Calculate growth percentage
+	var growthPercentage float64
+	if newUsersLastMonth > 0 {
+		growthPercentage = (float64(newUsersThisMonth) - float64(newUsersLastMonth)) / float64(newUsersLastMonth) * 100
+	} else if newUsersThisMonth > 0 {
+		growthPercentage = 100.0 // If last month was 0 and this month has users, 100% growth
+	} else {
+		growthPercentage = 0.0
+	}
+
+	response := gin.H{
+		"total_users":         totalUsers,
+		"new_users_this_month": newUsersThisMonth,
+		"new_users_last_month": newUsersLastMonth,
+		"growth_percentage":   growthPercentage,
+	}
+
+	c.JSON(200, response)
+}
+
 // UpdateProfileHandler godoc
 // @Summary Update user profile
 // @Description Update the profile information of the currently authenticated user
