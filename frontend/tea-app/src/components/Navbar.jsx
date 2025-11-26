@@ -1,226 +1,259 @@
-import React, { useState } from 'react';
-import { useShop } from '../context/ShopContext';
-import { useLocation, useNavigate  } from 'react-router-dom';
-import { Link, NavLink } from 'react-router-dom';
-import { ShoppingCartIcon, SearchIcon, UserIcon, MenuIcon, XIcon, HeartIcon } from '@heroicons/react/outline';
-
-
-
+import React, { useState } from 'react'
+import {
+  Link,
+  NavLink,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
+import {
+  ShoppingCartIcon,
+  SearchIcon,
+  UserIcon,
+  MenuIcon,
+  XIcon,
+  HeartIcon,
+} from '@heroicons/react/outline'
+import { useShop } from '../context/ShopContext'
+import SearchOverlay from './SearchOverlay'
 
 const Navbar = () => {
-     const [isMenuOpen, setIsMenuOpen] = useState(false);
-     const [isSearchOpen, setIsSearchOpen] = useState(false); 
-     const [searchText, setSearchText] = useState('');
-     
-     const { cartCount } = useShop();
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchText, setSearchText] = useState('')
 
-     const location = useLocation();
-     const navigate = useNavigate();  
-     const isActivePath = (path) => location.pathname.startsWith(path);
+  const { cartCount } = useShop()
+  const location = useLocation()
+  const navigate = useNavigate()
 
-     const toggleMenu = () => {
-          setIsMenuOpen(!isMenuOpen);
-     };
+  const isActivePath = path => location.pathname.startsWith(path)
 
-     const toggleSearch = () => {
-     setIsSearchOpen((prev) => !prev);
-     setSearchText('');
-     };
+  const desktopNavLinkClass = ({ isActive }) =>
+    `text-sm font-medium tracking-wide text-emerald-50 hover:text-viridian-200 transition-colors ${
+      isActive ? 'border-b-2 border-emerald-200 pb-1' : ''
+    }`
 
-     const handleSearchSubmit = (e) => {
-     e.preventDefault();
-     const q = searchText.trim();
-     if (!q) return;
+  const mobileNavLinkClass =
+    'block py-2 text-sm font-medium text-emerald-50 hover:text-viridian-200 transition-colors'
 
-     // ไปหน้า /products พร้อมส่ง query ?search=...
-     navigate(`/products?search=${encodeURIComponent(q)}`);
-     setIsSearchOpen(false);
-     };
+  const toggleMenu = () => {
+    setIsMenuOpen(prev => !prev)
+  }
 
-     return (
-          <>
-      {/* แถบค้นหาแบบ overlay ด้านบน */}
+  const openSearch = () => {
+    setIsSearchOpen(true)
+    setSearchText('')
+  }
+
+  const closeSearch = () => {
+    setIsSearchOpen(false)
+  }
+
+  const handleSearchSubmit = query => {
+    const q = query.trim()
+    if (!q) return
+    navigate(`/products?search=${encodeURIComponent(q)}`)
+    setIsSearchOpen(false)
+  }
+
+  const isBrowser = typeof window !== 'undefined'
+  let isLoggedIn = false
+  let isAdmin = false
+
+  if (isBrowser) {
+    const token = localStorage.getItem('access_token')
+    if (token) isLoggedIn = true
+
+    const raw = localStorage.getItem('adminUser')
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw)
+        const roles = parsed.roles || []
+        isAdmin =
+          roles.includes('admin') || roles.includes('store_manager')
+      } catch {}
+    }
+  }
+
+  const profileTarget = isLoggedIn ? '/profile' : '/login'
+
+  return (
+    <>
       {isSearchOpen && (
-        <div className="fixed top-0 left-0 right-0 z-[60] bg-white shadow-md">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="container mx-auto px-4 h-16 flex items-center"
-          >
-            {/* ไอคอน search ด้านซ้าย */}
-            <SearchIcon className="h-5 w-5 text-gray-400 mr-3" />
-
-            {/* ช่อง input */}
-            <input
-              type="text"
-              autoFocus
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              placeholder="ค้นหาสินค้าของเรา"
-              className="flex-1 outline-none text-gray-800 placeholder-gray-400"
-            />
-
-            {/* ปุ่มปิด (X) ด้านขวา */}
-            <button
-              type="button"
-              onClick={toggleSearch}
-              className="ml-4 text-gray-500 hover:text-gray-700"
-            >
-              <XIcon className="h-5 w-5" />
-            </button>
-          </form>
-
-          {/* เส้นแบ่งด้านล่าง เหมือนในรูป */}
-          <div className="h-10 bg-gray-100" />
-        </div>
+        <div
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={closeSearch}
+        />
       )}
-          <nav className="bg-green-900 shadow-lg sticky top-0 z-50">
-               <div className="container mx-auto px-4">
-                    <div className="flex justify-between items-center h-16">
-                         {/* Logo */}
-                         <Link to="/" className="flex items-center space-x-3 group">
-                              <div className="h-10 w-10 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
-                                   <img
-                                        src="/images/logo.svg"
-                                        alt="GoodTea Logo"
-                                        className="h-8 w-8"
-                                   />
-                              </div>
-                              <span className="text-2xl font-bold text-white group-hover:text-viridian-700 transition-colors">
-                                   GOODTEA
-                              </span>
-                         </Link>
 
-                         {/* Desktop Menu */}
-                         <div className="hidden lg:flex items-center space-x-8">
-                              <NavLink
-                                   to="/"
-                                   className={({ isActive }) =>
-                                        `text-white hover:text-gray-300 transition-colors font-medium ${isActive ? 'text-gray-300 border-b-2 border-gray-300' : ''
-                                        }`
-                                   }
-                              >
-                                   หน้าแรก
-                              </NavLink>
-                              <NavLink
-                                   to="/products"
-                                   className={({ isActive }) =>
-                                       `text-white hover:text-gray-300 transition-colors font-medium ${isActive ? 'text-gray-300 border-b-2 border-gray-300' : ''
-                                        }`
-                                   }
-                              >
-                                   สินค้า
-                              </NavLink>
-                              <NavLink
-                                   to="/about"
-                                   className={({ isActive }) =>
-                                        `text-white hover:text-gray-300 transition-colors font-medium ${isActive ? 'text-gray-300 border-b-2 border-gray-300' : ''
-                                        }`
-                                   }
-                              >
-                                   เกี่ยวกับเรา
-                              </NavLink>
-                              <NavLink
-                                   to="/contact"
-                                   className={({ isActive }) =>
-                                        `text-white hover:text-gray-300 transition-colors font-medium ${isActive ? 'text-gray-300 border-b-2 border-gray-300' : ''
-                                        }`
-                                   }
-                              >
-                                   ติดต่อ
-                              </NavLink>
-                         </div>
+      {isSearchOpen && (
+        <SearchOverlay
+          value={searchText}
+          onChange={setSearchText}
+          onSubmit={handleSearchSubmit}
+          onClose={closeSearch}
+        />
+      )}
 
-                         {/* Action Buttons */}
-                         <div className="flex items-center space-x-4">
-                              <button
-                                   className="p-2 text-white hover:text-green-600 transition-colors"
-                                   onClick={toggleSearch}
-                                   >
-                                   <SearchIcon className="h-6 w-6" />
-                              </button>
-                              <button className={`p-2 transition-colors ${isActivePath('/favorites')? 'text-green-600': 'text-white hover:text-green-400'}`}>
-                                   <Link to="/favorites">
-                                        <HeartIcon className="h-6 w-6" />
-                                   </Link>
-                              </button>
+      <nav className="sticky top-0 z-50 bg-viridian-900 shadow-lg">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <Link to="/" className="group flex items-center space-x-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100/10 transition-transform group-hover:scale-110">
+                <img
+                  src="/images/logo.svg"
+                  alt="GoodTea Logo"
+                  className="h-8 w-8"
+                />
+              </div>
+              <span className="text-2xl font-bold tracking-wide text-emerald-50 transition-colors group-hover:text-emerald-200">
+                GOODTEA
+              </span>
+            </Link>
 
-                              <button className={`relative p-2 transition-colors ${isActivePath('/cart')? 'text-green-600': 'text-white hover:text-green-400'}`}>
-                                   <Link to="/cart">
-                                     <ShoppingCartIcon className="h-6 w-6" />
-                                   </Link>
-                                   {cartCount > 0 && (
-                                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs 
-                                             rounded-full h-5 w-5 flex items-center justify-center">
-                                             {cartCount}
-                                        </span>
-                                   )}
-                              </button>
+            <div className="hidden items-center space-x-8 lg:flex">
+              <NavLink to="/" className={desktopNavLinkClass}>
+                หน้าแรก
+              </NavLink>
+              <NavLink to="/products" className={desktopNavLinkClass}>
+                สินค้า
+              </NavLink>
+              <NavLink to="/about" className={desktopNavLinkClass}>
+                เกี่ยวกับเรา
+              </NavLink>
+              <NavLink to="/contact" className={desktopNavLinkClass}>
+                ติดต่อ
+              </NavLink>
+            </div>
 
-                              <button className={`p-2 transition-colors ${isActivePath('/profile')? 'text-green-600': 'text-white hover:text-green-400'}`}>
-                                   <Link to="/login">
-                                     <UserIcon className="h-6 w-6" />
-                                   </Link>
-                              </button>
+            <div className="flex items-center space-x-3">
+              {isAdmin && (
+                <button
+                  onClick={() => navigate('/store-manager/dashboard')}
+                  className="hidden md:inline-flex items-center rounded-full border border-emerald-300/70 bg-emerald-100/5 px-3 py-1 text-xs font-semibold text-emerald-50 hover:bg-emerald-100/15 hover:text-emerald-100 transition-colors"
+                >
+                  จัดการร้าน
+                </button>
+              )}
 
-                              {/* Mobile Menu Toggle */}
-                              <button
-                                   className="lg:hidden p-2  text-white hover:text-white transition-colors"
-                                   onClick={toggleMenu}
-                              >
-                                   {isMenuOpen ? (
-                                        <XIcon className="h-6 w-6" />
-                                   ) : (
-                                        <MenuIcon className="h-6 w-6" />
-                                   )}
-                              </button>
-                         </div>
-                    </div>
+              <button
+                className="p-2 text-emerald-50 transition-colors hover:text-emerald-200"
+                onClick={openSearch}
+              >
+                <SearchIcon className="h-6 w-6" />
+              </button>
 
-                    {/* Mobile Menu */}
-                    <div className={`lg:hidden transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0 overflow-hidden'
-                         }`}>
-                         <div className="py-4 border-t">
-                              <NavLink
-                                   to="/"
-                                   className="block py-2 text-white hover:text-white transition-colors"
-                                   onClick={() => setIsMenuOpen(false)}
-                              >
-                                   หน้าแรก
-                              </NavLink>
-                              <NavLink
-                                   to="/products"
-                                   className="block py-2 text-white hover:text-white transition-colors"
-                                   onClick={() => setIsMenuOpen(false)}
-                              >
-                                   สินค้า
-                              </NavLink>
-                              <NavLink
-                                   to="/categories"
-                                   className="block py-2 text-white hover:text-white transition-colors"
-                                   onClick={() => setIsMenuOpen(false)}
-                              >
-                                   หมวดหมู่
-                              </NavLink>
-                              <NavLink
-                                   to="/about"
-                                   className="block py-2 text-white hover:text-whitetransition-colors"
-                                   onClick={() => setIsMenuOpen(false)}
-                              >
-                                   เกี่ยวกับเรา
-                              </NavLink>
-                              <NavLink
-                                   to="/contact"
-                                   className="block py-2 text-white hover:text-white transition-colors"
-                                   onClick={() => setIsMenuOpen(false)}
-                              >
-                                   ติดต่อ
-                              </NavLink>
-                         </div>
-                    </div>
-               </div>
-          </nav>
-          </>
-     );
-};
+              <Link
+                to="/favorites"
+                className={`p-2 transition-colors ${
+                  isActivePath('/favorites')
+                    ? 'text-emerald-300'
+                    : 'text-emerald-50 hover:text-emerald-200'
+                }`}
+              >
+                <HeartIcon className="h-6 w-6" />
+              </Link>
 
-export default Navbar;
+              <Link
+                to="/cart"
+                className={`relative p-2 transition-colors ${
+                  isActivePath('/cart')
+                    ? 'text-emerald-300'
+                    : 'text-emerald-50 hover:text-emerald-200'
+                }`}
+              >
+                <ShoppingCartIcon className="h-6 w-6" />
+                {cartCount > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+                    {cartCount}
+                  </span>
+                )}
+              </Link>
+
+              <Link
+                to={profileTarget}
+                className={`p-2 transition-colors ${
+                  isActivePath('/profile')
+                    ? 'text-emerald-300'
+                    : 'text-emerald-50 hover:text-emerald-200'
+                }`}
+              >
+                <UserIcon className="h-6 w-6" />
+              </Link>
+
+              <button
+                className="p-2 text-emerald-50 transition-colors hover:text-emerald-200 lg:hidden"
+                onClick={toggleMenu}
+              >
+                {isMenuOpen ? (
+                  <XIcon className="h-6 w-6" />
+                ) : (
+                  <MenuIcon className="h-6 w-6" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div
+            className={`transition-all duration-300 ease-in-out lg:hidden ${
+              isMenuOpen
+                ? 'max-h-64 opacity-100'
+                : 'max-h-0 overflow-hidden opacity-0'
+            }`}
+          >
+            <div className="border-t border-emerald-800 py-4">
+              <NavLink
+                to="/"
+                className={mobileNavLinkClass}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                หน้าแรก
+              </NavLink>
+              <NavLink
+                to="/products"
+                className={mobileNavLinkClass}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                สินค้า
+              </NavLink>
+              <NavLink
+                to="/categories"
+                className={mobileNavLinkClass}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                หมวดหมู่
+              </NavLink>
+              <NavLink
+                to="/about"
+                className={mobileNavLinkClass}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                เกี่ยวกับเรา
+              </NavLink>
+              <NavLink
+                to="/contact"
+                className={mobileNavLinkClass}
+                onClick={() => setIsMenuOpen(false)}
+              >
+                ติดต่อ
+              </NavLink>
+
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false)
+                    navigate('/store-manager/dashboard')
+                  }}
+                  className="mt-2 w-full rounded-md bg-emerald-600 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+                >
+                  จัดการร้าน
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+    </>
+  )
+}
+
+export default Navbar

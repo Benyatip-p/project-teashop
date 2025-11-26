@@ -170,58 +170,67 @@ func LogAudit(userID int, action, resource string, resourceID interface{}, detai
 }
 
 // ===================== Product Database Functions =====================
-func GetProducts(sort string, maxPrice *float64) ([]models.Product, error) {
-	var args []interface{}
+func GetProducts(sort string, maxPrice *float64, search string) ([]models.Product, error) {
+    var (
+        args  []interface{}
+        index = 1
+    )
 
-	baseQuery := `
-		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
-		FROM products
-		WHERE is_active = true
-	`
+    query := `
+        SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+        FROM products
+        WHERE is_active = true
+    `
 
-	// Add max_price filter if provided
-	if maxPrice != nil {
-		baseQuery += " AND price <= $1"
-		args = append(args, *maxPrice)
-	}
+    if search != "" {
+        like := "%" + search + "%"
+        query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d)", index, index)
+        args = append(args, like)
+        index++
+    }
 
-	// Add sorting
-	if sort == "price_asc" {
-		baseQuery += " ORDER BY price ASC"
-	} else if sort == "id_asc" {
-		baseQuery += " ORDER BY id ASC"
-	} else {
-		baseQuery += " ORDER BY id ASC" // Default to ID ascending
-	}
+    if maxPrice != nil {
+        query += fmt.Sprintf(" AND price <= $%d", index)
+        args = append(args, *maxPrice)
+        index++
+    }
 
-	rows, err := DB.Query(baseQuery, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+    switch sort {
+    case "price_asc":
+        query += " ORDER BY price ASC"
+    case "id_asc":
+        query += " ORDER BY id ASC"
+    default:
+        query += " ORDER BY id ASC"
+    }
 
-	var products []models.Product
-	for rows.Next() {
-		var product models.Product
-		err := rows.Scan(
-			&product.ID,
-			&product.CategoryID,
-			&product.Name,
-			&product.Description,
-			&product.Price,
-			&product.Stock,
-			&product.ImageURL,
-			&product.IsActive,
-			&product.CreatedAt,
-			&product.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		products = append(products, product)
-	}
+    rows, err := DB.Query(query, args...)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
 
-	return products, nil
+    var products []models.Product
+    for rows.Next() {
+        var product models.Product
+        if err := rows.Scan(
+            &product.ID,
+            &product.CategoryID,
+            &product.Name,
+            &product.Description,
+            &product.Price,
+            &product.Stock,
+            &product.ImageURL,
+            &product.IsActive,
+            &product.CreatedAt,
+            &product.UpdatedAt,
+        ); err != nil {
+            return nil, err
+        }
+        products = append(products, product)
+    }
+
+    return products, nil
 }
 
 // ===================== Order Database Functions =====================
