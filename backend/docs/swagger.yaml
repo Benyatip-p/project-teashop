@@ -55,15 +55,15 @@ definitions:
       price:
         minimum: 0
         type: number
-      quantity:
-        minimum: 0
-        type: number
       stock:
         minimum: 0
         type: integer
+      weight:
+        minimum: 0
+        type: number
     required:
     - price
-    - quantity
+    - weight
     type: object
   models.ErrorResponse:
     properties:
@@ -124,12 +124,12 @@ definitions:
         type: number
       product_id:
         type: integer
-      quantity:
-        type: number
       stock:
         type: integer
       updated_at:
         type: string
+      weight:
+        type: number
     type: object
   models.RefreshRequest:
     properties:
@@ -201,10 +201,10 @@ definitions:
         type: boolean
       price:
         type: number
-      quantity:
-        type: number
       stock:
         type: integer
+      weight:
+        type: number
     type: object
   models.User:
     properties:
@@ -593,38 +593,6 @@ paths:
       summary: Delete a product
       tags:
       - products
-    get:
-      consumes:
-      - application/json
-      description: Get a specific product by its ID
-      parameters:
-      - description: Product ID
-        in: path
-        name: id
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/models.ErrorResponse'
-      summary: Get product by ID
-      tags:
-      - products
     put:
       consumes:
       - application/json
@@ -663,7 +631,7 @@ paths:
       summary: Update a product
       tags:
       - products
-  /api/v1/products/{product_id}/reviews:
+  /api/v1/products/{id}/reviews:
     get:
       consumes:
       - application/json
@@ -671,7 +639,7 @@ paths:
       parameters:
       - description: Product ID
         in: path
-        name: product_id
+        name: id
         required: true
         type: integer
       produces:
@@ -703,7 +671,7 @@ paths:
       parameters:
       - description: Product ID
         in: path
-        name: product_id
+        name: id
         required: true
         type: integer
       - description: Review data
@@ -740,6 +708,39 @@ paths:
       summary: Create a new review
       tags:
       - reviews
+  /api/v1/products/{pid}:
+    get:
+      consumes:
+      - application/json
+      description: Get a specific product by its ID
+      parameters:
+      - description: Product ID
+        in: path
+        name: pid
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      summary: Get product by ID
+      tags:
+      - products
   /api/v1/products/featured:
     get:
       consumes:

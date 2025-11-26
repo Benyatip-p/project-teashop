@@ -534,7 +534,7 @@ func CreateVariantHandler(c *gin.Context) {
 		return
 	}
 
-	newID, err := database.CreateVariant(productID, req.Quantity, req.Price, req.Stock, req.IsActive)
+	newID, err := database.CreateVariant(productID, req.Weight, req.Price, req.Stock, req.IsActive)
 	if err != nil {
 		log.Printf("Error creating variant: %v", err)
 		c.JSON(500, gin.H{"error": "failed to create variant"})
@@ -544,7 +544,7 @@ func CreateVariantHandler(c *gin.Context) {
 	variant := models.ProductVariant{
 		ID:        newID,
 		ProductID: productID,
-		Quantity:  req.Quantity,
+		Weight:    req.Weight,
 		Price:     req.Price,
 		Stock:     req.Stock,
 		IsActive:  req.IsActive,
@@ -579,7 +579,7 @@ func UpdateVariantHandler(c *gin.Context) {
 		return
 	}
 
-	err = database.UpdateVariant(variantID, req.Quantity, req.Price, req.Stock, req.IsActive)
+	err = database.UpdateVariant(variantID, req.Weight, req.Price, req.Stock, req.IsActive)
 	if err != nil {
 		log.Printf("Error updating variant: %v", err)
 		c.JSON(500, gin.H{"error": "failed to update variant"})

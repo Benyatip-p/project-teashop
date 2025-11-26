@@ -87,7 +87,7 @@ type Product struct {
 type ProductVariant struct {
 	ID        int       `json:"id"`
 	ProductID int       `json:"product_id"`
-	Quantity  float64   `json:"quantity"`
+	Weight    float64   `json:"weight"`
 	Price     float64   `json:"price"`
 	Stock     int       `json:"stock"`
 	IsActive  bool      `json:"is_active"`
@@ -116,14 +116,14 @@ type UpdateProductRequest struct {
 }
 
 type CreateVariantRequest struct {
-    Quantity float64 `json:"quantity" binding:"required,min=0"`
+    Weight   float64 `json:"weight" binding:"required,min=0"`
     Price    float64 `json:"price" binding:"required,min=0"`
     Stock    int     `json:"stock" binding:"min=0"`
     IsActive bool    `json:"is_active"`
 }
 
 type UpdateVariantRequest struct {
-     Quantity *float64 `json:"quantity"`
+     Weight   *float64 `json:"weight"`
      Price    *float64 `json:"price"`
      Stock    *int     `json:"stock"`
      IsActive *bool    `json:"is_active"`

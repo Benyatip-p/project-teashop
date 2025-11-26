@@ -453,10 +453,10 @@ func DeleteAddress(addressID int) error {
 
 func GetVariantsByProductID(productID int) ([]models.ProductVariant, error) {
 	query := `
-		SELECT id, product_id, quantity, price, stock, is_active, created_at, updated_at
+		SELECT id, product_id, weight, price, stock, is_active, created_at, updated_at
 		FROM product_variants
 		WHERE product_id = $1 AND is_active = true
-		ORDER BY quantity ASC
+		ORDER BY weight ASC
 	`
 
 	rows, err := DB.Query(query, productID)
@@ -471,7 +471,7 @@ func GetVariantsByProductID(productID int) ([]models.ProductVariant, error) {
 		err := rows.Scan(
 			&variant.ID,
 			&variant.ProductID,
-			&variant.Quantity,
+			&variant.Weight,
 			&variant.Price,
 			&variant.Stock,
 			&variant.IsActive,
@@ -487,15 +487,15 @@ func GetVariantsByProductID(productID int) ([]models.ProductVariant, error) {
 	return variants, nil
 }
 
-func CreateVariant(productID int, quantity float64, price float64, stock int, isActive bool) (int, error) {
+func CreateVariant(productID int, weight float64, price float64, stock int, isActive bool) (int, error) {
 	query := `
-		INSERT INTO product_variants (product_id, quantity, price, stock, is_active, created_at, updated_at)
+		INSERT INTO product_variants (product_id, weight, price, stock, is_active, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
 		RETURNING id
 	`
 
 	var newID int
-	err := DB.QueryRow(query, productID, quantity, price, stock, isActive).Scan(&newID)
+	err := DB.QueryRow(query, productID, weight, price, stock, isActive).Scan(&newID)
 	if err != nil {
 		return 0, err
 	}
@@ -503,14 +503,14 @@ func CreateVariant(productID int, quantity float64, price float64, stock int, is
 	return newID, nil
 }
 
-func UpdateVariant(variantID int, quantity *float64, price *float64, stock *int, isActive *bool) error {
+func UpdateVariant(variantID int, weight *float64, price *float64, stock *int, isActive *bool) error {
 	query := "UPDATE product_variants SET updated_at = NOW()"
 	args := []interface{}{}
 	argID := 1
 
-	if quantity != nil {
-		query += fmt.Sprintf(", quantity = $%d", argID)
-		args = append(args, *quantity)
+	if weight != nil {
+		query += fmt.Sprintf(", weight = $%d", argID)
+		args = append(args, *weight)
 		argID++
 	}
 	if price != nil {

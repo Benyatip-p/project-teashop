@@ -540,54 +540,6 @@ const docTemplate = `{
             }
         },
         "/api/v1/products/{id}": {
-            "get": {
-                "description": "Get a specific product by its ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "products"
-                ],
-                "summary": "Get product by ID",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Product ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/models.ErrorResponse"
-                        }
-                    }
-                }
-            },
             "put": {
                 "description": "Update an existing product by ID",
                 "consumes": [
@@ -694,7 +646,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/products/{product_id}/reviews": {
+        "/api/v1/products/{id}/reviews": {
             "get": {
                 "description": "Get all reviews for a specific product",
                 "consumes": [
@@ -711,7 +663,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Product ID",
-                        "name": "product_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     }
@@ -764,7 +716,7 @@ const docTemplate = `{
                     {
                         "type": "integer",
                         "description": "Product ID",
-                        "name": "product_id",
+                        "name": "id",
                         "in": "path",
                         "required": true
                     },
@@ -793,6 +745,56 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/products/{pid}": {
+            "get": {
+                "description": "Get a specific product by its ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Get product by ID",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Product ID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/models.ErrorResponse"
                         }
@@ -1401,7 +1403,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "price",
-                "quantity"
+                "weight"
             ],
             "properties": {
                 "is_active": {
@@ -1411,12 +1413,12 @@ const docTemplate = `{
                     "type": "number",
                     "minimum": 0
                 },
-                "quantity": {
-                    "type": "number",
-                    "minimum": 0
-                },
                 "stock": {
                     "type": "integer",
+                    "minimum": 0
+                },
+                "weight": {
+                    "type": "number",
                     "minimum": 0
                 }
             }
@@ -1511,14 +1513,14 @@ const docTemplate = `{
                 "product_id": {
                     "type": "integer"
                 },
-                "quantity": {
-                    "type": "number"
-                },
                 "stock": {
                     "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "weight": {
+                    "type": "number"
                 }
             }
         },
@@ -1628,11 +1630,11 @@ const docTemplate = `{
                 "price": {
                     "type": "number"
                 },
-                "quantity": {
-                    "type": "number"
-                },
                 "stock": {
                     "type": "integer"
+                },
+                "weight": {
+                    "type": "number"
                 }
             }
         },
