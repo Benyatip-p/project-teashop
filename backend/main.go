@@ -61,6 +61,7 @@ func main() {
 	{
 		// Public endpoints
 		api.GET("/products", handlers.GetProductsHandler)
+		api.GET("/products/:id/reviews", handlers.GetProductReviewsHandler)
 		api.GET("/products/:id", handlers.GetProductByIDHandler)
 		api.GET("/products/featured", handlers.GetFeaturedProductsHandler)
 		api.GET("/categories", handlers.GetCategoriesHandler)
@@ -82,6 +83,7 @@ func main() {
 			protected.POST("/addresses", handlers.CreateAddressHandler)
 			protected.PUT("/addresses/:id", handlers.UpdateAddressHandler)
 			protected.DELETE("/addresses/:id", handlers.DeleteAddressHandler)
+			protected.POST("/products/:id/reviews", handlers.CreateReviewHandler)
 			api.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
 			api.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
 			api.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า

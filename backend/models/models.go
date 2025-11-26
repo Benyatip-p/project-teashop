@@ -158,3 +158,16 @@ type UpdateAddressRequest struct {
 	PostalCode    *string `json:"postal_code"`
 	IsDefault     *bool   `json:"is_default"`
 }
+
+// ===================== Review Models =====================
+type Review struct {
+	ID        int       `json:"id"`
+	ProductID int       `json:"product_id"`
+	UserID    int       `json:"user_id"`
+	Rating    int       `json:"rating"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type CreateReviewRequest struct {
+	Rating int `json:"rating" binding:"required,min=1,max=5"`
+}

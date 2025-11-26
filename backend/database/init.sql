@@ -1,6 +1,7 @@
 DROP TABLE IF EXISTS
     order_items,
     orders,
+    reviews,
     addresses,
     products,
     categories,
@@ -182,6 +183,17 @@ CREATE TABLE order_items (
 );
 CREATE INDEX idx_order_items_order ON order_items(order_id);
 
+-- รีวิวสินค้า
+CREATE TABLE reviews (
+    id SERIAL PRIMARY KEY,
+    product_id INTEGER REFERENCES products(id),
+    user_id INTEGER REFERENCES users(id),
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX idx_reviews_product ON reviews(product_id);
+CREATE INDEX idx_reviews_user ON reviews(user_id);
+
 
 -- ===================================
 -- 3. ข้อมูลตัวอย่าง
@@ -340,8 +352,14 @@ VALUES
 (2, 1150.00, 'processing', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110'),
 (2, 800.00, 'pending', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110');
 
--- รายการสินค้าในคำสั่งซื้อ 
-INSERT INTO order_items (order_id, product_id, quantity, price_per_unit) VALUES 
+-- รายการสินค้าในคำสั่งซื้อ
+INSERT INTO order_items (order_id, product_id, quantity, price_per_unit) VALUES
 (1, 1, 2, 350.00),  -- สินค้า: ชาอู่หลงก้านอ่อน จำนวน 2 แพ็ค
 (1, 3, 1, 500.00),  -- สินค้า: ชาเขียวมัทฉะ จำนวน 1 แพ็ค
 (2, 10, 1, 800.00); -- สินค้า: กาชงชาแก้วทนความร้อน จำนวน 1 ชิ้น
+
+-- เพิ่มรีวิวตัวอย่าง
+INSERT INTO reviews (product_id, user_id, rating) VALUES
+(1, 2, 5),  -- ชาอู่หลงก้านอ่อน
+(2, 2, 4),  -- ชาอู่หลงไต้หวัน
+(3, 2, 5);  -- ชาเขียวมัทฉะ

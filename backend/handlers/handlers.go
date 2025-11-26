@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"log"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -113,7 +114,26 @@ func GetProductsHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"products": products})
+	// Add average rating to each product
+	type ProductWithRating struct {
+		models.Product
+		AvgRating float64 `json:"avg_rating"`
+	}
+
+	productsWithRating := make([]ProductWithRating, len(products))
+	for i, product := range products {
+		avgRating, err := database.GetAverageRatingByProductID(product.ID)
+		if err != nil {
+			log.Printf("Error getting average rating for product %d: %v", product.ID, err)
+			avgRating = 0
+		}
+		productsWithRating[i] = ProductWithRating{
+			Product:   product,
+			AvgRating: avgRating,
+		}
+	}
+
+	c.JSON(200, gin.H{"products": productsWithRating})
 }
 
 // GetFeaturedCategoriesHandler godoc
@@ -196,14 +216,14 @@ func GetCategoriesHandler(c *gin.Context) {
 // @Tags products
 // @Accept json
 // @Produce json
-// @Param id path int true "Product ID"
+// @Param pid path int true "Product ID"
 // @Success 200 {object} object
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/products/{id} [get]
+// @Router /api/v1/products/{pid} [get]
 func GetProductByIDHandler(c *gin.Context) {
-	productIDStr := c.Param("id")
+	productIDStr := c.Param("pid")
 	productID, err := strconv.Atoi(productIDStr)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid product id"})
@@ -229,9 +249,17 @@ func GetProductByIDHandler(c *gin.Context) {
 		variants = []models.ProductVariant{}
 	}
 
+	// Get average rating
+	avgRating, err := database.GetAverageRatingByProductID(productID)
+	if err != nil {
+		log.Printf("Error getting average rating: %v", err)
+		avgRating = 0
+	}
+
 	response := gin.H{
-		"product":  product,
-		"variants": variants,
+		"product":     product,
+		"variants":    variants,
+		"avg_rating":  avgRating,
 	}
 
 	c.JSON(200, response)
@@ -840,4 +868,123 @@ func DeleteAddressHandler(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"message": "address deleted successfully"})
+}
+
+// CreateReviewHandler godoc
+// @Summary Create a new review
+// @Description Add a new review for a product by the authenticated user
+// @Tags reviews
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Param request body models.CreateReviewRequest true "Review data"
+// @Security BearerAuth
+// @Success 201 {object} models.Review
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products/{id}/reviews [post]
+func CreateReviewHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	productIDStr := c.Param("id")
+	productID, err := strconv.Atoi(productIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid product id"})
+		return
+	}
+
+	// Check if product exists
+	product, err := database.GetProductByID(productID)
+	if err != nil {
+		log.Printf("Error getting product: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if product == nil {
+		c.JSON(404, gin.H{"error": "product not found"})
+		return
+	}
+
+	var req models.CreateReviewRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	newID, err := database.CreateReview(productID, userID.(int), req.Rating)
+	if err != nil {
+		log.Printf("Error creating review: %v", err)
+		c.JSON(500, gin.H{"error": "failed to create review"})
+		return
+	}
+
+	review := models.Review{
+		ID:        newID,
+		ProductID: productID,
+		UserID:    userID.(int),
+		Rating:    req.Rating,
+		CreatedAt: time.Now(), // Approximate, since we don't fetch from DB
+	}
+
+	c.JSON(201, review)
+}
+
+// GetProductReviewsHandler godoc
+// @Summary Get reviews for a product
+// @Description Get all reviews for a specific product
+// @Tags reviews
+// @Accept json
+// @Produce json
+// @Param id path int true "Product ID"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/products/{id}/reviews [get]
+func GetProductReviewsHandler(c *gin.Context) {
+	productIDStr := c.Param("id")
+	productID, err := strconv.Atoi(productIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid product id"})
+		return
+	}
+
+	// Check if product exists
+	product, err := database.GetProductByID(productID)
+	if err != nil {
+		log.Printf("Error getting product: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if product == nil {
+		c.JSON(404, gin.H{"error": "product not found"})
+		return
+	}
+
+	reviews, err := database.GetReviewsByProductID(productID)
+	if err != nil {
+		log.Printf("Error getting reviews: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	avgRating, err := database.GetAverageRatingByProductID(productID)
+	if err != nil {
+		log.Printf("Error getting average rating: %v", err)
+		avgRating = 0
+	}
+
+	response := gin.H{
+		"reviews":     reviews,
+		"avg_rating":  avgRating,
+		"total_count": len(reviews),
+	}
+
+	c.JSON(200, response)
 }

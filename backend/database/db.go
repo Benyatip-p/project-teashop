@@ -224,6 +224,72 @@ func GetProducts(sort string, maxPrice *float64) ([]models.Product, error) {
 	return products, nil
 }
 
+// ===================== Review Database Functions =====================
+func CreateReview(productID, userID, rating int) (int, error) {
+	query := `
+		INSERT INTO reviews (product_id, user_id, rating)
+		VALUES ($1, $2, $3)
+		RETURNING id
+	`
+
+	var newID int
+	err := DB.QueryRow(query, productID, userID, rating).Scan(&newID)
+	if err != nil {
+		return 0, err
+	}
+
+	return newID, nil
+}
+
+func GetReviewsByProductID(productID int) ([]models.Review, error) {
+	query := `
+		SELECT id, product_id, user_id, rating, created_at
+		FROM reviews
+		WHERE product_id = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := DB.Query(query, productID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reviews []models.Review
+	for rows.Next() {
+		var review models.Review
+		err := rows.Scan(
+			&review.ID,
+			&review.ProductID,
+			&review.UserID,
+			&review.Rating,
+			&review.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		reviews = append(reviews, review)
+	}
+
+	return reviews, nil
+}
+
+func GetAverageRatingByProductID(productID int) (float64, error) {
+	query := `SELECT AVG(rating) FROM reviews WHERE product_id = $1`
+
+	var avg sql.NullFloat64
+	err := DB.QueryRow(query, productID).Scan(&avg)
+	if err != nil {
+		return 0, err
+	}
+
+	if avg.Valid {
+		return avg.Float64, nil
+	}
+
+	return 0, nil
+}
+
 // ===================== Address Database Functions =====================
 func GetAddressesByUserID(userID int) ([]models.Address, error) {
 	query := `
