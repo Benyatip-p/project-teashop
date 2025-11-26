@@ -136,26 +136,6 @@ func GetProductsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"products": productsWithRating})
 }
 
-// GetFeaturedCategoriesHandler godoc
-// @Summary Get featured categories
-// @Description Get a list of featured tea categories (subcategories of Tea Leaves)
-// @Tags categories
-// @Accept json
-// @Produce json
-// @Success 200 {object} object
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/categories/featured [get]
-func GetFeaturedCategoriesHandler(c *gin.Context) {
-	categories, err := database.GetFeaturedCategories()
-	if err != nil {
-		log.Printf("Error getting featured categories: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
-
-	c.JSON(200, gin.H{"categories": categories})
-}
-
 // GetFeaturedProductsHandler godoc
 // @Summary Get featured products
 // @Description Get random product recommendations
@@ -543,34 +523,6 @@ func GetOrderDetailsHandler(c *gin.Context) {
 	c.JSON(200, response)
 }
 
-// GetUserSpendingHandler godoc
-// @Summary Get user total spending
-// @Description Get the total amount spent on completed orders for the authenticated user
-// @Tags orders
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} object
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/spending [get]
-func GetUserSpendingHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(401, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	total, err := database.GetTotalSpending(userID.(int))
-	if err != nil {
-		log.Printf("Error getting total spending: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
-
-	c.JSON(200, gin.H{"total_spending": total})
-}
-
 // GetAllUsersSpendingHandler godoc
 // @Summary Get spending of all users (Admin only)
 // @Description Get the amount spent on completed orders by each user
@@ -852,43 +804,15 @@ func GetYearlySalesHandler(c *gin.Context) {
 }
 
 // GetTopSellingProductsHandler godoc
-// @Summary Get top 5 selling products (Admin only)
+// @Summary Get top 5 selling products
 // @Description Get the top 5 best-selling products based on total quantity sold from completed orders
-// @Tags admin
+// @Tags products
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Success 200 {object} object
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/admin/products/top-selling [get]
+// @Router /api/v1/products/top-selling [get]
 func GetTopSellingProductsHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(401, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	// Check if admin
-	roles, err := database.GetUserRoles(userID.(int))
-	if err != nil {
-		log.Printf("Error getting roles: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
-	isAdmin := false
-	for _, role := range roles {
-		if role == "admin" {
-			isAdmin = true
-			break
-		}
-	}
-	if !isAdmin {
-		c.JSON(403, gin.H{"error": "admin access required"})
-		return
-	}
-
 	products, err := database.GetTopSellingProducts()
 	if err != nil {
 		log.Printf("Error getting top selling products: %v", err)
@@ -958,7 +882,7 @@ func GetLowStockVariantsHandler(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/users/stats [get]
+// @Router /api/v1/admin/users/stats [get]
 func GetUserStatsHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
