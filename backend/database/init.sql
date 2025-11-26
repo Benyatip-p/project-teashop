@@ -359,32 +359,121 @@ INSERT INTO products (category_id, name, description, price, stock, image_url) V
 (9, 'ถ้วยชาเซรามิก', 'ถ้วยชาเซรามิกสไตล์ญี่ปุ่น', 250.00, 50, 'images/products/ceramic-cup.jpg'); -- product_id = 12
 
 -- 8. เพิ่ม คำสั่งซื้อตัวอย่าง (Optional)
-INSERT INTO orders (user_id, total_amount, status, customer_name, shipping_address)
+INSERT INTO orders (user_id, total_amount, status, customer_name, shipping_address, tracking_number)
 VALUES
-(2, 1150.00, 'completed', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110'),
-(2, 800.00, 'pending', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110'),
-(3, 500.00, 'completed', 'John Doe', '456 Main St, Bangkok 10100'),
-(4, 750.00, 'shipped', 'Jane Smith', '789 Oak Ave, Bangkok 10200'),
-(5, 320.00, 'completed', 'Bob Wilson', '321 Pine St, Bangkok 10300'),
-(6, 950.00, 'processing', 'Alice Brown', '654 Elm St, Bangkok 10400'),
-(7, 600.00, 'completed', 'Charlie Davis', '987 Maple St, Bangkok 10500'),
-(8, 1200.00, 'pending', 'Diana Evans', '147 Birch St, Bangkok 10600'),
-(9, 850.00, 'completed', 'Frank Garcia', '258 Cedar St, Bangkok 10700');
+-- User 2 (regular user) - multiple orders with different statuses
+(2, 1150.00, 'completed', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL),
+(2, 800.00, 'pending', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL),
+(2, 650.00, 'paid', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL),
+(2, 420.00, 'processing', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL),
+(2, 380.00, 'shipped', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', 'TH123456789'),
+(2, 720.00, 'cancelled', 'คุณวาริท อสังหา', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL),
+
+-- Other users with various statuses
+(3, 500.00, 'completed', 'John Doe', '456 Main St, Bangkok 10100', NULL),
+(3, 280.00, 'pending', 'John Doe', '456 Main St, Bangkok 10100', NULL),
+(4, 750.00, 'shipped', 'Jane Smith', '789 Oak Ave, Bangkok 10200', 'TH987654321'),
+(4, 320.00, 'completed', 'Jane Smith', '789 Oak Ave, Bangkok 10200', NULL),
+(5, 320.00, 'completed', 'Bob Wilson', '321 Pine St, Bangkok 10300', NULL),
+(5, 150.00, 'cancelled', 'Bob Wilson', '321 Pine St, Bangkok 10300', NULL),
+(6, 950.00, 'processing', 'Alice Brown', '654 Elm St, Bangkok 10400', NULL),
+(6, 250.00, 'paid', 'Alice Brown', '654 Elm St, Bangkok 10400', NULL),
+(7, 600.00, 'completed', 'Charlie Davis', '987 Maple St, Bangkok 10500', NULL),
+(7, 1200.00, 'shipped', 'Charlie Davis', '987 Maple St, Bangkok 10500', 'TH555666777'),
+(8, 1200.00, 'pending', 'Diana Evans', '147 Birch St, Bangkok 10600', NULL),
+(8, 300.00, 'processing', 'Diana Evans', '147 Birch St, Bangkok 10600', NULL),
+(9, 850.00, 'completed', 'Frank Garcia', '258 Cedar St, Bangkok 10700', NULL),
+(9, 400.00, 'paid', 'Frank Garcia', '258 Cedar St, Bangkok 10700', NULL),
+
+-- Additional orders for better testing
+(3, 900.00, 'shipped', 'John Doe', '456 Main St, Bangkok 10100', 'TH111222333'),
+(4, 180.00, 'cancelled', 'Jane Smith', '789 Oak Ave, Bangkok 10200', NULL),
+(5, 550.00, 'processing', 'Bob Wilson', '321 Pine St, Bangkok 10300', NULL),
+(6, 120.00, 'completed', 'Alice Brown', '654 Elm St, Bangkok 10400', NULL),
+(7, 800.00, 'paid', 'Charlie Davis', '987 Maple St, Bangkok 10500', NULL);
 
 -- รายการสินค้าในคำสั่งซื้อ
 INSERT INTO order_items (order_id, product_id, weight, price_per_unit) VALUES
-(1, 1, 2, 350.00),  -- สินค้า: ชาอู่หลงก้านอ่อน จำนวน 2 แพ็ค
-(1, 3, 1, 500.00),  
-(2, 10, 1, 800.00), 
-(3, 3, 1, 500.00),  
-(4, 4, 1, 280.00),  
-(4, 6, 1, 320.00),  
-(5, 6, 1, 320.00),  
-(6, 8, 1, 950.00),  
-(7, 5, 2, 300.00),  
-(8, 9, 1, 1200.00),
-(9, 7, 2, 300.00),
-(9, 11, 1, 250.00);
+-- Order 1 (user 2, completed)
+(1, 1, 2, 350.00),  -- ชาอู่หลงก้านอ่อน x2
+(1, 3, 1, 500.00),  -- ชาเขียวมัทฉะ x1
+
+-- Order 2 (user 2, pending)
+(2, 10, 1, 800.00), -- กาชงชาแก้วทนความร้อน x1
+
+-- Order 3 (user 2, paid)
+(3, 4, 1, 280.00),  -- ชาเขียวโฮจิฉะ x1
+(3, 6, 1, 320.00),  -- ชาดำเอิร์ลเกรย์ x1
+
+-- Order 4 (user 2, processing)
+(4, 6, 1, 320.00),  -- ชาดำเอิร์ลเกรย์ x1
+(4, 5, 1, 300.00),  -- ชาเขียวเซนฉะ x1
+
+-- Order 5 (user 2, shipped)
+(5, 7, 1, 300.00),  -- ชาดำอังกฤษ x1
+(5, 11, 1, 150.00), -- ที่กรองชาสแตนเลส x1
+
+-- Order 6 (user 2, cancelled)
+(6, 8, 1, 950.00),  -- กาชงชากระเบื้องญี่ปุ่น x1
+
+-- Order 7 (user 3, completed)
+(7, 3, 1, 500.00),  -- ชาเขียวมัทฉะ x1
+
+-- Order 8 (user 3, pending)
+(8, 4, 1, 280.00),  -- ชาเขียวโฮจิฉะ x1
+
+-- Order 9 (user 4, shipped)
+(9, 8, 1, 950.00),  -- กาชงชากระเบื้องญี่ปุ่น x1
+
+-- Order 10 (user 4, completed)
+(10, 6, 1, 320.00), -- ชาดำเอิร์ลเกรย์ x1
+
+-- Order 11 (user 5, completed)
+(11, 6, 1, 320.00), -- ชาดำเอิร์ลเกรย์ x1
+
+-- Order 12 (user 5, cancelled)
+(12, 11, 1, 150.00), -- ที่กรองชาสแตนเลส x1
+
+-- Order 13 (user 6, processing)
+(13, 8, 1, 950.00), -- กาชงชากระเบื้องญี่ปุ่น x1
+
+-- Order 14 (user 6, paid)
+(14, 12, 1, 250.00), -- ถ้วยชาเซรามิก x1
+
+-- Order 15 (user 7, completed)
+(15, 5, 2, 300.00), -- ชาเขียวเซนฉะ x2
+
+-- Order 16 (user 7, shipped)
+(16, 9, 1, 1200.00), -- กาชงชาดินเผา x1
+
+-- Order 17 (user 8, pending)
+(17, 9, 1, 1200.00), -- กาชงชาดินเผา x1
+
+-- Order 18 (user 8, processing)
+(18, 12, 1, 250.00), -- ถ้วยชาเซรามิก x1
+
+-- Order 19 (user 9, completed)
+(19, 7, 2, 300.00), -- ชาดำอังกฤษ x2
+(19, 11, 1, 250.00), -- ที่กรองชาสแตนเลส x1
+
+-- Order 20 (user 9, paid)
+(20, 10, 1, 800.00), -- กาชงชาแก้วทนความร้อน x1
+
+-- Order 21 (user 3, shipped)
+(21, 8, 1, 950.00),  -- กาชงชากระเบื้องญี่ปุ่น x1
+
+-- Order 22 (user 4, cancelled)
+(22, 12, 1, 250.00), -- ถ้วยชาเซรามิก x1
+
+-- Order 23 (user 5, processing)
+(23, 7, 1, 300.00),  -- ชาดำอังกฤษ x1
+(23, 4, 1, 280.00),  -- ชาเขียวโฮจิฉะ x1
+
+-- Order 24 (user 6, completed)
+(24, 11, 1, 150.00), -- ที่กรองชาสแตนเลส x1
+
+-- Order 25 (user 7, paid)
+(25, 10, 1, 800.00); -- กาชงชาแก้วทนความร้อน x1
 
 -- เพิ่มรีวิวตัวอย่าง
 INSERT INTO reviews (product_id, user_id, rating) VALUES

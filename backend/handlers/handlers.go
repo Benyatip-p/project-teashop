@@ -619,6 +619,94 @@ func GetAllUsersSpendingHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"users_spending": usersSpending})
 }
 
+// GetOrdersByStatusHandler godoc
+// @Summary Get orders filtered by status
+// @Description Get orders filtered by status (different permissions for users vs admins)
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param status query string true "Order status to filter by" Enums(paid,shipped,completed,cancelled,refunded)
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders/status [get]
+func GetOrdersByStatusHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	status := c.Query("status")
+	if status == "" {
+		c.JSON(400, gin.H{"error": "status parameter is required"})
+		return
+	}
+
+	// Check user role to determine allowed statuses
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+
+	// Validate allowed statuses based on role
+	allowedStatuses := map[string]bool{}
+	if isAdmin {
+		// Admin can query: paid, completed, cancelled, refunded
+		allowedStatuses = map[string]bool{
+			"paid":      true,
+			"completed": true,
+			"cancelled": true,
+			"refunded":  true,
+		}
+	} else {
+		// User can query: paid, shipped, completed, cancelled, refunded
+		allowedStatuses = map[string]bool{
+			"paid":      true,
+			"shipped":   true,
+			"completed": true,
+			"cancelled": true,
+			"refunded":  true,
+		}
+	}
+
+	if !allowedStatuses[status] {
+		c.JSON(403, gin.H{"error": "not allowed to query this status"})
+		return
+	}
+
+	// Get orders based on role
+	var orders []models.Order
+	if isAdmin {
+		// Admin can see all orders with the status
+		orders, err = database.GetOrdersByStatus(status)
+	} else {
+		// User can only see their own orders
+		orders, err = database.GetUserOrdersByStatus(userID.(int), status)
+	}
+
+	if err != nil {
+		log.Printf("Error getting orders by status: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"orders": orders})
+}
+
 // GetDailySalesHandler godoc
 // @Summary Get daily sales (Admin only)
 // @Description Get total sales for today from completed orders
@@ -870,7 +958,7 @@ func GetLowStockVariantsHandler(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/admin/users/stats [get]
+// @Router /api/v1/users/stats [get]
 func GetUserStatsHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {

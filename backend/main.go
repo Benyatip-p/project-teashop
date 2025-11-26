@@ -86,6 +86,7 @@ func main() {
 			protected.POST("/products/:id/reviews", handlers.CreateReviewHandler)
 			protected.GET("/orders", handlers.GetUserOrdersHandler)
 			protected.GET("/orders/:id", handlers.GetOrderDetailsHandler)
+			protected.GET("/orders/status", handlers.GetOrdersByStatusHandler)
 			protected.GET("/spending", handlers.GetUserSpendingHandler)
 			protected.GET("/admin/spending", handlers.GetAllUsersSpendingHandler)
 			protected.GET("/admin/sales/daily", handlers.GetDailySalesHandler)
@@ -93,7 +94,7 @@ func main() {
 			protected.GET("/admin/sales/yearly", handlers.GetYearlySalesHandler)
 			protected.GET("/admin/products/top-selling", handlers.GetTopSellingProductsHandler)
 			protected.GET("/admin/variants/low-stock", handlers.GetLowStockVariantsHandler)
-			protected.GET("/admin/users/stats", handlers.GetUserStatsHandler)
+			protected.GET("/users/stats", handlers.GetUserStatsHandler)
 			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler)
 			protected.POST("/orders/:id/cancel", handlers.CancelOrderHandler)
 			protected.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า

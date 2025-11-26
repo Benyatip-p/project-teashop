@@ -425,6 +425,79 @@ func GetAllUsersSpending() ([]UserSpending, error) {
 	return usersSpending, nil
 }
 
+// ===================== Order Status Database Functions =====================
+func GetOrdersByStatus(status string) ([]models.Order, error) {
+	query := `
+		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
+		FROM orders
+		WHERE status = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := DB.Query(query, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var order models.Order
+		err := rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.TotalAmount,
+			&order.Status,
+			&order.TrackingNumber,
+			&order.CustomerName,
+			&order.ShippingAddress,
+			&order.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
+func GetUserOrdersByStatus(userID int, status string) ([]models.Order, error) {
+	query := `
+		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
+		FROM orders
+		WHERE user_id = $1 AND status = $2
+		ORDER BY created_at DESC
+	`
+
+	rows, err := DB.Query(query, userID, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var order models.Order
+		err := rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.TotalAmount,
+			&order.Status,
+			&order.TrackingNumber,
+			&order.CustomerName,
+			&order.ShippingAddress,
+			&order.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
 func GetDailySales() (float64, error) {
 	query := "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'completed' AND DATE(created_at) = CURRENT_DATE"
 	var total float64
