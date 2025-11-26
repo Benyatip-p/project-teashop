@@ -224,6 +224,167 @@ func GetProducts(sort string, maxPrice *float64) ([]models.Product, error) {
 	return products, nil
 }
 
+// ===================== Address Database Functions =====================
+func GetAddressesByUserID(userID int) ([]models.Address, error) {
+	query := `
+		SELECT id, user_id, recipient_name, phone_number, address, province, postal_code, is_default
+		FROM addresses
+		WHERE user_id = $1
+		ORDER BY is_default DESC, id ASC
+	`
+
+	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var addresses []models.Address
+	for rows.Next() {
+		var address models.Address
+		err := rows.Scan(
+			&address.ID,
+			&address.UserID,
+			&address.RecipientName,
+			&address.PhoneNumber,
+			&address.Address,
+			&address.Province,
+			&address.PostalCode,
+			&address.IsDefault,
+		)
+		if err != nil {
+			return nil, err
+		}
+		addresses = append(addresses, address)
+	}
+
+	return addresses, nil
+}
+
+func GetDefaultAddressByUserID(userID int) (*models.Address, error) {
+	query := `
+		SELECT id, user_id, recipient_name, phone_number, address, province, postal_code, is_default
+		FROM addresses
+		WHERE user_id = $1 AND is_default = true
+		LIMIT 1
+	`
+
+	var address models.Address
+	err := DB.QueryRow(query, userID).Scan(
+		&address.ID,
+		&address.UserID,
+		&address.RecipientName,
+		&address.PhoneNumber,
+		&address.Address,
+		&address.Province,
+		&address.PostalCode,
+		&address.IsDefault,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &address, nil
+}
+
+func CountAddressesByUserID(userID int) (int, error) {
+	query := `SELECT COUNT(*) FROM addresses WHERE user_id = $1`
+	var count int
+	err := DB.QueryRow(query, userID).Scan(&count)
+	return count, err
+}
+
+func UnsetDefaultAddresses(userID int) error {
+	query := `UPDATE addresses SET is_default = false WHERE user_id = $1`
+	_, err := DB.Exec(query, userID)
+	return err
+}
+
+func CreateAddress(userID int, recipientName, phoneNumber, address, province, postalCode string, isDefault bool) (int, error) {
+	query := `
+		INSERT INTO addresses (user_id, recipient_name, phone_number, address, province, postal_code, is_default)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id
+	`
+
+	var newID int
+	err := DB.QueryRow(query, userID, recipientName, phoneNumber, address, province, postalCode, isDefault).Scan(&newID)
+	if err != nil {
+		return 0, err
+	}
+
+	return newID, nil
+}
+
+func GetAddressOwner(addressID int) (int, error) {
+	query := `SELECT user_id FROM addresses WHERE id = $1`
+	var userID int
+	err := DB.QueryRow(query, addressID).Scan(&userID)
+	return userID, err
+}
+
+func UpdateAddress(addressID int, recipientName, phoneNumber, address, province, postalCode *string, isDefault *bool) error {
+	query := "UPDATE addresses SET"
+	args := []interface{}{}
+	argID := 1
+	updates := []string{}
+
+	if recipientName != nil {
+		updates = append(updates, fmt.Sprintf("recipient_name = $%d", argID))
+		args = append(args, *recipientName)
+		argID++
+	}
+	if phoneNumber != nil {
+		updates = append(updates, fmt.Sprintf("phone_number = $%d", argID))
+		args = append(args, *phoneNumber)
+		argID++
+	}
+	if address != nil {
+		updates = append(updates, fmt.Sprintf("address = $%d", argID))
+		args = append(args, *address)
+		argID++
+	}
+	if province != nil {
+		updates = append(updates, fmt.Sprintf("province = $%d", argID))
+		args = append(args, *province)
+		argID++
+	}
+	if postalCode != nil {
+		updates = append(updates, fmt.Sprintf("postal_code = $%d", argID))
+		args = append(args, *postalCode)
+		argID++
+	}
+	if isDefault != nil {
+		updates = append(updates, fmt.Sprintf("is_default = $%d", argID))
+		args = append(args, *isDefault)
+		argID++
+	}
+
+	if len(updates) == 0 {
+		return nil
+	}
+
+	query += " " + updates[0]
+	for i := 1; i < len(updates); i++ {
+		query += ", " + updates[i]
+	}
+	query += fmt.Sprintf(" WHERE id = $%d", argID)
+	args = append(args, addressID)
+
+	_, err := DB.Exec(query, args...)
+	return err
+}
+
+func DeleteAddress(addressID int) error {
+	query := "DELETE FROM addresses WHERE id = $1"
+	_, err := DB.Exec(query, addressID)
+	return err
+}
+
 func GetVariantsByProductID(productID int) ([]models.ProductVariant, error) {
 	query := `
 		SELECT id, product_id, quantity, price, stock, is_active, created_at, updated_at

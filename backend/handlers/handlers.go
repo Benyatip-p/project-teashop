@@ -590,3 +590,254 @@ func DeleteVariantHandler(c *gin.Context) {
 
 	c.JSON(200, gin.H{"message": "variant deleted successfully"})
 }
+
+// GetAddressesHandler godoc
+// @Summary Get user addresses
+// @Description Get all addresses for the authenticated user
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/addresses [get]
+func GetAddressesHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	addresses, err := database.GetAddressesByUserID(userID.(int))
+	if err != nil {
+		log.Printf("Error getting addresses: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"addresses": addresses})
+}
+
+// GetDefaultAddressHandler godoc
+// @Summary Get default address
+// @Description Get the default address for the authenticated user
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} models.Address
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/addresses/default [get]
+func GetDefaultAddressHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	address, err := database.GetDefaultAddressByUserID(userID.(int))
+	if err != nil {
+		log.Printf("Error getting default address: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	if address == nil {
+		c.JSON(404, gin.H{"error": "no default address found"})
+		return
+	}
+
+	c.JSON(200, address)
+}
+
+// CreateAddressHandler godoc
+// @Summary Create a new address
+// @Description Add a new address for the authenticated user (max 2 addresses)
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Param request body models.CreateAddressRequest true "Address data"
+// @Security BearerAuth
+// @Success 201 {object} models.Address
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 409 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/addresses [post]
+func CreateAddressHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req models.CreateAddressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check max 2 addresses
+	count, err := database.CountAddressesByUserID(userID.(int))
+	if err != nil {
+		log.Printf("Error counting addresses: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if count >= 2 {
+		c.JSON(409, gin.H{"error": "maximum 2 addresses allowed per user"})
+		return
+	}
+
+	// If setting as default, unset others
+	if req.IsDefault {
+		err = database.UnsetDefaultAddresses(userID.(int))
+		if err != nil {
+			log.Printf("Error unsetting default addresses: %v", err)
+			c.JSON(500, gin.H{"error": "internal server error"})
+			return
+		}
+	}
+
+	newID, err := database.CreateAddress(userID.(int), req.RecipientName, req.PhoneNumber, req.Address, req.Province, req.PostalCode, req.IsDefault)
+	if err != nil {
+		log.Printf("Error creating address: %v", err)
+		c.JSON(500, gin.H{"error": "failed to create address"})
+		return
+	}
+
+	address := models.Address{
+		ID:            newID,
+		UserID:        userID.(int),
+		RecipientName: req.RecipientName,
+		PhoneNumber:   req.PhoneNumber,
+		Address:       req.Address,
+		Province:      req.Province,
+		PostalCode:    req.PostalCode,
+		IsDefault:     req.IsDefault,
+	}
+
+	c.JSON(201, address)
+}
+
+// UpdateAddressHandler godoc
+// @Summary Update an address
+// @Description Update an existing address by ID
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Param id path int true "Address ID"
+// @Param request body models.UpdateAddressRequest true "Updated address data"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/addresses/{id} [put]
+func UpdateAddressHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	addressIDStr := c.Param("id")
+	addressID, err := strconv.Atoi(addressIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid address id"})
+		return
+	}
+
+	var req models.UpdateAddressRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check ownership
+	ownerID, err := database.GetAddressOwner(addressID)
+	if err != nil {
+		log.Printf("Error getting address owner: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if ownerID != userID.(int) {
+		c.JSON(403, gin.H{"error": "access denied"})
+		return
+	}
+
+	// If setting as default, unset others
+	if req.IsDefault != nil && *req.IsDefault {
+		err = database.UnsetDefaultAddresses(userID.(int))
+		if err != nil {
+			log.Printf("Error unsetting default addresses: %v", err)
+			c.JSON(500, gin.H{"error": "internal server error"})
+			return
+		}
+	}
+
+	err = database.UpdateAddress(addressID, req.RecipientName, req.PhoneNumber, req.Address, req.Province, req.PostalCode, req.IsDefault)
+	if err != nil {
+		log.Printf("Error updating address: %v", err)
+		c.JSON(500, gin.H{"error": "failed to update address"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "address updated successfully"})
+}
+
+// DeleteAddressHandler godoc
+// @Summary Delete an address
+// @Description Delete an address by ID
+// @Tags addresses
+// @Accept json
+// @Produce json
+// @Param id path int true "Address ID"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/addresses/{id} [delete]
+func DeleteAddressHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	addressIDStr := c.Param("id")
+	addressID, err := strconv.Atoi(addressIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid address id"})
+		return
+	}
+
+	// Check ownership
+	ownerID, err := database.GetAddressOwner(addressID)
+	if err != nil {
+		log.Printf("Error getting address owner: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if ownerID != userID.(int) {
+		c.JSON(403, gin.H{"error": "access denied"})
+		return
+	}
+
+	err = database.DeleteAddress(addressID)
+	if err != nil {
+		log.Printf("Error deleting address: %v", err)
+		c.JSON(500, gin.H{"error": "failed to delete address"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "address deleted successfully"})
+}

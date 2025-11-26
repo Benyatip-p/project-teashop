@@ -1,6 +1,7 @@
 DROP TABLE IF EXISTS
     order_items,
     orders,
+    addresses,
     products,
     categories,
     audit_logs,
@@ -33,6 +34,21 @@ CREATE TABLE users (
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_active ON users(is_active);
+
+-- ตาราง Addresses
+CREATE TABLE addresses (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    recipient_name VARCHAR(100),
+    phone_number VARCHAR(20),
+    address TEXT,
+    province VARCHAR(100),
+    postal_code VARCHAR(10),
+    is_default BOOLEAN DEFAULT false
+);
+
+CREATE INDEX idx_addresses_user ON addresses(user_id);
+CREATE INDEX idx_addresses_default ON addresses(user_id, is_default);
 
 -- ตาราง Roles
 CREATE TABLE roles (
@@ -202,6 +218,11 @@ INSERT INTO user_roles (user_id, role_id, assigned_by) VALUES
 -- (user_id 2 = 'user', role_id 2 = 'user')
 INSERT INTO user_roles (user_id, role_id, assigned_by) VALUES
 (2, 2, 1);
+
+-- 4. เพิ่ม Addresses
+INSERT INTO addresses (user_id, recipient_name, phone_number, address, province, postal_code, is_default) VALUES
+(2, 'คุณวาริท อสังหา', '0812345678', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย', 'กรุงเทพฯ', '10110', true),
+(2, 'คุณสมชาย ใจดี', '0898765432', '456 ถนนพระราม 9 แขวงห้วยขวาง เขตห้วยขวาง', 'กรุงเทพฯ', '10310', false);
 
 -- 4. เพิ่ม Permissions
 INSERT INTO permissions (name, resource, action) VALUES

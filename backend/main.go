@@ -77,6 +77,11 @@ func main() {
 		{
 			protected.GET("/profile", handlers.GetMyProfileHandler)
 			protected.PUT("/profile", handlers.UpdateProfileHandler)
+			protected.GET("/addresses", handlers.GetAddressesHandler)
+			protected.GET("/addresses/default", handlers.GetDefaultAddressHandler)
+			protected.POST("/addresses", handlers.CreateAddressHandler)
+			protected.PUT("/addresses/:id", handlers.UpdateAddressHandler)
+			protected.DELETE("/addresses/:id", handlers.DeleteAddressHandler)
 			api.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
 			api.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
 			api.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า

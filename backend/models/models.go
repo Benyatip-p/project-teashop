@@ -123,8 +123,38 @@ type CreateVariantRequest struct {
 }
 
 type UpdateVariantRequest struct {
-    Quantity *float64 `json:"quantity"`
-    Price    *float64 `json:"price"`
-    Stock    *int     `json:"stock"`
-    IsActive *bool    `json:"is_active"`
+     Quantity *float64 `json:"quantity"`
+     Price    *float64 `json:"price"`
+     Stock    *int     `json:"stock"`
+     IsActive *bool    `json:"is_active"`
+}
+
+// ===================== Address Models =====================
+type Address struct {
+	ID            int    `json:"id"`
+	UserID        int    `json:"user_id"`
+	RecipientName string `json:"recipient_name"`
+	PhoneNumber   string `json:"phone_number"`
+	Address       string `json:"address"`
+	Province      string `json:"province"`
+	PostalCode    string `json:"postal_code"`
+	IsDefault     bool   `json:"is_default"`
+}
+
+type CreateAddressRequest struct {
+	RecipientName string `json:"recipient_name" binding:"required"`
+	PhoneNumber   string `json:"phone_number" binding:"required"`
+	Address       string `json:"address" binding:"required"`
+	Province      string `json:"province" binding:"required"`
+	PostalCode    string `json:"postal_code" binding:"required"`
+	IsDefault     bool   `json:"is_default"`
+}
+
+type UpdateAddressRequest struct {
+	RecipientName *string `json:"recipient_name"`
+	PhoneNumber   *string `json:"phone_number"`
+	Address       *string `json:"address"`
+	Province      *string `json:"province"`
+	PostalCode    *string `json:"postal_code"`
+	IsDefault     *bool   `json:"is_default"`
 }
