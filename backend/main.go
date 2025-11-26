@@ -63,14 +63,10 @@ func main() {
 		api.GET("/products", handlers.GetProductsHandler)
 		api.GET("/products/:id/reviews", handlers.GetProductReviewsHandler)
 		api.GET("/products/:id", handlers.GetProductByIDHandler)
-		api.GET("/products/featured", handlers.GetFeaturedProductsHandler)
 		api.GET("/categories", handlers.GetCategoriesHandler)
 		api.GET("/categories/:id/products", handlers.GetProductsByCategoryHandler)
 		api.GET("/products/top-selling", handlers.GetTopSellingProductsHandler)
 		api.GET("/variants/product/:product_id", handlers.GetVariantsByProductHandler)
-		api.POST("/variants/product/:product_id", handlers.CreateVariantHandler)
-		api.PUT("/variants/:id", handlers.UpdateVariantHandler)
-		api.DELETE("/variants/:id", handlers.DeleteVariantHandler)
 
 		// Protected endpoints
 		protected := api.Group("/")
@@ -84,6 +80,8 @@ func main() {
 			protected.PUT("/addresses/:id", handlers.UpdateAddressHandler)
 			protected.DELETE("/addresses/:id", handlers.DeleteAddressHandler)
 			protected.POST("/products/:id/reviews", handlers.CreateReviewHandler)
+			protected.GET("/categories/featured", handlers.GetFeaturedCategoriesHandler)
+			protected.GET("/products/featured", handlers.GetFeaturedProductsHandler)
 			protected.GET("/orders", handlers.GetUserOrdersHandler)
 			protected.GET("/orders/:id", handlers.GetOrderDetailsHandler)
 			protected.GET("/orders/status", handlers.GetOrdersByStatusHandler)
@@ -98,6 +96,9 @@ func main() {
 			protected.DELETE("/products/:id", handlers.DeleteProductHandler) // delete (admin only)
 			protected.POST("/products", handlers.CreateProductHandler)    // add (admin only)
 			protected.PUT("/products/:id", handlers.UpdateProductHandler) // edit (admin only)
+			protected.POST("/variants/product/:product_id", handlers.CreateVariantHandler) // admin only
+			protected.PUT("/variants/:id", handlers.UpdateVariantHandler) // admin only
+			protected.DELETE("/variants/:id", handlers.DeleteVariantHandler) // admin only
 		}
 	}
 
