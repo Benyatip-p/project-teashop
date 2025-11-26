@@ -390,6 +390,38 @@ func GetTotalSpendingAllUsers() (float64, error) {
 	return total, err
 }
 
+func GetDailySales() (float64, error) {
+	query := "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'completed' AND DATE(created_at) = CURRENT_DATE"
+	var total float64
+	err := DB.QueryRow(query).Scan(&total)
+	return total, err
+}
+
+func GetMonthlySales() (float64, error) {
+	query := `
+		SELECT COALESCE(SUM(total_amount), 0)
+		FROM orders
+		WHERE status = 'completed'
+		AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+		AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
+	`
+	var total float64
+	err := DB.QueryRow(query).Scan(&total)
+	return total, err
+}
+
+func GetYearlySales() (float64, error) {
+	query := `
+		SELECT COALESCE(SUM(total_amount), 0)
+		FROM orders
+		WHERE status = 'completed'
+		AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
+	`
+	var total float64
+	err := DB.QueryRow(query).Scan(&total)
+	return total, err
+}
+
 // OrderItem struct (since it's not in models)
 type OrderItem struct {
 	ID            int     `json:"id"`

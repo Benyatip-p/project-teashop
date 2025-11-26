@@ -88,6 +88,9 @@ func main() {
 			protected.GET("/orders/:id", handlers.GetOrderDetailsHandler)
 			protected.GET("/spending", handlers.GetUserSpendingHandler)
 			protected.GET("/admin/spending", handlers.GetAllUsersSpendingHandler)
+			protected.GET("/admin/sales/daily", handlers.GetDailySalesHandler)
+			protected.GET("/admin/sales/monthly", handlers.GetMonthlySalesHandler)
+			protected.GET("/admin/sales/yearly", handlers.GetYearlySalesHandler)
 			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler)
 			protected.POST("/orders/:id/cancel", handlers.CancelOrderHandler)
 			api.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า

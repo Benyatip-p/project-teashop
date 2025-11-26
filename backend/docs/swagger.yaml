@@ -449,6 +449,93 @@ paths:
       summary: Get default address
       tags:
       - addresses
+  /api/v1/admin/sales/daily:
+    get:
+      consumes:
+      - application/json
+      description: Get total sales for today from completed orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get daily sales (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/sales/monthly:
+    get:
+      consumes:
+      - application/json
+      description: Get total sales for current month from completed orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get monthly sales (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/sales/yearly:
+    get:
+      consumes:
+      - application/json
+      description: Get total sales for current year from completed orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get yearly sales (Admin only)
+      tags:
+      - admin
   /api/v1/admin/spending:
     get:
       consumes:
