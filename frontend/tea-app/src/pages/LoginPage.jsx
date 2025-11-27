@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
   LockClosedIcon,
@@ -15,11 +15,19 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
-    if (token) {
-      navigate("/store-manager/dashboard", { replace: true });
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    if (token && user.roles) {
+      // Redirect based on user role
+      if (user.roles.includes("admin")) {
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     }
   }, [navigate]);
 
@@ -34,10 +42,19 @@ const LoginPage = () => {
         password,
       });
 
+      // Save token and user data
       localStorage.setItem("access_token", res.data.access_token);
-      localStorage.setItem("adminUser", JSON.stringify(res.data.user));
+      localStorage.setItem("user", JSON.stringify(res.data.user));
 
-      navigate("/store-manager/dashboard", { replace: true });
+      // Check user roles and redirect accordingly
+      const userRoles = res.data.user.roles || [];
+
+      if (userRoles.includes("admin")) {
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        // For "user" role or any other roles, redirect to homepage
+        navigate("/", { replace: true });
+      }
     } catch (err) {
       const msg =
         err.response?.data?.message ||

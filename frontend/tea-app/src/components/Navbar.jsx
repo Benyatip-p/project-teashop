@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Link,
   NavLink,
@@ -12,7 +12,9 @@ import {
   MenuIcon,
   XIcon,
   HeartIcon,
+  LogoutIcon,
 } from '@heroicons/react/outline'
+import axios from 'axios'
 import { useShop } from '../context/ShopContext'
 import SearchOverlay from './SearchOverlay'
 
@@ -20,6 +22,8 @@ const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
+  const userDropdownRef = useRef(null)
 
   const { cartCount } = useShop()
   const location = useLocation()
@@ -58,6 +62,7 @@ const Navbar = () => {
   const isBrowser = typeof window !== 'undefined'
   let isLoggedIn = false
   let isAdmin = false
+  let username = ''
 
   if (isBrowser) {
     const token = localStorage.getItem('access_token')
@@ -70,11 +75,52 @@ const Navbar = () => {
         const roles = parsed.roles || []
         isAdmin =
           roles.includes('admin') || roles.includes('store_manager')
+        username = parsed.username || ''
       } catch {}
     }
   }
 
-  const profileTarget = isLoggedIn ? '/profile' : '/login'
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+        setIsUserDropdownOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
+
+  const handleUserIconClick = () => {
+    if (isLoggedIn) {
+      setIsUserDropdownOpen(prev => !prev)
+    } else {
+      navigate('/login', { state: { from: location } })
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      const refreshToken = localStorage.getItem('refresh_token')
+      if (refreshToken) {
+        await axios.post('http://localhost:8080/auth/logout', {
+          refresh_token: refreshToken
+        })
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      // Always clear local storage and redirect, even if API call fails
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('adminUser')
+      setIsUserDropdownOpen(false)
+      navigate('/')
+    }
+  }
 
   return (
     <>
@@ -169,16 +215,56 @@ const Navbar = () => {
                 )}
               </Link>
 
-              <Link
-                to={profileTarget}
-                className={`p-2 transition-colors ${
-                  isActivePath('/profile')
-                    ? 'text-emerald-300'
-                    : 'text-emerald-50 hover:text-emerald-200'
-                }`}
-              >
-                <UserIcon className="h-6 w-6" />
-              </Link>
+              {/* User Icon with Dropdown */}
+              <div className="relative" ref={userDropdownRef}>
+                <button
+                  onClick={handleUserIconClick}
+                  className={`flex items-center space-x-2 p-2 transition-colors ${
+                    isUserDropdownOpen
+                      ? 'text-emerald-300'
+                      : 'text-emerald-50 hover:text-emerald-200'
+                  }`}
+                >
+                  <UserIcon className="h-6 w-6" />
+                  {isLoggedIn && username && (
+                    <span className="hidden md:inline text-sm font-medium max-w-[100px] truncate">
+                      {username}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dropdown Menu - Only show when logged in */}
+                {isLoggedIn && isUserDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                    <div className="py-1">
+                      <Link
+                        to="/profile"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                        className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <UserIcon className="h-5 w-5 mr-3 text-viridian-600" />
+                        บัญชีของฉัน
+                      </Link>
+                      <Link
+                        to="/orders"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                        className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <ShoppingCartIcon className="h-5 w-5 mr-3 text-viridian-600" />
+                        การซื้อของฉัน
+                      </Link>
+                      <hr className="my-1 border-gray-200" />
+                      <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogoutIcon className="h-5 w-5 mr-3" />
+                        ออกจากระบบ
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <button
                 className="p-2 text-emerald-50 transition-colors hover:text-emerald-200 lg:hidden"
@@ -256,4 +342,4 @@ const Navbar = () => {
   )
 }
 
-export default Navbar
+export default Navbar;
