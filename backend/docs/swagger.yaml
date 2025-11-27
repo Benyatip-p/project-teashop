@@ -39,6 +39,35 @@ definitions:
     - province
     - recipient_name
     type: object
+  models.CreateOrderItemRequest:
+    properties:
+      product_id:
+        type: integer
+      quantity:
+        minimum: 1
+        type: integer
+      variant_id:
+        type: integer
+    required:
+    - product_id
+    - quantity
+    type: object
+  models.CreateOrderRequest:
+    properties:
+      customer_name:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/models.CreateOrderItemRequest'
+        minItems: 1
+        type: array
+      shipping_address:
+        type: string
+    required:
+    - customer_name
+    - items
+    - shipping_address
+    type: object
   models.CreateReviewRequest:
     properties:
       rating:
@@ -88,6 +117,25 @@ definitions:
         type: string
       user:
         $ref: '#/definitions/models.UserInfo'
+    type: object
+  models.Order:
+    properties:
+      created_at:
+        type: string
+      customer_name:
+        type: string
+      id:
+        type: integer
+      shipping_address:
+        type: string
+      status:
+        type: string
+      total_amount:
+        type: number
+      tracking_number:
+        type: string
+      user_id:
+        type: integer
     type: object
   models.Product:
     properties:
@@ -671,6 +719,31 @@ paths:
       summary: Get products by category
       tags:
       - products
+  /api/v1/categories/featured:
+    get:
+      consumes:
+      - application/json
+      description: Get a list of featured tea categories (subcategories of Tea Leaves)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get featured categories
+      tags:
+      - categories
   /api/v1/orders:
     get:
       consumes:
@@ -694,6 +767,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Get user order history
+      tags:
+      - orders
+    post:
+      consumes:
+      - application/json
+      description: Create a new order for the authenticated user
+      parameters:
+      - description: Order data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateOrderRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Order'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new order
       tags:
       - orders
   /api/v1/orders/{id}:
@@ -1171,10 +1279,16 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Get featured products
       tags:
       - products
@@ -1270,7 +1384,7 @@ paths:
     delete:
       consumes:
       - application/json
-      description: Delete a variant by ID
+      description: Delete a variant by ID (Admin only)
       parameters:
       - description: Variant ID
         in: path
@@ -1288,6 +1402,14 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "404":
           description: Not Found
           schema:
@@ -1296,13 +1418,15 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Delete a variant
       tags:
       - variants
     put:
       consumes:
       - application/json
-      description: Update an existing variant by ID
+      description: Update an existing variant by ID (Admin only)
       parameters:
       - description: Variant ID
         in: path
@@ -1326,10 +1450,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Update a variant
       tags:
       - variants
@@ -1365,7 +1499,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Add a new variant for a product
+      description: Add a new variant for a product (Admin only)
       parameters:
       - description: Product ID
         in: path
@@ -1389,10 +1523,20 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
       summary: Create a new variant
       tags:
       - variants
