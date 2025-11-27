@@ -67,6 +67,8 @@ func main() {
 		api.GET("/categories/:id/products", handlers.GetProductsByCategoryHandler)
 		api.GET("/products/top-selling", handlers.GetTopSellingProductsHandler)
 		api.GET("/variants/product/:product_id", handlers.GetVariantsByProductHandler)
+		api.GET("/categories/featured", handlers.GetFeaturedCategoriesHandler)
+		api.GET("/products/featured", handlers.GetFeaturedProductsHandler)
 
 		// Protected endpoints
 		protected := api.Group("/")
@@ -80,8 +82,6 @@ func main() {
 			protected.PUT("/addresses/:id", handlers.UpdateAddressHandler)
 			protected.DELETE("/addresses/:id", handlers.DeleteAddressHandler)
 			protected.POST("/products/:id/reviews", handlers.CreateReviewHandler)
-			protected.GET("/categories/featured", handlers.GetFeaturedCategoriesHandler)
-			protected.GET("/products/featured", handlers.GetFeaturedProductsHandler)
 			protected.GET("/orders", handlers.GetUserOrdersHandler)
 			protected.GET("/orders/:id", handlers.GetOrderDetailsHandler)
 			protected.GET("/orders/status", handlers.GetOrdersByStatusHandler)
