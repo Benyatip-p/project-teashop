@@ -24,6 +24,8 @@ const Cartpage = () => {
     () => localStorage.getItem('couponError') || '',
   )
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
   useEffect(() => {
     setSelectedIds(prev => prev.filter(id => cart.some(item => item.id === id)))
   }, [cart])
@@ -47,6 +49,11 @@ const Cartpage = () => {
   useEffect(() => {
     localStorage.setItem('couponError', couponError)
   }, [couponError])
+
+  useEffect(() => {
+    const token = localStorage.getItem('customerToken')
+    setIsLoggedIn(!!token)
+  }, [])
 
   const selectedItems = cart.filter(item => selectedIds.includes(item.id))
 
@@ -135,6 +142,23 @@ const Cartpage = () => {
   const handlePayment = () => {
     if (selectedItems.length === 0) {
       window.alert('กรุณาเลือกสินค้าที่ต้องการชำระเงิน')
+      return
+    }
+
+    if (!isLoggedIn) {
+      navigate('/login', {
+        state: {
+          redirectTo: '/payment',
+          checkoutData: {
+            selectedItems,
+            shipping,
+            couponDiscount,
+            subtotal,
+            totalBeforeDiscount,
+            total,
+          },
+        },
+      })
       return
     }
 

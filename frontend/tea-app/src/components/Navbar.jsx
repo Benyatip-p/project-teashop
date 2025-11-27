@@ -1,3 +1,4 @@
+// src/components/Navbar.jsx
 import React, { useState, useEffect, useRef } from 'react'
 import {
   Link,
@@ -15,6 +16,7 @@ import {
   LogoutIcon,
 } from '@heroicons/react/outline'
 import axios from 'axios'
+import { jwtDecode } from 'jwt-decode'
 import { useShop } from '../context/ShopContext'
 import SearchOverlay from './SearchOverlay'
 
@@ -65,25 +67,29 @@ const Navbar = () => {
   let username = ''
 
   if (isBrowser) {
+    if (token) {
     const token = localStorage.getItem('access_token')
-    if (token) isLoggedIn = true
-
-    const raw = localStorage.getItem('adminUser')
-    if (raw) {
       try {
-        const parsed = JSON.parse(raw)
-        const roles = parsed.roles || []
+        const decoded = jwtDecode(token)
+        const roles = Array.isArray(decoded.roles) ? decoded.roles : []
+        isLoggedIn = true
         isAdmin =
+      } catch {
+      }
           roles.includes('admin') || roles.includes('store_manager')
-        username = parsed.username || ''
-      } catch {}
+        username = decoded.username || ''
+        isLoggedIn = false
+        isAdmin = false
+        username = ''
     }
   }
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target)) {
+    const handleClickOutside = event => {
+      if (
+        userDropdownRef.current &&
+        !userDropdownRef.current.contains(event.target)
+      ) {
         setIsUserDropdownOpen(false)
       }
     }
@@ -107,13 +113,12 @@ const Navbar = () => {
       const refreshToken = localStorage.getItem('refresh_token')
       if (refreshToken) {
         await axios.post('http://localhost:8080/auth/logout', {
-          refresh_token: refreshToken
+          refresh_token: refreshToken,
         })
       }
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
-      // Always clear local storage and redirect, even if API call fails
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('adminUser')
@@ -126,7 +131,7 @@ const Navbar = () => {
     <>
       {isSearchOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 z-40 bg-black/50"
           onClick={closeSearch}
         />
       )}
@@ -174,14 +179,16 @@ const Navbar = () => {
             <div className="flex items-center space-x-3">
               {isAdmin && (
                 <button
+                  type="button"
+                  className="hidden items-center rounded-full border border-emerald-300/70 bg-emerald-100/5 px-3 py-1 text-xs font-semibold text-emerald-50 transition-colors hover:bg-emerald-100/15 hover:text-emerald-100 md:inline-flex"
                   onClick={() => navigate('/store-manager/dashboard')}
-                  className="hidden md:inline-flex items-center rounded-full border border-emerald-300/70 bg-emerald-100/5 px-3 py-1 text-xs font-semibold text-emerald-50 hover:bg-emerald-100/15 hover:text-emerald-100 transition-colors"
                 >
                   จัดการร้าน
                 </button>
               )}
 
               <button
+                type="button"
                 className="p-2 text-emerald-50 transition-colors hover:text-emerald-200"
                 onClick={openSearch}
               >
@@ -215,9 +222,9 @@ const Navbar = () => {
                 )}
               </Link>
 
-              {/* User Icon with Dropdown */}
               <div className="relative" ref={userDropdownRef}>
                 <button
+                  type="button"
                   onClick={handleUserIconClick}
                   className={`flex items-center space-x-2 p-2 transition-colors ${
                     isUserDropdownOpen
@@ -227,38 +234,38 @@ const Navbar = () => {
                 >
                   <UserIcon className="h-6 w-6" />
                   {isLoggedIn && username && (
-                    <span className="hidden md:inline text-sm font-medium max-w-[100px] truncate">
+                    <span className="hidden max-w-[100px] truncate text-sm font-medium md:inline">
                       {username}
                     </span>
                   )}
                 </button>
 
-                {/* Dropdown Menu - Only show when logged in */}
                 {isLoggedIn && isUserDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                  <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
                       <Link
                         to="/profile"
                         onClick={() => setIsUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
                       >
-                        <UserIcon className="h-5 w-5 mr-3 text-viridian-600" />
+                        <UserIcon className="mr-3 h-5 w-5 text-viridian-600" />
                         บัญชีของฉัน
                       </Link>
                       <Link
                         to="/orders"
                         onClick={() => setIsUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
                       >
-                        <ShoppingCartIcon className="h-5 w-5 mr-3 text-viridian-600" />
+                        <ShoppingCartIcon className="mr-3 h-5 w-5 text-viridian-600" />
                         การซื้อของฉัน
                       </Link>
                       <hr className="my-1 border-gray-200" />
                       <button
+                        type="button"
                         onClick={handleLogout}
-                        className="flex w-full items-center px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        className="flex w-full items-center px-4 py-3 text-sm text-red-600 transition-colors hover:bg-red-50"
                       >
-                        <LogoutIcon className="h-5 w-5 mr-3" />
+                        <LogoutIcon className="mr-3 h-5 w-5" />
                         ออกจากระบบ
                       </button>
                     </div>
@@ -267,6 +274,7 @@ const Navbar = () => {
               </div>
 
               <button
+                type="button"
                 className="p-2 text-emerald-50 transition-colors hover:text-emerald-200 lg:hidden"
                 onClick={toggleMenu}
               >
@@ -325,11 +333,12 @@ const Navbar = () => {
 
               {isAdmin && (
                 <button
+                  type="button"
                   onClick={() => {
                     setIsMenuOpen(false)
                     navigate('/store-manager/dashboard')
                   }}
-                  className="mt-2 w-full rounded-md bg-emerald-600 py-2 text-center text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+                  className="mt-2 w-full rounded-md bg-emerald-600 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
                 >
                   จัดการร้าน
                 </button>
@@ -342,4 +351,4 @@ const Navbar = () => {
   )
 }
 
-export default Navbar;
+export default Navbar
