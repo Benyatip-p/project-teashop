@@ -1,67 +1,76 @@
-import React, { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import ProductCard from '../AdminDashboard/AdminProductCard';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import { ChevronDownIcon } from '@heroicons/react/outline';
-import { Link } from 'react-router-dom';
+// src/pages/AdminDashboard/AdminProductPage.jsx
+import React, { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import { ChevronDownIcon } from "@heroicons/react/outline";
+import api from "../../api/api";
+import ProductCard from "../AdminDashboard/AdminProductCard";
+import LoadingSpinner from "../../components/LoadingSpinner";
 
 const AdminProductpage = () => {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [sortBy, setSortBy] = useState('newest');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [sortBy, setSortBy] = useState("newest");
+  const [selectedCategory, setSelectedCategory] = useState("all");
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+
   const productsPerPage = 12;
-
-  const [hoverCategory, setHoverCategory] = useState(null);
-  const [openDropdown, setOpenDropdown] = useState(false);
   const [openSort, setOpenSort] = useState(false);
-
-  const categories = {
-    'TEA': ['Green Tea', 'White Tea', 'Oolong Tea', 'Black Tea', 'Red Tea', 'Flower Tea', 'Matcha'],
-    'TEA Pot': ['Small Pot', 'Medium Pot', 'Large Pot'],
-    'TEA Accessories': ['Spoons', 'Filters', 'Cups']
-  };
-
-  const dropdownRef = useRef(null);
   const sortRef = useRef(null);
 
-  // ปิด dropdown เมื่อคลิกรอบนอก
+  const categories = {
+    TEA: [
+      "Green Tea",
+      "White Tea",
+      "Oolong Tea",
+      "Black Tea",
+      "Red Tea",
+      "Flower Tea",
+      "Matcha",
+    ],
+    "TEA Pot": ["Small Pot", "Medium Pot", "Large Pot"],
+    "TEA Accessories": ["Spoons", "Filters", "Cups"],
+  };
+
+  const sortOptions = [
+    { value: "newest", label: "ใหม่ล่าสุด" },
+    { value: "price-low", label: "ราคาต่ำ-สูง" },
+    { value: "price-high", label: "ราคาสูง-ต่ำ" },
+    { value: "popular", label: "ยอดนิยม" },
+  ];
+
+  const categorySidebar = [
+    { key: "all", label: "รายการสินค้าทั้งหมด", type: "all" },
+    { key: "TEA", label: "ชา" },
+    { key: "TEA Pot", label: "กาชงชา" },
+    { key: "TEA Accessories", label: "อุปกรณ์ชา" },
+  ];
+
   useEffect(() => {
     const handler = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpenDropdown(false);
-        setHoverCategory(null);
-      }
       if (sortRef.current && !sortRef.current.contains(e.target)) {
         setOpenSort(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // ดึงสินค้าจาก backend
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const res = await axios.get('/api/v1/products', {
-          headers: {
-            'Authorization': 'Bearer ' + localStorage.getItem('token'),
-          },
-        });
-
-        // backend ส่ง { products: [...] } → ต้องใช้ res.data.products
+        const res = await api.get("/products");
         const productsArray = res.data.products || [];
 
-        // map field ให้ตรงกับ AdminProductCard
-        const normalized = productsArray.map(p => ({
+        const normalized = productsArray.map((p) => ({
           ...p,
           title: p.name,
-          coverImage: p.image_url || p.coverImage || 'https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024', // <-- default image
-          category: p.category_name || 'Uncategorized',
+          coverImage:
+            p.image_url ||
+            p.coverImage ||
+            "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024",
+          category: p.category_name || "Uncategorized",
           originalPrice: p.price,
           discount: null,
           rating: 5,
@@ -72,7 +81,7 @@ const AdminProductpage = () => {
         setProducts(normalized);
         setFilteredProducts(normalized);
       } catch (err) {
-        console.error('เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า:', err);
+        console.error("เกิดข้อผิดพลาดในการดึงข้อมูลสินค้า:", err);
       } finally {
         setLoading(false);
       }
@@ -80,225 +89,279 @@ const AdminProductpage = () => {
     fetchProducts();
   }, []);
 
-  const handleCategoryFilter = (category) => {
+  const applyCategoryFilter = (category) => {
     setSelectedCategory(category);
-    if (category === 'all') {
+
+    if (category === "all") {
       setFilteredProducts(products);
     } else if (categories[category]) {
-      const subCats = categories[category].map(c => c.toLowerCase());
-      setFilteredProducts(products.filter(p => subCats.includes(p.category.toLowerCase())));
+      const subCats = categories[category].map((c) => c.toLowerCase());
+      setFilteredProducts(
+        products.filter((p) =>
+          subCats.includes((p.category || "").toLowerCase())
+        )
+      );
     } else {
-      setFilteredProducts(products.filter(p => p.category.toLowerCase() === category.toLowerCase()));
+      setFilteredProducts(
+        products.filter(
+          (p) => (p.category || "").toLowerCase() === category.toLowerCase()
+        )
+      );
     }
+
     setCurrentPage(1);
   };
 
   const handleSort = (sortValue) => {
     setSortBy(sortValue);
     const sorted = [...filteredProducts];
+
     switch (sortValue) {
-      case 'price-low':
-        sorted.sort((a, b) => a.price - b.price);
+      case "price-low":
+        sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
         break;
-      case 'price-high':
-        sorted.sort((a, b) => b.price - a.price);
+      case "price-high":
+        sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
         break;
-      case 'popular':
-        sorted.sort((a, b) => b.reviews - a.reviews);
+      case "popular":
+        sorted.sort((a, b) => (b.reviews || 0) - (a.reviews || 0));
         break;
-      case 'newest':
+      case "newest":
       default:
-        sorted.sort((a, b) => b.id - a.id);
+        sorted.sort((a, b) => (b.id || 0) - (a.id || 0));
     }
+
     setFilteredProducts(sorted);
   };
 
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-  const currentProducts = filteredProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+  const currentProducts = filteredProducts.slice(
+    indexOfFirstProduct,
+    indexOfLastProduct
+  );
   const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
+
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const handleClearFilters = () => {
-    setSelectedCategory('all');
-    setSortBy('newest');
+    setSelectedCategory("all");
+    setSortBy("newest");
     setFilteredProducts(products);
     setCurrentPage(1);
   };
 
+  const currentSortLabel =
+    sortOptions.find((opt) => opt.value === sortBy)?.label || "ใหม่ล่าสุด";
+
   if (loading) return <LoadingSpinner />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-r from-viridian-700 to-viridian-500 py-8">
-      <div className="container mx-auto px-4">
-        {/* Header + Add Product + Back Button */}
-        <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8 lg:py-8">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-4">
             <Link
               to="/store-manager/dashboard"
-              className="inline-flex items-center justify-center px-3 py-2 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-lg shadow-sm transition duration-200"
+              className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
-              ← ย้อนกลับ
+              ← กลับไปหน้าแดชบอร์ด
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900">จัดการสินค้าทั้งหมด</h1>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900">
+                จัดการสินค้าทั้งหมด
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                ดู แก้ไข และจัดการรายการสินค้าทั้งหมดในร้าน GOODTEA
+              </p>
+            </div>
           </div>
           <Link
             to="/store-manager/add-product"
-            className="inline-flex items-center justify-center px-7 py-3 bg-gradient-to-r from-green-600 to-viridian-700 text-white font-semibold text-sm md:text-base rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition transform duration-200 ease-in-out"
+            className="inline-flex items-center justify-center rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 hover:shadow-lg transition"
           >
             เพิ่มสินค้า
           </Link>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4 justify-between items-end">
-            <div className="flex items-end gap-4 flex-wrap">
-              {/* Category Dropdown */}
-              <div className="relative" ref={dropdownRef}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">หมวดหมู่</label>
-                <button
-                  onClick={() => setOpenDropdown(!openDropdown)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 bg-white hover:bg-gray-100 flex items-center justify-between w-[260px]"
-                >
-                  {selectedCategory === 'all' ? "รายการสินค้าทั้งหมด" : selectedCategory}
-                  <ChevronDownIcon className="w-5 h-5 text-gray-500" />
-                </button>
-                {openDropdown && (
-                  <div className="absolute mt-2 bg-white shadow-lg rounded-lg p-3 w-[260px] z-50">
-                    <p className="p-2 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => { handleCategoryFilter("all"); setOpenDropdown(false); setHoverCategory(null); }}
-                    >
-                      รายการสินค้าทั้งหมด
-                    </p>
-                    {Object.keys(categories).map(cat => (
-                      <div key={cat}
-                        className="p-2 hover:bg-gray-100 cursor-pointer relative"
-                        onMouseEnter={() => setHoverCategory(cat)}
-                        onMouseLeave={() => setHoverCategory(null)}
-                        onClick={() => { handleCategoryFilter(cat); setOpenDropdown(false); }}
+        <div className="flex flex-col gap-8 lg:flex-row">
+          <aside className="w-full lg:w-64 xl:w-72">
+            <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+              <h2 className="text-base font-semibold text-slate-900">
+                หมวดหมู่
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                เลือกหมวดหมู่เพื่อกรองรายการสินค้า
+              </p>
+
+              <div className="mt-4 space-y-4 text-sm">
+                {categorySidebar.map((group) => (
+                  <div key={group.key}>
+                    {group.type === "all" ? (
+                      <button
+                        onClick={() => applyCategoryFilter("all")}
+                        className={`w-full rounded-xl px-3 py-2 text-left font-medium ${
+                          selectedCategory === "all"
+                            ? "bg-emerald-600 text-white"
+                            : "bg-slate-50 text-slate-700 hover:bg-slate-100"
+                        }`}
                       >
-                        {cat}
-                        {hoverCategory === cat && (
-                          <div className="absolute left-full top-0 bg-gray-100 shadow-lg rounded-lg p-2 min-w-[150px] z-50">
-                            {categories[cat].map((sub, idx) => (
-                              <div key={idx}
-                                className="p-2 hover:bg-gray-200 cursor-pointer whitespace-nowrap"
-                                onClick={e => { e.stopPropagation(); handleCategoryFilter(sub); setOpenDropdown(false); }}
-                              >
-                                {sub}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                        {group.label}
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => applyCategoryFilter(group.key)}
+                          className={`w-full rounded-lg px-2 py-1 text-left text-xs font-semibold uppercase tracking-wide ${
+                            selectedCategory === group.key
+                              ? "text-emerald-700"
+                              : "text-slate-500 hover:text-emerald-700"
+                          }`}
+                        >
+                          {group.label}
+                        </button>
+                        <div className="mt-1 space-y-1">
+                          {(categories[group.key] || []).map((sub) => (
+                            <button
+                              key={sub}
+                              onClick={() => applyCategoryFilter(sub)}
+                              className={`w-full rounded-lg px-3 py-1.5 text-left ${
+                                selectedCategory === sub
+                                  ? "bg-emerald-50 text-emerald-700 font-medium"
+                                  : "text-slate-700 hover:bg-slate-50"
+                              }`}
+                            >
+                              {sub}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
 
-              {/* Sort Dropdown */}
-              <div className="relative" ref={sortRef}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">จัดเรียงตาม</label>
-                <button
-                  onClick={() => setOpenSort(!openSort)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-600 bg-white hover:bg-gray-100 flex items-center justify-between w-[260px]"
-                >
-                  {sortBy === "newest" ? "ใหม่ล่าสุด"
-                    : sortBy === "price-low" ? "ราคาต่ำ-สูง"
-                      : sortBy === "price-high" ? "ราคาสูง-ต่ำ"
-                        : "ยอดนิยม"}
-                  <ChevronDownIcon className="w-5 h-5 text-gray-500" />
-                </button>
-                {openSort && (
-                  <div className="absolute mt-2 bg-white shadow-lg rounded-lg p-3 w-64 z-50">
-                    {["newest", "price-low", "price-high", "popular"].map(option => (
-                      <div key={option}
-                        className="p-2 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => { handleSort(option); setOpenSort(false); }}
-                      >
-                        {option === "newest" ? "ใหม่ล่าสุด"
-                          : option === "price-low" ? "ราคาต่ำ-สูง"
-                            : option === "price-high" ? "ราคาสูง-ต่ำ"
-                              : "ยอดนิยม"}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Clear Filters */}
               <button
                 onClick={handleClearFilters}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition duration-200"
+                className="mt-6 w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100"
               >
-                ล้าง
+                รีเซ็ตฟิลเตอร์
               </button>
             </div>
+          </aside>
 
-            <div className="text-sm text-gray-600 mt-2 lg:mt-0">
-              พบสินค้า {filteredProducts.length} ชิ้น{selectedCategory !== 'all' && ` ในหมวด ${selectedCategory}`}
-            </div>
-          </div>
-        </div>
+          <section className="flex-1">
+            <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-sm text-slate-500">
+                พบสินค้า{" "}
+                <span className="font-semibold text-slate-800">
+                  {filteredProducts.length}
+                </span>{" "}
+                ชิ้น
+                {selectedCategory !== "all" && (
+                  <span className="ml-1">
+                    ในหมวด{" "}
+                    <span className="font-medium text-slate-800">
+                      {selectedCategory}
+                    </span>
+                  </span>
+                )}
+              </div>
 
-        {/* Products Grid */}
-        {currentProducts.length > 0 ? (
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-            {currentProducts.map(product => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">ไม่พบสินค้าที่ค้นหา</p>
-          </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="mt-12 flex justify-center">
-            <nav className="flex items-center space-x-2">
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                ก่อนหน้า
-              </button>
-              {[...Array(Math.min(5, totalPages))].map((_, index) => {
-                let pageNumber = index + 1;
-                if (totalPages > 5) {
-                  if (currentPage > 3) pageNumber = currentPage - 2 + index;
-                  if (currentPage > totalPages - 3) pageNumber = totalPages - 4 + index;
-                }
-                if (pageNumber > 0 && pageNumber <= totalPages) {
-                  return (
-                    <button
-                      key={pageNumber}
-                      onClick={() => paginate(pageNumber)}
-                      className={`px-4 py-2 rounded-lg transition-colors duration-200
-                                 ${currentPage === pageNumber
-                          ? "bg-gradient-to-r from-green-600 to-viridian-700 text-white shadow-md"
-                          : "border border-gray-300 hover:bg-green-50 text-gray-700"
+              <div className="relative w-full max-w-xs" ref={sortRef}>
+                <button
+                  onClick={() => setOpenSort(!openSort)}
+                  className="flex w-full items-center justify-between rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  <span>จัดเรียงตาม: {currentSortLabel}</span>
+                  <ChevronDownIcon className="h-4 w-4 text-slate-400" />
+                </button>
+                {openSort && (
+                  <div className="absolute right-0 z-50 mt-2 w-full rounded-xl border border-slate-100 bg-white p-2 text-sm shadow-lg">
+                    {sortOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          handleSort(option.value);
+                          setOpenSort(false);
+                        }}
+                        className={`flex w-full items-center rounded-lg px-3 py-2 text-left hover:bg-slate-50 ${
+                          sortBy === option.value
+                            ? "font-medium text-emerald-700"
+                            : "text-slate-700"
                         }`}
-                    >
-                      {pageNumber}
-                    </button>
-                  );
-                }
-                return null;
-              })}
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-green-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                ถัดไป
-              </button>
-            </nav>
-          </div>
-        )}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {currentProducts.length > 0 ? (
+              <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
+                {currentProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            ) : (
+              <div className="py-16 text-center">
+                <p className="text-base text-slate-500">
+                  ไม่พบสินค้าที่ค้นหา
+                </p>
+              </div>
+            )}
+
+            {totalPages > 1 && (
+              <div className="mt-10 flex justify-center">
+                <nav className="flex items-center gap-2 text-sm">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="rounded-full border border-slate-200 px-4 py-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ก่อนหน้า
+                  </button>
+                  {[...Array(Math.min(5, totalPages))].map((_, index) => {
+                    let pageNumber = index + 1;
+                    if (totalPages > 5) {
+                      if (currentPage > 3) pageNumber = currentPage - 2 + index;
+                      if (currentPage > totalPages - 3) {
+                        pageNumber = totalPages - 4 + index;
+                      }
+                    }
+                    if (pageNumber > 0 && pageNumber <= totalPages) {
+                      const active = currentPage === pageNumber;
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => paginate(pageNumber)}
+                          className={`rounded-full px-3 py-2 transition-colors ${
+                            active
+                              ? "bg-emerald-600 text-white shadow-md"
+                              : "border border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    }
+                    return null;
+                  })}
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="rounded-full border border-slate-200 px-4 py-2 text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ถัดไป
+                  </button>
+                </nav>
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

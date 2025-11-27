@@ -63,14 +63,12 @@ func main() {
 		api.GET("/products", handlers.GetProductsHandler)
 		api.GET("/products/:id/reviews", handlers.GetProductReviewsHandler)
 		api.GET("/products/:id", handlers.GetProductByIDHandler)
-		api.GET("/products/featured", handlers.GetFeaturedProductsHandler)
 		api.GET("/categories", handlers.GetCategoriesHandler)
 		api.GET("/categories/:id/products", handlers.GetProductsByCategoryHandler)
-		api.GET("/categories/featured", handlers.GetFeaturedCategoriesHandler)
+		api.GET("/products/top-selling", handlers.GetTopSellingProductsHandler)
 		api.GET("/variants/product/:product_id", handlers.GetVariantsByProductHandler)
-		api.POST("/variants/product/:product_id", handlers.CreateVariantHandler)
-		api.PUT("/variants/:id", handlers.UpdateVariantHandler)
-		api.DELETE("/variants/:id", handlers.DeleteVariantHandler)
+		api.GET("/categories/featured", handlers.GetFeaturedCategoriesHandler)
+		api.GET("/products/featured", handlers.GetFeaturedProductsHandler)
 
 		// Protected endpoints
 		protected := api.Group("/")
@@ -87,19 +85,20 @@ func main() {
 			protected.GET("/orders", handlers.GetUserOrdersHandler)
 			protected.GET("/orders/:id", handlers.GetOrderDetailsHandler)
 			protected.GET("/orders/status", handlers.GetOrdersByStatusHandler)
-			protected.GET("/spending", handlers.GetUserSpendingHandler)
-			protected.GET("/admin/spending", handlers.GetAllUsersSpendingHandler)
-			protected.GET("/admin/sales/daily", handlers.GetDailySalesHandler)
-			protected.GET("/admin/sales/monthly", handlers.GetMonthlySalesHandler)
-			protected.GET("/admin/sales/yearly", handlers.GetYearlySalesHandler)
-			protected.GET("/admin/products/top-selling", handlers.GetTopSellingProductsHandler)
-			protected.GET("/admin/variants/low-stock", handlers.GetLowStockVariantsHandler)
-			protected.GET("/users/stats", handlers.GetUserStatsHandler)
-			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler)
+			protected.GET("/admin/spending", handlers.GetAllUsersSpendingHandler) // (admin only)
+			protected.GET("/admin/sales/daily", handlers.GetDailySalesHandler) // (admin only)
+			protected.GET("/admin/sales/monthly", handlers.GetMonthlySalesHandler) // (admin only)
+			protected.GET("/admin/sales/yearly", handlers.GetYearlySalesHandler) // (admin only)
+			protected.GET("/admin/variants/low-stock", handlers.GetLowStockVariantsHandler) // (admin only)
+			protected.GET("/admin/users/stats", handlers.GetUserStatsHandler) // (admin only)
+			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler) 
 			protected.POST("/orders/:id/cancel", handlers.CancelOrderHandler)
-			protected.DELETE("/products/:id", handlers.DeleteProductHandler) // ลบสินค้า
-			protected.POST("/products", handlers.CreateProductHandler)    // เพิ่มสินค้า
-			protected.PUT("/products/:id", handlers.UpdateProductHandler) // แก้ไขสินค้า
+			protected.DELETE("/products/:id", handlers.DeleteProductHandler) // delete (admin only)
+			protected.POST("/products", handlers.CreateProductHandler)    // add (admin only)
+			protected.PUT("/products/:id", handlers.UpdateProductHandler) // edit (admin only)
+			protected.POST("/variants/product/:product_id", handlers.CreateVariantHandler) // admin only
+			protected.PUT("/variants/:id", handlers.UpdateVariantHandler) // admin only
+			protected.DELETE("/variants/:id", handlers.DeleteVariantHandler) // admin only
 		}
 	}
 

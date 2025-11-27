@@ -97,22 +97,23 @@ func GetMyProfileHandler(c *gin.Context) {
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/products [get]
 func GetProductsHandler(c *gin.Context) {
-	sort := c.Query("sort")
-	maxPriceStr := c.Query("max_price")
+    sort := c.Query("sort")
+    maxPriceStr := c.Query("max_price")
+    search := c.Query("search")
 
-	var maxPrice *float64
-	if maxPriceStr != "" {
-		if price, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
-			maxPrice = &price
-		}
-	}
+    var maxPrice *float64
+    if maxPriceStr != "" {
+        if price, err := strconv.ParseFloat(maxPriceStr, 64); err == nil {
+            maxPrice = &price
+        }
+    }
 
-	products, err := database.GetProducts(sort, maxPrice)
-	if err != nil {
-		log.Printf("Error getting products: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
+    products, err := database.GetProducts(sort, maxPrice, search)
+    if err != nil {
+        log.Printf("Error getting products: %v", err)
+        c.JSON(500, gin.H{"error": "internal server error"})
+        return
+    }
 
 	// Add average rating to each product
 	type ProductWithRating struct {
@@ -142,7 +143,9 @@ func GetProductsHandler(c *gin.Context) {
 // @Tags categories
 // @Accept json
 // @Produce json
+// @Security BearerAuth
 // @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/categories/featured [get]
 func GetFeaturedCategoriesHandler(c *gin.Context) {
@@ -163,8 +166,10 @@ func GetFeaturedCategoriesHandler(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param limit query int false "Number of products to return (default 6)"
+// @Security BearerAuth
 // @Success 200 {object} object
 // @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/products/featured [get]
 func GetFeaturedProductsHandler(c *gin.Context) {
@@ -543,34 +548,6 @@ func GetOrderDetailsHandler(c *gin.Context) {
 	c.JSON(200, response)
 }
 
-// GetUserSpendingHandler godoc
-// @Summary Get user total spending
-// @Description Get the total amount spent on completed orders for the authenticated user
-// @Tags orders
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} object
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/spending [get]
-func GetUserSpendingHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(401, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	total, err := database.GetTotalSpending(userID.(int))
-	if err != nil {
-		log.Printf("Error getting total spending: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
-
-	c.JSON(200, gin.H{"total_spending": total})
-}
-
 // GetAllUsersSpendingHandler godoc
 // @Summary Get spending of all users (Admin only)
 // @Description Get the amount spent on completed orders by each user
@@ -852,43 +829,15 @@ func GetYearlySalesHandler(c *gin.Context) {
 }
 
 // GetTopSellingProductsHandler godoc
-// @Summary Get top 5 selling products (Admin only)
+// @Summary Get top 5 selling products
 // @Description Get the top 5 best-selling products based on total quantity sold from completed orders
-// @Tags admin
+// @Tags products
 // @Accept json
 // @Produce json
-// @Security BearerAuth
 // @Success 200 {object} object
-// @Failure 401 {object} models.ErrorResponse
-// @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/admin/products/top-selling [get]
+// @Router /api/v1/products/top-selling [get]
 func GetTopSellingProductsHandler(c *gin.Context) {
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(401, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	// Check if admin
-	roles, err := database.GetUserRoles(userID.(int))
-	if err != nil {
-		log.Printf("Error getting roles: %v", err)
-		c.JSON(500, gin.H{"error": "internal server error"})
-		return
-	}
-	isAdmin := false
-	for _, role := range roles {
-		if role == "admin" {
-			isAdmin = true
-			break
-		}
-	}
-	if !isAdmin {
-		c.JSON(403, gin.H{"error": "admin access required"})
-		return
-	}
-
 	products, err := database.GetTopSellingProducts()
 	if err != nil {
 		log.Printf("Error getting top selling products: %v", err)
@@ -958,7 +907,7 @@ func GetLowStockVariantsHandler(c *gin.Context) {
 // @Failure 401 {object} models.ErrorResponse
 // @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/users/stats [get]
+// @Router /api/v1/admin/users/stats [get]
 func GetUserStatsHandler(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -1358,17 +1307,45 @@ func GetVariantsByProductHandler(c *gin.Context) {
 
 // CreateVariantHandler godoc
 // @Summary Create a new variant
-// @Description Add a new variant for a product
+// @Description Add a new variant for a product (Admin only)
 // @Tags variants
 // @Accept json
 // @Produce json
 // @Param product_id path int true "Product ID"
 // @Param request body models.CreateVariantRequest true "Variant data"
+// @Security BearerAuth
 // @Success 201 {object} models.ProductVariant
 // @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/variants/product/{product_id} [post]
 func CreateVariantHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
 	productIDStr := c.Param("product_id")
 	productID, err := strconv.Atoi(productIDStr)
 	if err != nil {
@@ -1403,17 +1380,45 @@ func CreateVariantHandler(c *gin.Context) {
 
 // UpdateVariantHandler godoc
 // @Summary Update a variant
-// @Description Update an existing variant by ID
+// @Description Update an existing variant by ID (Admin only)
 // @Tags variants
 // @Accept json
 // @Produce json
 // @Param id path int true "Variant ID"
 // @Param request body models.UpdateVariantRequest true "Updated variant data"
+// @Security BearerAuth
 // @Success 200 {object} object
 // @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/variants/{id} [put]
 func UpdateVariantHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
 	variantIDStr := c.Param("id")
 	variantID, err := strconv.Atoi(variantIDStr)
 	if err != nil {
@@ -1439,17 +1444,45 @@ func UpdateVariantHandler(c *gin.Context) {
 
 // DeleteVariantHandler godoc
 // @Summary Delete a variant
-// @Description Delete a variant by ID
+// @Description Delete a variant by ID (Admin only)
 // @Tags variants
 // @Accept json
 // @Produce json
 // @Param id path int true "Variant ID"
+// @Security BearerAuth
 // @Success 200 {object} object
 // @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
 // @Router /api/v1/variants/{id} [delete]
 func DeleteVariantHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
 	variantIDStr := c.Param("id")
 	variantID, err := strconv.Atoi(variantIDStr)
 	if err != nil {
