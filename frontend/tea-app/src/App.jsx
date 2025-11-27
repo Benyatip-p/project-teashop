@@ -25,7 +25,7 @@ import Paymentpage from "./pages/Paymentpage";
 import CategoryProductspage from "./pages/CategoryProductspage";
 
 const PublicLayout = ({ children }) => (
-  <div className="flex flex-col min-h-screen bg-gray-50">
+  <div className="flex min-h-screen flex-col bg-gray-50">
     <Navbar />
     <main className="flex-grow">{children}</main>
     <Footer />
@@ -33,12 +33,10 @@ const PublicLayout = ({ children }) => (
 );
 
 const AuthLayout = ({ children }) => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  <div className="flex min-h-screen items-center justify-center bg-gray-50">
     {children}
   </div>
 );
-
-const AdminLayout = ({ children }) => <>{children}</>;
 
 function App() {
   return (
@@ -67,39 +65,34 @@ function App() {
             path="/admin/dashboard"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout>
-                  <AdminDashboardPage />
-                </AdminLayout>
+                <AdminDashboardPage />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/admin/edit-tea/:id"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout>
-                  <EditTeaPage />
-                </AdminLayout>
+                <EditTeaPage />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/admin/delete-tea"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout>
-                  <DeleteTeaPage />
-                </AdminLayout>
+                <DeleteTeaPage />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/admin/products"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout>
-                  <AdminProductPage />
-                </AdminLayout>
+                <AdminProductPage />
               </ProtectedRoute>
             }
           />
@@ -112,6 +105,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/products"
             element={
@@ -120,6 +114,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/products/:id"
             element={
@@ -128,6 +123,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/about"
             element={
@@ -136,6 +132,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/contact"
             element={
@@ -144,6 +141,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/favorites"
             element={
@@ -154,6 +152,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/cart"
             element={
@@ -164,6 +163,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/profile"
             element={
@@ -174,6 +174,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/payment"
             element={
@@ -184,6 +185,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/category/:categoryName"
             element={

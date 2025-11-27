@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/outline";
 import { jwtDecode } from "jwt-decode";
 
-const getRoleFromToken = token => {
+const getRoleFromToken = (token) => {
   if (!token) return null;
 
   try {
@@ -39,24 +39,21 @@ const LoginPage = () => {
   const redirectTo = location.state?.redirectTo || null;
   const redirectState = location.state?.checkoutData || null;
 
-  const redirectAfterLogin = role => {
-    if (!role) {
-      localStorage.removeItem("access_token");
-      setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
-      return;
-    }
+  const redirectByRole = useCallback(
+    (role) => {
+      if (redirectTo) {
+        navigate(redirectTo, { replace: true, state: redirectState });
+        return;
+      }
 
-    if (redirectTo) {
-      navigate(redirectTo, { replace: true, state: redirectState });
-      return;
-    }
-
-    if (role === "admin") {
-      navigate("/admin/dashboard", { replace: true });
-    } else {
-      navigate("/profile", { replace: true });
-    }
-  };
+      if (role === "admin") {
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        navigate("/profile", { replace: true });
+      }
+    },
+    [navigate, redirectTo, redirectState]
+  );
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
@@ -68,10 +65,10 @@ const LoginPage = () => {
       return;
     }
 
-    redirectAfterLogin(role);
-  }, [redirectTo, redirectState]);
+    redirectByRole(role);
+  }, [redirectByRole]);
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
@@ -86,7 +83,13 @@ const LoginPage = () => {
       localStorage.setItem("access_token", token);
 
       const role = getRoleFromToken(token);
-      redirectAfterLogin(role);
+      if (!role) {
+        localStorage.removeItem("access_token");
+        setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
+        return;
+      }
+
+      redirectByRole(role);
     } catch (err) {
       const msg =
         err.response?.data?.message ||
@@ -171,7 +174,7 @@ const LoginPage = () => {
                   type="text"
                   autoComplete="username"
                   value={username}
-                  onChange={e => setUsername(e.target.value)}
+                  onChange={(e) => setUsername(e.target.value)}
                   placeholder="กรอกชื่อผู้ใช้ของคุณ"
                   required
                   className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-10 pr-4 text-sm focus:border-viridian-500 focus:outline-none focus:ring-2 focus:ring-viridian-500"
@@ -196,14 +199,14 @@ const LoginPage = () => {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="กรอกรหัสผ่าน"
                   required
                   className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-10 pr-10 text-sm focus:border-viridian-500 focus:outline-none focus:ring-2 focus:ring-viridian-500"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(prev => !prev)}
+                  onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3"
                 >
                   {showPassword ? (
