@@ -20,14 +20,14 @@ const Paymentpage = () => {
   const cartTotal = location.state?.total || 0;
 
   const [shipping, setShipping] = useState({
-    name: "",
-    phone: "",
-    address: "",
-    province: "",
-    district: "",
-    subDistrict: "",
-    zipcode: "",
-  });
+  name: "",
+  phone: "",
+  address: "",
+  province: "",
+  district: "",
+  subDistrict: "",
+  zipcode: "",
+});
 
   const [errors, setErrors] = useState({});
   const [provinces, setProvinces] = useState([]);
@@ -44,6 +44,47 @@ const Paymentpage = () => {
 
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+  const fetchDefaultAddress = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No token, cannot fetch default address');
+        return;
+      }
+
+      const res = await fetch('http://localhost:8080/api/v1/addresses/default', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        console.error('Failed to fetch default address', res.status);
+        return;
+      }
+
+      const addr = await res.json();
+
+      // map field จาก API → state shipping
+      setShipping(prev => ({
+        ...prev,
+        name: addr.recipient_name || prev.name || "",
+        phone: addr.phone_number || prev.phone || "",
+        address: addr.address || prev.address || "",
+        province: addr.province || prev.province || "",
+        district: prev.district || "",     // API ยังไม่มี ต้องให้ user กรอกเอง
+        subDistrict: prev.subDistrict || "", // เช่นกัน
+        zipcode: addr.postal_code || prev.zipcode || "",
+      }));
+    } catch (err) {
+      console.error('โหลดที่อยู่เริ่มต้นไม่สำเร็จ:', err);
+    }
+  };
+
+  fetchDefaultAddress();
+}, []);
 
   // โหลดรายการจังหวัดจากไฟล์ / API
   useEffect(() => {
@@ -397,7 +438,7 @@ const Paymentpage = () => {
     <div className="container mx-auto px-4 py-8">
       <ToastContainer />
 
-      <h1 className="text-4xl font-semibold mb-6">หน้าชำระเงิน</h1>
+      <h1 className="text-4xl font-semibold mb-6">ชำระเงิน</h1>
 
       <button
         type="button"
@@ -803,10 +844,10 @@ const Paymentpage = () => {
 
             <button
               type="submit"
-              className={`w-full mt-4 text-white py-2 rounded ${
+              className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-colors ${
                 triedSubmit && !paymentMethod
-                  ? "bg-green-300 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700"
+                  ? 'cursor-not-allowed bg-gray-300'
+                  : 'bg-[#0b2f27] hover:bg-[#13493d]'
               } ${isProcessing ? "opacity-70 cursor-wait" : ""}`}
               disabled={(triedSubmit && !paymentMethod) || isProcessing}
             >
