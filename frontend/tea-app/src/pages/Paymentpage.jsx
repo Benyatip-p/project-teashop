@@ -48,44 +48,33 @@ const Paymentpage = () => {
   useEffect(() => {
   const fetchDefaultAddress = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.warn('No token, cannot fetch default address');
-        return;
-      }
-
-      const res = await fetch('http://localhost:8080/api/v1/addresses/default', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const res = await fetch("addresses/default");
 
       if (!res.ok) {
-        console.error('Failed to fetch default address', res.status);
+        console.error("Failed to fetch default address", res.status);
         return;
       }
 
       const addr = await res.json();
+      console.log("default address from API:", addr);
 
-      // map field จาก API → state shipping
-      setShipping(prev => ({
+      setShipping((prev) => ({
         ...prev,
         name: addr.recipient_name || prev.name || "",
         phone: addr.phone_number || prev.phone || "",
         address: addr.address || prev.address || "",
         province: addr.province || prev.province || "",
-        district: prev.district || "",     // API ยังไม่มี ต้องให้ user กรอกเอง
-        subDistrict: prev.subDistrict || "", // เช่นกัน
+        district: prev.district || "",
+        subDistrict: prev.subDistrict || "",
         zipcode: addr.postal_code || prev.zipcode || "",
       }));
     } catch (err) {
-      console.error('โหลดที่อยู่เริ่มต้นไม่สำเร็จ:', err);
+      console.error("โหลดที่อยู่เริ่มต้นไม่สำเร็จ:", err);
     }
   };
 
   fetchDefaultAddress();
 }, []);
-
   // โหลดรายการจังหวัดจากไฟล์ / API
   useEffect(() => {
     const fetchProvinces = async () => {
