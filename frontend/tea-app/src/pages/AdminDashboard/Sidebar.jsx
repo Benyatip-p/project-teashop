@@ -13,9 +13,9 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, handleLogout }) => {
   const location = useLocation();
 
   const navItems = [
-    { name: "Dashboard", icon: HomeIcon, path: "/store-manager/dashboard" },
+    { name: "Dashboard", icon: HomeIcon, path: "/admin/dashboard" },
     { name: "รายงาน", icon: ChartBarIcon, path: "/reports" },
-    { name: "จัดการสินค้า", icon: CollectionIcon, path: "/store-manager/products" },
+    { name: "จัดการสินค้า", icon: CollectionIcon, path: "/admin/products" },
   ];
 
   const isActive = (path) => location.pathname.startsWith(path);

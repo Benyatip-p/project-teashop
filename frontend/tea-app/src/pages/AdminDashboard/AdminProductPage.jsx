@@ -162,7 +162,7 @@ const AdminProductpage = () => {
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap items-center gap-4">
             <Link
-              to="/store-manager/dashboard"
+              to="/admin/dashboard"
               className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
             >
               ← กลับไปหน้าแดชบอร์ด

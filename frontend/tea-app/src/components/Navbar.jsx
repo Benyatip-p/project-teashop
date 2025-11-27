@@ -67,20 +67,20 @@ const Navbar = () => {
   let username = ''
 
   if (isBrowser) {
-    if (token) {
     const token = localStorage.getItem('access_token')
+    if (token) {
       try {
         const decoded = jwtDecode(token)
         const roles = Array.isArray(decoded.roles) ? decoded.roles : []
         isLoggedIn = true
         isAdmin =
-      } catch {
-      }
           roles.includes('admin') || roles.includes('store_manager')
         username = decoded.username || ''
+      } catch (e) {
         isLoggedIn = false
         isAdmin = false
         username = ''
+      }
     }
   }
 
@@ -180,8 +180,8 @@ const Navbar = () => {
               {isAdmin && (
                 <button
                   type="button"
+                  onClick={() => navigate('/admin/dashboard')}
                   className="hidden items-center rounded-full border border-emerald-300/70 bg-emerald-100/5 px-3 py-1 text-xs font-semibold text-emerald-50 transition-colors hover:bg-emerald-100/15 hover:text-emerald-100 md:inline-flex"
-                  onClick={() => navigate('/store-manager/dashboard')}
                 >
                   จัดการร้าน
                 </button>
@@ -336,7 +336,7 @@ const Navbar = () => {
                   type="button"
                   onClick={() => {
                     setIsMenuOpen(false)
-                    navigate('/store-manager/dashboard')
+                    navigate('/admin/dashboard')
                   }}
                   className="mt-2 w-full rounded-md bg-emerald-600 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
                 >

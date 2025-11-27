@@ -10,9 +10,15 @@ import {
 import { jwtDecode } from "jwt-decode";
 
 const getRoleFromToken = token => {
+  if (!token) return null;
+
   try {
     const decoded = jwtDecode(token);
-    if (decoded.exp && decoded.exp < Date.now() / 1000) return null;
+
+    if (decoded.exp && decoded.exp < Date.now() / 1000) {
+      return null;
+    }
+
     const roles = Array.isArray(decoded.roles) ? decoded.roles : [];
     return roles[0] || "user";
   } catch {
@@ -33,6 +39,25 @@ const LoginPage = () => {
   const redirectTo = location.state?.redirectTo || null;
   const redirectState = location.state?.checkoutData || null;
 
+  const redirectAfterLogin = role => {
+    if (!role) {
+      localStorage.removeItem("access_token");
+      setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
+      return;
+    }
+
+    if (redirectTo) {
+      navigate(redirectTo, { replace: true, state: redirectState });
+      return;
+    }
+
+    if (role === "admin") {
+      navigate("/admin/dashboard", { replace: true });
+    } else {
+      navigate("/profile", { replace: true });
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) return;
@@ -43,17 +68,8 @@ const LoginPage = () => {
       return;
     }
 
-    if (redirectTo) {
-      navigate(redirectTo, { replace: true, state: redirectState });
-      return;
-    }
-
-    if (role === "admin") {
-      navigate("/store-manager/dashboard", { replace: true });
-    } else {
-      navigate("/profile", { replace: true });
-    }
-  }, [navigate, redirectTo, redirectState]);
+    redirectAfterLogin(role);
+  }, [redirectTo, redirectState]);
 
   const handleSubmit = async e => {
     e.preventDefault();
@@ -70,22 +86,7 @@ const LoginPage = () => {
       localStorage.setItem("access_token", token);
 
       const role = getRoleFromToken(token);
-      if (!role) {
-        localStorage.removeItem("access_token");
-        setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
-        return;
-      }
-
-      if (redirectTo) {
-        navigate(redirectTo, { replace: true, state: redirectState });
-        return;
-      }
-
-      if (role === "admin") {
-        navigate("/store-manager/dashboard", { replace: true });
-      } else {
-        navigate("/profile", { replace: true });
-      }
+      redirectAfterLogin(role);
     } catch (err) {
       const msg =
         err.response?.data?.message ||

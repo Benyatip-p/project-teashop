@@ -225,7 +225,7 @@ const AddBookPage = () => {
               </button>
               <button
                 type="button"
-                onClick={() => {navigate('/store-manager/dashboard'); window.scrollTo(0,0);}}
+                onClick={() => {navigate('/admin/dashboard'); window.scrollTo(0,0);}}
                 className="px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
               >
                 ยกเลิก
