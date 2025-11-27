@@ -16,6 +16,7 @@ import Cartpage from "./pages/Cartpage";
 import Profilepage from "./pages/Profilepage";
 import ProductDetailpage from "./pages/ProductDetailpage";
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/Registerpage";
 import DeleteTeaPage from "./pages/DeleteTeaPage";
 import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
 import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
@@ -49,6 +50,15 @@ function App() {
             element={
               <PublicLayout>
                 <LoginPage />
+              </PublicLayout>
+            }
+          />
+
+          <Route
+            path="/register"
+            element={
+              <PublicLayout>
+                <RegisterPage />
               </PublicLayout>
             }
           />
@@ -151,7 +161,7 @@ function App() {
             }
           />
           <Route
-            path="/profile"
+            path="/user/account/profile"
             element={
               <PublicLayout>
                 <Profilepage />
