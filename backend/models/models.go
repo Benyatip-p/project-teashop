@@ -171,6 +171,27 @@ type Order struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type OrderItem struct {
+	ID            int     `json:"id"`
+	OrderID       int     `json:"order_id"`
+	ProductID     int     `json:"product_id"`
+	VariantID     *int    `json:"variant_id"`
+	Weight        float64 `json:"weight"`
+	PricePerUnit  float64 `json:"price_per_unit"`
+}
+
+type CreateOrderRequest struct {
+	CustomerName    string                  `json:"customer_name" binding:"required"`
+	ShippingAddress string                  `json:"shipping_address" binding:"required"`
+	Items           []CreateOrderItemRequest `json:"items" binding:"required,min=1"`
+}
+
+type CreateOrderItemRequest struct {
+	ProductID int  `json:"product_id" binding:"required"`
+	VariantID *int `json:"variant_id"`
+	Quantity  int  `json:"quantity" binding:"required,min=1"`
+}
+
 type UpdateOrderStatusRequest struct {
 	Status         string  `json:"status" binding:"required,oneof=pending paid shipped completed cancelled refunded"`
 	TrackingNumber *string `json:"tracking_number"`

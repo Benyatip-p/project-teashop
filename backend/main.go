@@ -82,6 +82,7 @@ func main() {
 			protected.PUT("/addresses/:id", handlers.UpdateAddressHandler)
 			protected.DELETE("/addresses/:id", handlers.DeleteAddressHandler)
 			protected.POST("/products/:id/reviews", handlers.CreateReviewHandler)
+			protected.POST("/orders", handlers.CreateOrderHandler)
 			protected.GET("/orders", handlers.GetUserOrdersHandler)
 			protected.GET("/orders/:id", handlers.GetOrderDetailsHandler)
 			protected.GET("/orders/status", handlers.GetOrdersByStatusHandler)
