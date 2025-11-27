@@ -24,7 +24,11 @@ const Cartpage = () => {
     () => localStorage.getItem('couponError') || '',
   )
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isLoggedIn] = useState(() => {
+    const tokenLocal = localStorage.getItem('access_token')
+    const tokenSession = sessionStorage.getItem('access_token')
+    return !!(tokenLocal || tokenSession)
+  })
 
   useEffect(() => {
     setSelectedIds(prev => prev.filter(id => cart.some(item => item.id === id)))
@@ -49,11 +53,6 @@ const Cartpage = () => {
   useEffect(() => {
     localStorage.setItem('couponError', couponError)
   }, [couponError])
-
-  useEffect(() => {
-    const token = localStorage.getItem('customerToken')
-    setIsLoggedIn(!!token)
-  }, [])
 
   const selectedItems = cart.filter(item => selectedIds.includes(item.id))
 
@@ -145,32 +144,27 @@ const Cartpage = () => {
       return
     }
 
+    const payload = {
+      selectedItems,
+      shipping,
+      couponDiscount,
+      subtotal,
+      totalBeforeDiscount,
+      total,
+    }
+
     if (!isLoggedIn) {
       navigate('/login', {
         state: {
           redirectTo: '/payment',
-          checkoutData: {
-            selectedItems,
-            shipping,
-            couponDiscount,
-            subtotal,
-            totalBeforeDiscount,
-            total,
-          },
+          checkoutData: payload,
         },
       })
       return
     }
 
     navigate('/payment', {
-      state: {
-        selectedItems,
-        shipping,
-        couponDiscount,
-        subtotal,
-        totalBeforeDiscount,
-        total,
-      },
+      state: payload,
     })
   }
 
@@ -360,7 +354,7 @@ const Cartpage = () => {
                 ยอดรวม 1,000 บาทขึ้นไป ส่งฟรีอัตโนมัติ
               </div>
 
-              <div className="mb-1 flex justify-between text-xs text-gray-500">
+              <div className="mb-1 flex justify_between text-xs text-gray-500">
                 <span>ยอดรวมก่อนหักส่วนลด</span>
                 <span>฿{totalBeforeDiscount.toFixed(2)}</span>
               </div>
