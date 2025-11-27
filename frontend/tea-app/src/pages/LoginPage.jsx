@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
   LockClosedIcon,
@@ -15,13 +15,10 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    if (token) {
-      navigate("/store-manager/dashboard", { replace: true });
-    }
-  }, [navigate]);
+  // Get the previous page from location state, or default to home
+  const from = location.state?.from?.pathname || "/";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,9 +32,23 @@ const LoginPage = () => {
       });
 
       localStorage.setItem("access_token", res.data.access_token);
+      localStorage.setItem("refresh_token", res.data.refresh_token);
       localStorage.setItem("adminUser", JSON.stringify(res.data.user));
 
-      navigate("/store-manager/dashboard", { replace: true });
+      // Role-based redirect logic
+      const user = res.data.user;
+      const roles = user.roles || [];
+      
+      // Check if user has admin role
+      const isAdmin = roles.includes("admin");
+      
+      if (isAdmin) {
+        // Admin/Store Manager - redirect to dashboard
+        navigate("/store-manager/dashboard", { replace: true });
+      } else {
+        // Regular user - redirect to previous page or home
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       const msg =
         err.response?.data?.message ||
