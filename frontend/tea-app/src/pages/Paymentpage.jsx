@@ -263,41 +263,70 @@ const Paymentpage = () => {
     return false;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!triedSubmit) setTriedSubmit(true);
 
-    // validate ที่อยู่ก่อน (รวมเบอร์โทร)
+    // 1. Validation (เหมือนเดิม)
     const shippingOK = validateShipping();
     if (!shippingOK) return;
 
-    // ต้องเลือกวิธีชำระเงิน
     if (!paymentMethod) {
       return;
     }
 
-    // ถ้าเลือกบัตรให้เช็คเลขบัตรด้วย
     if (paymentMethod === "card") {
       const ok = validateCardNumber();
       if (!ok) return;
     }
 
+    // เริ่มประมวลผล
     setIsProcessing(true);
 
-    console.log("ORDER DATA:", {
-      items: selectedItems,
-      shipping,
-      paymentMethod,
-      subtotal: cartSubtotal,
-      shippingFee: cartShipping,
-      couponDiscount: cartCouponDiscount,
-      totalBeforeDiscount: cartTotalBeforeDiscount,
-      total: cartTotal,
-    });
+    try {
+      // 2. จัดเตรียมข้อมูล (Payload) ที่จะส่งไปให้ API
+      const orderItems = selectedItems.map(item => ({
+        productId: item.id,
+        quantity: item.qty || 1,
+        price: item.price,
+      }));
 
-    setTimeout(() => {
-      setIsProcessing(false);
+      const orderPayload = {
+        items: orderItems,
+        shippingAddress: shipping,
+        paymentMethod: paymentMethod,
+        summary: {
+            subtotal: cartSubtotal,
+            shippingFee: cartShipping,
+            couponDiscount: cartCouponDiscount,
+            total: cartTotal,
+        }
+        // หากมีการส่งข้อมูลบัตรเครดิต (ผ่าน Token) ให้เพิ่มที่นี่
+        // paymentToken: "tokn_xxxxxx"
+      };
+
+      // 3. เรียก API ด้วย fetch
+      const response = await fetch('/api/v1/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // หากมีระบบ Login ต้องแนบ Token ไปด้วย
+          // 'Authorization': `Bearer ${yourAuthToken}` 
+        },
+        body: JSON.stringify(orderPayload),
+      });
+
+      // 4. ตรวจสอบผลลัพธ์จาก API
+      if (!response.ok) {
+        // หาก API ตอบกลับมาว่ามีปัญหา (เช่น status 400, 500)
+        const errorData = await response.json(); // อ่าน error message จาก body
+        throw new Error(errorData.message || 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ');
+      }
+      
+      // หากสำเร็จ
+      const result = await response.json();
+      console.log('Order created successfully:', result);
 
       toast.success("ชำระเงินสำเร็จ", {
         position: "top-right",
@@ -306,14 +335,22 @@ const Paymentpage = () => {
         closeOnClick: true,
         pauseOnHover: false,
         draggable: true,
-        className: "bg-green-900 text-white",
-        bodyClassName: "text-sm",
       });
 
+      // Navigate ไปหน้าแรกหลังชำระเงินสำเร็จ
       setTimeout(() => {
         navigate("/");
       }, 2000);
-    }, 2000);
+
+    } catch (error) {
+      // 5. จัดการ Error (เช่น network ขัดข้อง หรือ error ที่เรา throw ไว้)
+      console.error("Failed to submit order:", error);
+      toast.error(error.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+    
+    } finally {
+      // 6. ไม่ว่าจะสำเร็จหรือล้มเหลว ให้หยุดการประมวลผล
+      setIsProcessing(false);
+    }
   };
 
   // จัดการเลขบัตร
