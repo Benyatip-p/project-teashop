@@ -76,8 +76,6 @@ type Product struct {
 	CategoryID  *int           `json:"category_id"`
 	Name        string         `json:"name"`
 	Description string         `json:"description"`
-	Price       float64        `json:"price"`
-	Stock       int            `json:"stock"`
 	ImageURL    *string  		`json:"image_url"`
 	IsActive    bool           `json:"is_active"`
 	CreatedAt   time.Time      `json:"created_at"`
@@ -109,8 +107,6 @@ type UpdateProductRequest struct {
     CategoryID  *int    `json:"category_id"`
     Name        string  `json:"name"`
     Description string  `json:"description"`
-    Price       float64 `json:"price"`
-    Stock       int     `json:"stock"`
     ImageURL    *string `json:"image_url"`
     IsActive    bool    `json:"is_active"`
 }
@@ -224,4 +220,47 @@ type LowStockVariant struct {
 	ProductName string  `json:"product_name"`
 	Weight      float64 `json:"weight"`
 	Stock       int     `json:"stock"`
+}
+
+// ===================== Sales Statistics Models =====================
+type DailySalesResponse struct {
+	Date        string  `json:"date"`
+	TotalSales  float64 `json:"total_sales"`
+	OrderCount  int     `json:"order_count"`
+	Currency    string  `json:"currency"`
+}
+
+type MonthlySalesResponse struct {
+	Year        int     `json:"year"`
+	Month       int     `json:"month"`
+	TotalSales  float64 `json:"total_sales"`
+	OrderCount  int     `json:"order_count"`
+	Currency    string  `json:"currency"`
+}
+
+type YearlySalesResponse struct {
+	Year        int     `json:"year"`
+	TotalSales  float64 `json:"total_sales"`
+	OrderCount  int     `json:"order_count"`
+	Currency    string  `json:"currency"`
+}
+
+type MonthlySalesHistoryItem struct {
+	Year        int     `json:"year"`
+	Month       int     `json:"month"`
+	TotalSales  float64 `json:"total_sales"`
+	OrderCount  int     `json:"order_count"`
+	Currency    string  `json:"currency"`
+}
+
+type MonthlySalesHistory struct {
+	Year   int                       `json:"year"`
+	Months []MonthlySalesHistoryItem `json:"months"`
+}
+
+type YearlySalesHistoryItem struct {
+	Year        int     `json:"year"`
+	TotalSales  float64 `json:"total_sales"`
+	OrderCount  int     `json:"order_count"`
+	Currency    string  `json:"currency"`
 }

@@ -177,7 +177,7 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
     )
 
     query := `
-        SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+        SELECT id, category_id, name, description, image_url, is_active, created_at, updated_at
         FROM products
         WHERE is_active = true
     `
@@ -218,8 +218,6 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
             &product.CategoryID,
             &product.Name,
             &product.Description,
-            &product.Price,
-            &product.Stock,
             &product.ImageURL,
             &product.IsActive,
             &product.CreatedAt,
@@ -507,36 +505,138 @@ func GetUserOrdersByStatus(userID int, status string) ([]models.Order, error) {
 	return orders, nil
 }
 
-func GetDailySales() (float64, error) {
-	query := "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status = 'completed' AND DATE(created_at) = CURRENT_DATE"
-	var total float64
-	err := DB.QueryRow(query).Scan(&total)
-	return total, err
+func GetDailySales() (models.DailySalesResponse, error) {
+	query := `
+		SELECT
+			CURRENT_DATE::text as date,
+			COALESCE(SUM(total_amount), 0) as total_sales,
+			COUNT(*) as order_count,
+			'THB' as currency
+		FROM orders
+		WHERE status = 'completed' AND DATE(created_at) = CURRENT_DATE
+	`
+	var response models.DailySalesResponse
+	err := DB.QueryRow(query).Scan(&response.Date, &response.TotalSales, &response.OrderCount, &response.Currency)
+	return response, err
 }
 
-func GetMonthlySales() (float64, error) {
+func GetMonthlySales() (models.MonthlySalesResponse, error) {
 	query := `
-		SELECT COALESCE(SUM(total_amount), 0)
+		SELECT
+			EXTRACT(YEAR FROM CURRENT_DATE)::int as year,
+			EXTRACT(MONTH FROM CURRENT_DATE)::int as month,
+			COALESCE(SUM(total_amount), 0) as total_sales,
+			COUNT(*) as order_count,
+			'THB' as currency
 		FROM orders
 		WHERE status = 'completed'
 		AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
 		AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM CURRENT_DATE)
 	`
-	var total float64
-	err := DB.QueryRow(query).Scan(&total)
-	return total, err
+	var response models.MonthlySalesResponse
+	err := DB.QueryRow(query).Scan(&response.Year, &response.Month, &response.TotalSales, &response.OrderCount, &response.Currency)
+	return response, err
 }
 
-func GetYearlySales() (float64, error) {
+func GetYearlySales() (models.YearlySalesResponse, error) {
 	query := `
-		SELECT COALESCE(SUM(total_amount), 0)
+		SELECT
+			EXTRACT(YEAR FROM CURRENT_DATE)::int as year,
+			COALESCE(SUM(total_amount), 0) as total_sales,
+			COUNT(*) as order_count,
+			'THB' as currency
 		FROM orders
 		WHERE status = 'completed'
 		AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE)
 	`
-	var total float64
-	err := DB.QueryRow(query).Scan(&total)
-	return total, err
+	var response models.YearlySalesResponse
+	err := DB.QueryRow(query).Scan(&response.Year, &response.TotalSales, &response.OrderCount, &response.Currency)
+	return response, err
+}
+
+func GetAllMonthlySalesHistory() ([]models.MonthlySalesHistory, error) {
+	query := `
+		SELECT
+			EXTRACT(YEAR FROM created_at)::int as year,
+			EXTRACT(MONTH FROM created_at)::int as month,
+			COALESCE(SUM(total_amount), 0) as total_sales,
+			COUNT(*) as order_count,
+			'THB' as currency
+		FROM orders
+		WHERE status = 'completed'
+		GROUP BY EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at)
+		ORDER BY year DESC, month DESC
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Group by year
+	yearMap := make(map[int][]models.MonthlySalesHistoryItem)
+
+	for rows.Next() {
+		var item models.MonthlySalesHistoryItem
+		err := rows.Scan(&item.Year, &item.Month, &item.TotalSales, &item.OrderCount, &item.Currency)
+		if err != nil {
+			return nil, err
+		}
+		yearMap[item.Year] = append(yearMap[item.Year], item)
+	}
+
+	// Convert map to slice
+	var history []models.MonthlySalesHistory
+	for year, months := range yearMap {
+		history = append(history, models.MonthlySalesHistory{
+			Year:   year,
+			Months: months,
+		})
+	}
+
+	// Sort by year descending
+	for i := 0; i < len(history)-1; i++ {
+		for j := i + 1; j < len(history); j++ {
+			if history[i].Year < history[j].Year {
+				history[i], history[j] = history[j], history[i]
+			}
+		}
+	}
+
+	return history, nil
+}
+
+func GetAllYearlySalesHistory() ([]models.YearlySalesHistoryItem, error) {
+	query := `
+		SELECT
+			EXTRACT(YEAR FROM created_at)::int as year,
+			COALESCE(SUM(total_amount), 0) as total_sales,
+			COUNT(*) as order_count,
+			'THB' as currency
+		FROM orders
+		WHERE status = 'completed'
+		GROUP BY EXTRACT(YEAR FROM created_at)
+		ORDER BY year DESC
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []models.YearlySalesHistoryItem
+	for rows.Next() {
+		var item models.YearlySalesHistoryItem
+		err := rows.Scan(&item.Year, &item.TotalSales, &item.OrderCount, &item.Currency)
+		if err != nil {
+			return nil, err
+		}
+		history = append(history, item)
+	}
+
+	return history, nil
 }
 
 func GetTopSellingProducts() ([]models.TopSellingProduct, error) {
@@ -1070,7 +1170,7 @@ func DeleteVariant(variantID int) error {
 
 func GetFeaturedProducts(limit int) ([]models.Product, error) {
 	query := `
-		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+		SELECT id, category_id, name, description, image_url, is_active, created_at, updated_at
 		FROM products
 		WHERE is_active = true
 		ORDER BY RANDOM()
@@ -1091,8 +1191,6 @@ func GetFeaturedProducts(limit int) ([]models.Product, error) {
 			&product.CategoryID,
 			&product.Name,
 			&product.Description,
-			&product.Price,
-			&product.Stock,
 			&product.ImageURL,
 			&product.IsActive,
 			&product.CreatedAt,
@@ -1179,7 +1277,7 @@ func GetCategories() ([]models.Category, error) {
 
 func GetProductByID(productID int) (*models.Product, error) {
 	query := `
-		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+		SELECT id, category_id, name, description, image_url, is_active, created_at, updated_at
 		FROM products
 		WHERE id = $1 AND is_active = true
 	`
@@ -1190,8 +1288,6 @@ func GetProductByID(productID int) (*models.Product, error) {
 		&product.CategoryID,
 		&product.Name,
 		&product.Description,
-		&product.Price,
-		&product.Stock,
 		&product.ImageURL,
 		&product.IsActive,
 		&product.CreatedAt,
@@ -1258,7 +1354,7 @@ func UpdateUserProfile(userID int, firstName, lastName, username, passwordHash *
 
 func GetProductsByCategory(categoryID int) ([]models.Product, error) {
 	query := `
-		SELECT id, category_id, name, description, price, stock, image_url, is_active, created_at, updated_at
+		SELECT id, category_id, name, description, image_url, is_active, created_at, updated_at
 		FROM products
 		WHERE category_id = $1 AND is_active = true
 		ORDER BY created_at DESC
@@ -1278,8 +1374,6 @@ func GetProductsByCategory(categoryID int) ([]models.Product, error) {
 			&product.CategoryID,
 			&product.Name,
 			&product.Description,
-			&product.Price,
-			&product.Stock,
 			&product.ImageURL,
 			&product.IsActive,
 			&product.CreatedAt,

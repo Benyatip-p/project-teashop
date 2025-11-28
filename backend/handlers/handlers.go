@@ -722,14 +722,14 @@ func GetDailySalesHandler(c *gin.Context) {
 		return
 	}
 
-	total, err := database.GetDailySales()
+	response, err := database.GetDailySales()
 	if err != nil {
 		log.Printf("Error getting daily sales: %v", err)
 		c.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
 
-	c.JSON(200, gin.H{"daily_sales": total})
+	c.JSON(200, response)
 }
 
 // GetMonthlySalesHandler godoc
@@ -770,14 +770,14 @@ func GetMonthlySalesHandler(c *gin.Context) {
 		return
 	}
 
-	total, err := database.GetMonthlySales()
+	response, err := database.GetMonthlySales()
 	if err != nil {
 		log.Printf("Error getting monthly sales: %v", err)
 		c.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
 
-	c.JSON(200, gin.H{"monthly_sales": total})
+	c.JSON(200, response)
 }
 
 // GetYearlySalesHandler godoc
@@ -818,14 +818,14 @@ func GetYearlySalesHandler(c *gin.Context) {
 		return
 	}
 
-	total, err := database.GetYearlySales()
+	response, err := database.GetYearlySales()
 	if err != nil {
 		log.Printf("Error getting yearly sales: %v", err)
 		c.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
 
-	c.JSON(200, gin.H{"yearly_sales": total})
+	c.JSON(200, response)
 }
 
 // GetTopSellingProductsHandler godoc
@@ -976,6 +976,102 @@ func GetUserStatsHandler(c *gin.Context) {
 	}
 
 	c.JSON(200, response)
+}
+
+// GetMonthlySalesHistoryHandler godoc
+// @Summary Get monthly sales history (Admin only)
+// @Description Get all monthly sales data grouped by year from completed orders
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/sales/history/monthly [get]
+func GetMonthlySalesHistoryHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	history, err := database.GetAllMonthlySalesHistory()
+	if err != nil {
+		log.Printf("Error getting monthly sales history: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"monthly_sales_history": history})
+}
+
+// GetYearlySalesHistoryHandler godoc
+// @Summary Get yearly sales history (Admin only)
+// @Description Get all yearly sales data from completed orders
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/sales/history/yearly [get]
+func GetYearlySalesHistoryHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	history, err := database.GetAllYearlySalesHistory()
+	if err != nil {
+		log.Printf("Error getting yearly sales history: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"yearly_sales_history": history})
 }
 
 // CreateOrderHandler godoc
@@ -1150,11 +1246,11 @@ func CreateProductHandler(c *gin.Context) {
 		return
 	}
 
-	query := `INSERT INTO products (category_id, name, description, price, stock, image_url, is_active, created_at, updated_at)
-	          VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),NOW()) RETURNING id`
+	query := `INSERT INTO products (category_id, name, description, image_url, is_active, created_at, updated_at)
+	          VALUES ($1,$2,$3,$4,$5,NOW(),NOW()) RETURNING id`
 
 	var newID int
-	err = database.DB.QueryRow(query, input.CategoryID, input.Name, input.Description, input.Price, input.Stock, input.ImageURL, input.IsActive).Scan(&newID)
+	err = database.DB.QueryRow(query, input.CategoryID, input.Name, input.Description, input.ImageURL, input.IsActive).Scan(&newID)
 	if err != nil {
 		log.Printf("Error creating product: %v", err)
 		c.JSON(500, gin.H{"error": "failed to create product"})
@@ -1227,11 +1323,11 @@ return
         img = sql.NullString{Valid: false}
     }
 
-    query := `UPDATE products 
-              SET category_id=$1, name=$2, description=$3, price=$4, stock=$5, image_url=$6, is_active=$7, updated_at=NOW()
-              WHERE id=$8`
+    query := `UPDATE products
+              SET category_id=$1, name=$2, description=$3, image_url=$4, is_active=$5, updated_at=NOW()
+              WHERE id=$6`
 
-    res, err := database.DB.Exec(query, req.CategoryID, req.Name, req.Description, req.Price, req.Stock, img, req.IsActive, pid)
+    res, err := database.DB.Exec(query, req.CategoryID, req.Name, req.Description, img, req.IsActive, pid)
     if err != nil {
         log.Printf("Error updating product: %v", err)
         c.JSON(500, gin.H{"error": "failed to update product"})

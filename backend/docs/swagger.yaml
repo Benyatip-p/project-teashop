@@ -153,10 +153,6 @@ definitions:
         type: boolean
       name:
         type: string
-      price:
-        type: number
-      stock:
-        type: integer
       updated_at:
         type: string
     type: object
@@ -524,6 +520,64 @@ paths:
       security:
       - BearerAuth: []
       summary: Get daily sales (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/sales/history/monthly:
+    get:
+      consumes:
+      - application/json
+      description: Get all monthly sales data grouped by year from completed orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get monthly sales history (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/sales/history/yearly:
+    get:
+      consumes:
+      - application/json
+      description: Get all yearly sales data from completed orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get yearly sales history (Admin only)
       tags:
       - admin
   /api/v1/admin/sales/monthly:
