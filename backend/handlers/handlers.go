@@ -221,14 +221,14 @@ func GetCategoriesHandler(c *gin.Context) {
 // @Tags products
 // @Accept json
 // @Produce json
-// @Param pid path int true "Product ID"
+// @Param id path int true "Product ID"
 // @Success 200 {object} object
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
-// @Router /api/v1/products/{pid} [get]
+// @Router /api/v1/products/{id} [get]
 func GetProductByIDHandler(c *gin.Context) {
-	productIDStr := c.Param("pid")
+	productIDStr := c.Param("id")
 	productID, err := strconv.Atoi(productIDStr)
 	if err != nil {
 		c.JSON(400, gin.H{"error": "invalid product id"})
