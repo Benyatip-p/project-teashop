@@ -244,7 +244,7 @@ const Navbar = () => {
                   <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
                       <Link
-                        to="/profile"
+                        to="/user/account/profile"
                         onClick={() => setIsUserDropdownOpen(false)}
                         className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
                       >
