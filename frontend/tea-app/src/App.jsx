@@ -39,6 +39,7 @@ const AuthLayout = ({ children }) => (
   </div>
 );
 
+
 function App() {
   return (
     <ShopProvider>
@@ -54,16 +55,34 @@ function App() {
           />
 
           <Route
-            path="/not-authorized"
+            path="/register"
             element={
               <AuthLayout>
-                <NotAuthorized />
+                <RegisterPage />
               </AuthLayout>
             }
           />
 
           <Route
+            path="/not-authorized"
+            element={
+              <PublicLayout>
+                <NotAuthorized />
+              </PublicLayout>
+            }
+          />
+
+          <Route
             path="/admin/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/store-manager/dashboard"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
                 <AdminDashboardPage />

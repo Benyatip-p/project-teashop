@@ -9,7 +9,13 @@ import {
 } from "@heroicons/react/outline";
 import { jwtDecode } from "jwt-decode";
 
-const getRoleFromToken = (token) => {
+// Map role names to role_id
+const ROLE_ID_MAP = {
+  admin: 1,
+  user: 2,
+};
+
+const getRoleIdFromToken = (token) => {
   if (!token) return null;
 
   try {
@@ -20,7 +26,8 @@ const getRoleFromToken = (token) => {
     }
 
     const roles = Array.isArray(decoded.roles) ? decoded.roles : [];
-    return roles[0] || "user";
+    const roleName = roles[0] || "user";
+    return ROLE_ID_MAP[roleName] || 2; // Default to user (role_id = 2)
   } catch {
     return null;
   }
@@ -36,37 +43,42 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectTo = location.state?.redirectTo || null;
+  // Get the previous page from location state, or use referrer
+  const from = location.state?.from?.pathname || location.state?.redirectTo || null;
   const redirectState = location.state?.checkoutData || null;
 
-  const redirectByRole = useCallback(
-    (role) => {
-      if (redirectTo) {
-        navigate(redirectTo, { replace: true, state: redirectState });
-        return;
-      }
-
-      if (role === "admin") {
-        navigate("/admin/dashboard", { replace: true });
+  const redirectByRoleId = useCallback(
+    (roleId) => {
+      if (roleId === 1) {
+        // Store manager (admin) - always redirect to store manager dashboard
+        navigate("/store-manager/dashboard", { replace: true });
+      } else if (roleId === 2) {
+        // Regular user - redirect to previous page or home
+        if (from) {
+          navigate(from, { replace: true, state: redirectState });
+        } else {
+          navigate("/", { replace: true });
+        }
       } else {
-        navigate("/profile", { replace: true });
+        // Fallback to home
+        navigate("/", { replace: true });
       }
     },
-    [navigate, redirectTo, redirectState]
+    [navigate, from, redirectState]
   );
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    const role = getRoleFromToken(token);
-    if (!role) {
+    const roleId = getRoleIdFromToken(token);
+    if (!roleId) {
       localStorage.removeItem("access_token");
       return;
     }
 
-    redirectByRole(role);
-  }, [redirectByRole]);
+    redirectByRoleId(roleId);
+  }, [redirectByRoleId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,14 +94,14 @@ const LoginPage = () => {
       const token = res.data.access_token;
       localStorage.setItem("access_token", token);
 
-      const role = getRoleFromToken(token);
-      if (!role) {
+      const roleId = getRoleIdFromToken(token);
+      if (!roleId) {
         localStorage.removeItem("access_token");
         setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
         return;
       }
 
-      redirectByRole(role);
+      redirectByRoleId(roleId);
     } catch (err) {
       const msg =
         err.response?.data?.message ||
