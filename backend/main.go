@@ -92,6 +92,7 @@ func main() {
 			protected.GET("/admin/sales/yearly", handlers.GetYearlySalesHandler) // (admin only)
 			protected.GET("/admin/sales/history/monthly", handlers.GetMonthlySalesHistoryHandler) // (admin only)
 			protected.GET("/admin/sales/history/yearly", handlers.GetYearlySalesHistoryHandler) // (admin only)
+			protected.GET("/admin/items/low-stock", handlers.GetLowStockItemsHandler) // (admin only)
 			protected.GET("/admin/variants/low-stock", handlers.GetLowStockVariantsHandler) // (admin only)
 			protected.GET("/admin/users/stats", handlers.GetUserStatsHandler) // (admin only)
 			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler) 

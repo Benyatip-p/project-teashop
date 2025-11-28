@@ -177,31 +177,46 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
     )
 
     query := `
-        SELECT id, category_id, name, description, image_url, is_active, created_at, updated_at
-        FROM products
-        WHERE is_active = true
+        SELECT
+            p.id,
+            p.category_id,
+            p.name,
+            p.description,
+            p.image_url,
+            p.is_active,
+            p.created_at,
+            p.updated_at,
+            CASE
+                WHEN COUNT(pv.id) > 0 THEN COALESCE(SUM(pv.stock), 0)
+                ELSE p.stock
+            END as total_stock
+        FROM products p
+        LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
+        WHERE p.is_active = true
     `
 
     if search != "" {
         like := "%" + search + "%"
-        query += fmt.Sprintf(" AND (name ILIKE $%d OR description ILIKE $%d)", index, index)
+        query += fmt.Sprintf(" AND (p.name ILIKE $%d OR p.description ILIKE $%d)", index, index)
         args = append(args, like)
         index++
     }
 
     if maxPrice != nil {
-        query += fmt.Sprintf(" AND price <= $%d", index)
+        query += fmt.Sprintf(" AND p.price <= $%d", index)
         args = append(args, *maxPrice)
         index++
     }
 
+    query += " GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at"
+
     switch sort {
     case "price_asc":
-        query += " ORDER BY price ASC"
+        query += " ORDER BY p.price ASC"
     case "id_asc":
-        query += " ORDER BY id ASC"
+        query += " ORDER BY p.id ASC"
     default:
-        query += " ORDER BY id ASC"
+        query += " ORDER BY p.id ASC"
     }
 
     rows, err := DB.Query(query, args...)
@@ -213,6 +228,7 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
     var products []models.Product
     for rows.Next() {
         var product models.Product
+        var totalStock int
         if err := rows.Scan(
             &product.ID,
             &product.CategoryID,
@@ -222,9 +238,12 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
             &product.IsActive,
             &product.CreatedAt,
             &product.UpdatedAt,
+            &totalStock,
         ); err != nil {
             return nil, err
         }
+        // Note: We don't set the Stock field in the model since it's calculated dynamically
+        // The frontend can use this information as needed
         products = append(products, product)
     }
 
@@ -261,7 +280,13 @@ func CancelOrder(orderID int) error {
 	for _, item := range orderItems {
 		if item.VariantID != nil {
 			// Restore stock in product_variants
-			err = RestoreVariantStock(*item.VariantID, item.Weight)
+			err = RestoreVariantStock(*item.VariantID, item.Quantity)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Restore stock in products table
+			err = RestoreProductStock(item.ProductID, item.Quantity)
 			if err != nil {
 				return err
 			}
@@ -274,7 +299,7 @@ func CancelOrder(orderID int) error {
 
 func GetOrderItemsByOrderID(orderID int) ([]OrderItem, error) {
 	query := `
-		SELECT id, order_id, product_id, variant_id, weight, price_per_unit
+		SELECT id, order_id, product_id, variant_id, weight, quantity, price_per_unit
 		FROM order_items
 		WHERE order_id = $1
 	`
@@ -294,6 +319,7 @@ func GetOrderItemsByOrderID(orderID int) ([]OrderItem, error) {
 			&item.ProductID,
 			&item.VariantID,
 			&item.Weight,
+			&item.Quantity,
 			&item.PricePerUnit,
 		)
 		if err != nil {
@@ -308,6 +334,12 @@ func GetOrderItemsByOrderID(orderID int) ([]OrderItem, error) {
 func RestoreVariantStock(variantID int, weight int) error {
 	query := "UPDATE product_variants SET stock = stock + $1 WHERE id = $2"
 	_, err := DB.Exec(query, weight, variantID)
+	return err
+}
+
+func RestoreProductStock(productID int, quantity int) error {
+	query := "UPDATE products SET stock = stock + $1 WHERE id = $2"
+	_, err := DB.Exec(query, quantity, productID)
 	return err
 }
 
@@ -745,10 +777,10 @@ func CreateOrder(userID int, req models.CreateOrderRequest) (*models.Order, erro
 
 		// Insert order item
 		itemQuery := `
-			INSERT INTO order_items (order_id, product_id, variant_id, weight, price_per_unit)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO order_items (order_id, product_id, variant_id, weight, quantity, price_per_unit)
+			VALUES ($1, $2, $3, $4, $5, $6)
 		`
-		_, err = tx.Exec(itemQuery, orderID, item.ProductID, item.VariantID, item.Quantity, price)
+		_, err = tx.Exec(itemQuery, orderID, item.ProductID, item.VariantID, item.Quantity, item.Quantity, price)
 		if err != nil {
 			return nil, err
 		}
@@ -806,6 +838,79 @@ func GetLowStockVariants() ([]models.LowStockVariant, error) {
 	return variants, nil
 }
 
+func GetAllLowStockItems() ([]models.LowStockItem, error) {
+	var items []models.LowStockItem
+
+	// Query 1: Get low stock variants
+	variantQuery := `
+		SELECT
+			p.name as product_name,
+			CONCAT(p.name, ' (', pv.weight, 'g)') as variant_name,
+			pv.stock
+		FROM products p
+		JOIN product_variants pv ON p.id = pv.product_id
+		WHERE pv.stock < 10 AND pv.is_active = true AND p.is_active = true
+		ORDER BY pv.stock ASC
+	`
+
+	variantRows, err := DB.Query(variantQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer variantRows.Close()
+
+	for variantRows.Next() {
+		var productName string
+		var variantName string
+		var stock int
+		err := variantRows.Scan(&productName, &variantName, &stock)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, models.LowStockItem{
+			ProductName: productName,
+			VariantName: &variantName,
+			Stock:       stock,
+			ItemType:    "variant",
+		})
+	}
+
+	// Query 2: Get low stock products (those without variants or in accessory categories)
+	productQuery := `
+		SELECT p.name, p.stock
+		FROM products p
+		WHERE p.stock < 10 AND p.is_active = true
+		AND NOT EXISTS (
+			SELECT 1 FROM product_variants pv
+			WHERE pv.product_id = p.id AND pv.is_active = true
+		)
+		ORDER BY p.stock ASC
+	`
+
+	productRows, err := DB.Query(productQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer productRows.Close()
+
+	for productRows.Next() {
+		var productName string
+		var stock int
+		err := productRows.Scan(&productName, &stock)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, models.LowStockItem{
+			ProductName: productName,
+			VariantName: nil,
+			Stock:       stock,
+			ItemType:    "product",
+		})
+	}
+
+	return items, nil
+}
+
 // OrderItem struct (since it's not in models)
 type OrderItem struct {
 	ID            int     `json:"id"`
@@ -813,6 +918,7 @@ type OrderItem struct {
 	ProductID     int     `json:"product_id"`
 	VariantID     *int    `json:"variant_id"`
 	Weight        int     `json:"weight"`
+	Quantity      int     `json:"quantity"`
 	PricePerUnit  float64 `json:"price_per_unit"`
 }
 
@@ -1276,32 +1382,48 @@ func GetCategories() ([]models.Category, error) {
 }
 
 func GetProductByID(productID int) (*models.Product, error) {
-	query := `
-		SELECT id, category_id, name, description, image_url, is_active, created_at, updated_at
-		FROM products
-		WHERE id = $1 AND is_active = true
-	`
+ 	query := `
+ 		SELECT
+ 			p.id,
+ 			p.category_id,
+ 			p.name,
+ 			p.description,
+ 			p.image_url,
+ 			p.is_active,
+ 			p.created_at,
+ 			p.updated_at,
+ 			CASE
+ 				WHEN COUNT(pv.id) > 0 THEN COALESCE(SUM(pv.stock), 0)
+ 				ELSE p.stock
+ 			END as total_stock
+ 		FROM products p
+ 		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
+ 		WHERE p.id = $1 AND p.is_active = true
+ 		GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at
+ 	`
 
-	var product models.Product
-	err := DB.QueryRow(query, productID).Scan(
-		&product.ID,
-		&product.CategoryID,
-		&product.Name,
-		&product.Description,
-		&product.ImageURL,
-		&product.IsActive,
-		&product.CreatedAt,
-		&product.UpdatedAt,
-	)
+ 	var product models.Product
+ 	var totalStock int
+ 	err := DB.QueryRow(query, productID).Scan(
+ 		&product.ID,
+ 		&product.CategoryID,
+ 		&product.Name,
+ 		&product.Description,
+ 		&product.ImageURL,
+ 		&product.IsActive,
+ 		&product.CreatedAt,
+ 		&product.UpdatedAt,
+ 		&totalStock,
+ 	)
 
-	if err == sql.ErrNoRows {
-		return nil, nil // Product not found
-	}
-	if err != nil {
-		return nil, err
-	}
+ 	if err == sql.ErrNoRows {
+ 		return nil, nil // Product not found
+ 	}
+ 	if err != nil {
+ 		return nil, err
+ 	}
 
-	return &product, nil
+ 	return &product, nil
 }
 
 func CheckUsernameExists(username string, excludeUserID int) (bool, error) {
@@ -1353,37 +1475,53 @@ func UpdateUserProfile(userID int, firstName, lastName, username, passwordHash *
 }
 
 func GetProductsByCategory(categoryID int) ([]models.Product, error) {
-	query := `
-		SELECT id, category_id, name, description, image_url, is_active, created_at, updated_at
-		FROM products
-		WHERE category_id = $1 AND is_active = true
-		ORDER BY created_at DESC
-	`
+ 	query := `
+ 		SELECT
+ 			p.id,
+ 			p.category_id,
+ 			p.name,
+ 			p.description,
+ 			p.image_url,
+ 			p.is_active,
+ 			p.created_at,
+ 			p.updated_at,
+ 			CASE
+ 				WHEN COUNT(pv.id) > 0 THEN COALESCE(SUM(pv.stock), 0)
+ 				ELSE p.stock
+ 			END as total_stock
+ 		FROM products p
+ 		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
+ 		WHERE p.category_id = $1 AND p.is_active = true
+ 		GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at
+ 		ORDER BY p.created_at DESC
+ 	`
 
-	rows, err := DB.Query(query, categoryID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+ 	rows, err := DB.Query(query, categoryID)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+ 	defer rows.Close()
 
-	var products []models.Product
-	for rows.Next() {
-		var product models.Product
-		err := rows.Scan(
-			&product.ID,
-			&product.CategoryID,
-			&product.Name,
-			&product.Description,
-			&product.ImageURL,
-			&product.IsActive,
-			&product.CreatedAt,
-			&product.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		products = append(products, product)
-	}
+ 	var products []models.Product
+ 	for rows.Next() {
+ 		var product models.Product
+ 		var totalStock int
+ 		err := rows.Scan(
+ 			&product.ID,
+ 			&product.CategoryID,
+ 			&product.Name,
+ 			&product.Description,
+ 			&product.ImageURL,
+ 			&product.IsActive,
+ 			&product.CreatedAt,
+ 			&product.UpdatedAt,
+ 			&totalStock,
+ 		)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		products = append(products, product)
+ 	}
 
-	return products, nil
+ 	return products, nil
 }

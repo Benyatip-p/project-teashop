@@ -493,6 +493,36 @@ paths:
       summary: Get default address
       tags:
       - addresses
+  /api/v1/admin/items/low-stock:
+    get:
+      consumes:
+      - application/json
+      description: Get products and variants with stock less than 10, sorted by stock
+        ascending
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get low stock items (Admin only)
+      tags:
+      - admin
   /api/v1/admin/sales/daily:
     get:
       consumes:

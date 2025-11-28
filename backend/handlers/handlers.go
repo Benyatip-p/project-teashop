@@ -848,6 +848,54 @@ func GetTopSellingProductsHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"top_selling_products": products})
 }
 
+// GetLowStockItemsHandler godoc
+// @Summary Get low stock items (Admin only)
+// @Description Get products and variants with stock less than 10, sorted by stock ascending
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/items/low-stock [get]
+func GetLowStockItemsHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	items, err := database.GetAllLowStockItems()
+	if err != nil {
+		log.Printf("Error getting low stock items: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"low_stock_items": items})
+}
+
 // GetLowStockVariantsHandler godoc
 // @Summary Get low stock variants (Admin only)
 // @Description Get product variants with stock less than 10, sorted by stock ascending

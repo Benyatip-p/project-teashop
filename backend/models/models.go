@@ -173,6 +173,7 @@ type OrderItem struct {
 	ProductID     int     `json:"product_id"`
 	VariantID     *int    `json:"variant_id"`
 	Weight        float64 `json:"weight"`
+	Quantity      int     `json:"quantity"`
 	PricePerUnit  float64 `json:"price_per_unit"`
 }
 
@@ -220,6 +221,14 @@ type LowStockVariant struct {
 	ProductName string  `json:"product_name"`
 	Weight      float64 `json:"weight"`
 	Stock       int     `json:"stock"`
+}
+
+// ===================== Low Stock Item Model =====================
+type LowStockItem struct {
+	ProductName string  `json:"product_name"`
+	VariantName *string `json:"variant_name,omitempty"` // Optional for products without variants
+	Stock       int     `json:"stock"`
+	ItemType    string  `json:"item_type"` // "product" or "variant"
 }
 
 // ===================== Sales Statistics Models =====================
