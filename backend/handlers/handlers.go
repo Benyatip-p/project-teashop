@@ -978,6 +978,42 @@ func GetUserStatsHandler(c *gin.Context) {
 	c.JSON(200, response)
 }
 
+// CreateOrderHandler godoc
+// @Summary Create a new order
+// @Description Create a new order for the authenticated user
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param request body models.CreateOrderRequest true "Order data"
+// @Security BearerAuth
+// @Success 201 {object} models.Order
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders [post]
+func CreateOrderHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	var req models.CreateOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	order, err := database.CreateOrder(userID.(int), req)
+	if err != nil {
+		log.Printf("Error creating order: %v", err)
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(201, order)
+}
+
 // UpdateProfileHandler godoc
 // @Summary Update user profile
 // @Description Update the profile information of the currently authenticated user

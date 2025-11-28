@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import NotFound from "./components/Notfound";
+import NotAuthorized from "./components/NotAuthorized";
 import { ShopProvider } from "./context/ShopContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -25,7 +26,7 @@ import Paymentpage from "./pages/Paymentpage";
 import CategoryProductspage from "./pages/CategoryProductspage";
 
 const PublicLayout = ({ children }) => (
-  <div className="flex flex-col min-h-screen bg-gray-50">
+  <div className="flex min-h-screen flex-col bg-gray-50">
     <Navbar />
     <main className="flex-grow">{children}</main>
     <Footer />
@@ -33,12 +34,10 @@ const PublicLayout = ({ children }) => (
 );
 
 const AuthLayout = ({ children }) => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  <div className="flex min-h-screen items-center justify-center bg-gray-50">
     {children}
   </div>
 );
-
-const AdminLayout = ({ children }) => <>{children}</>;
 
 function App() {
   return (
@@ -48,58 +47,53 @@ function App() {
           <Route
             path="/login"
             element={
-              <PublicLayout>
+              <AuthLayout>
                 <LoginPage />
-              </PublicLayout>
+              </AuthLayout>
             }
           />
 
           <Route
-            path="/register"
+            path="/not-authorized"
             element={
-              <PublicLayout>
-                <RegisterPage />
-              </PublicLayout>
+              <AuthLayout>
+                <NotAuthorized />
+              </AuthLayout>
             }
           />
 
           <Route
-            path="/store-manager/dashboard"
+            path="/admin/dashboard"
             element={
-              <ProtectedRoute>
-                <AdminLayout>
-                  <AdminDashboardPage />
-                </AdminLayout>
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminDashboardPage />
               </ProtectedRoute>
             }
           />
+
           <Route
-            path="/store-manager/edit-Tea/:id"
+            path="/admin/edit-tea/:id"
             element={
-              <ProtectedRoute>
-                <AdminLayout>
-                  <EditTeaPage />
-                </AdminLayout>
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <EditTeaPage />
               </ProtectedRoute>
             }
           />
+
           <Route
-            path="/store-manager/delete-Tea"
+            path="/admin/delete-tea"
             element={
-              <ProtectedRoute>
-                <AdminLayout>
-                  <DeleteTeaPage />
-                </AdminLayout>
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <DeleteTeaPage />
               </ProtectedRoute>
             }
           />
+
           <Route
-            path="/store-manager/products"
+            path="/admin/products"
             element={
-              <ProtectedRoute>
-                <AdminLayout>
-                  <AdminProductPage />
-                </AdminLayout>
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminProductPage />
               </ProtectedRoute>
             }
           />
@@ -112,6 +106,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/products"
             element={
@@ -120,6 +115,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/products/:id"
             element={
@@ -128,6 +124,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/about"
             element={
@@ -136,6 +133,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/contact"
             element={
@@ -144,38 +142,51 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/favorites"
             element={
-              <PublicLayout>
-                <Favoritepage />
-              </PublicLayout>
+              <ProtectedRoute>
+                <PublicLayout>
+                  <Favoritepage />
+                </PublicLayout>
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/cart"
             element={
-              <PublicLayout>
-                <Cartpage />
-              </PublicLayout>
+              <ProtectedRoute>
+                <PublicLayout>
+                  <Cartpage />
+                </PublicLayout>
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/user/account/profile"
             element={
-              <PublicLayout>
-                <Profilepage />
-              </PublicLayout>
+              <ProtectedRoute>
+                <PublicLayout>
+                  <Profilepage />
+                </PublicLayout>
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/payment"
             element={
-              <PublicLayout>
-                <Paymentpage />
-              </PublicLayout>
+              <ProtectedRoute>
+                <PublicLayout>
+                  <Paymentpage />
+                </PublicLayout>
+              </ProtectedRoute>
             }
           />
+
           <Route
             path="/category/:categoryName"
             element={

@@ -581,6 +581,99 @@ func GetTopSellingProducts() ([]models.TopSellingProduct, error) {
 	return products, nil
 }
 
+// ===================== Order Creation Database Functions =====================
+func CreateOrder(userID int, req models.CreateOrderRequest) (*models.Order, error) {
+	// Start transaction
+	tx, err := DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	// Calculate total amount and validate stock
+	var totalAmount float64
+	for _, item := range req.Items {
+		// Get product price and stock (use FOR UPDATE to prevent race conditions)
+		var price float64
+		var stock int
+		if item.VariantID != nil {
+			// Get variant price and stock
+			query := `SELECT price, stock FROM product_variants WHERE id = $1 AND is_active = true FOR UPDATE`
+			err = tx.QueryRow(query, *item.VariantID).Scan(&price, &stock)
+		} else {
+			// Get product price and stock
+			query := `SELECT price, stock FROM products WHERE id = $1 AND is_active = true FOR UPDATE`
+			err = tx.QueryRow(query, item.ProductID).Scan(&price, &stock)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("product not found: %d", item.ProductID)
+		}
+
+		// Check stock
+		if item.Quantity > stock {
+			return nil, fmt.Errorf("insufficient stock for product %d (requested: %d, available: %d)", item.ProductID, item.Quantity, stock)
+		}
+
+		totalAmount += price * float64(item.Quantity)
+	}
+
+	// Create order
+	orderQuery := `
+		INSERT INTO orders (user_id, total_amount, status, customer_name, shipping_address)
+		VALUES ($1, $2, 'pending', $3, $4)
+		RETURNING id
+	`
+	var orderID int
+	err = tx.QueryRow(orderQuery, userID, totalAmount, req.CustomerName, req.ShippingAddress).Scan(&orderID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create order items and update stock
+	for _, item := range req.Items {
+		var price float64
+		if item.VariantID != nil {
+			query := `SELECT price FROM product_variants WHERE id = $1`
+			err = tx.QueryRow(query, *item.VariantID).Scan(&price)
+		} else {
+			query := `SELECT price FROM products WHERE id = $1`
+			err = tx.QueryRow(query, item.ProductID).Scan(&price)
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		// Insert order item
+		itemQuery := `
+			INSERT INTO order_items (order_id, product_id, variant_id, weight, price_per_unit)
+			VALUES ($1, $2, $3, $4, $5)
+		`
+		_, err = tx.Exec(itemQuery, orderID, item.ProductID, item.VariantID, item.Quantity, price)
+		if err != nil {
+			return nil, err
+		}
+
+		// Update stock
+		if item.VariantID != nil {
+			_, err = tx.Exec("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", item.Quantity, *item.VariantID)
+		} else {
+			_, err = tx.Exec("UPDATE products SET stock = stock - $1 WHERE id = $2", item.Quantity, item.ProductID)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		return nil, err
+	}
+
+	// Return created order
+	return GetOrderByID(orderID)
+}
+
 func GetLowStockVariants() ([]models.LowStockVariant, error) {
 	query := `
 		SELECT p.name, pv.weight, pv.stock
