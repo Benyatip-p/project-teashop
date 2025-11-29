@@ -186,10 +186,8 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
             p.is_active,
             p.created_at,
             p.updated_at,
-            CASE
-                WHEN COUNT(pv.id) > 0 THEN COALESCE(SUM(pv.stock), 0)
-                ELSE p.stock
-            END as total_stock
+            COALESCE(SUM(pv.stock), 0) as total_stock,
+            MIN(pv.price) as display_price
         FROM products p
         LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
         WHERE p.is_active = true
@@ -203,7 +201,7 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
     }
 
     if maxPrice != nil {
-        query += fmt.Sprintf(" AND p.price <= $%d", index)
+        query += fmt.Sprintf(" AND MIN(pv.price) <= $%d", index)
         args = append(args, *maxPrice)
         index++
     }
@@ -212,7 +210,7 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
 
     switch sort {
     case "price_asc":
-        query += " ORDER BY p.price ASC"
+        query += " ORDER BY MIN(pv.price) ASC"
     case "id_asc":
         query += " ORDER BY p.id ASC"
     default:
@@ -229,6 +227,7 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
     for rows.Next() {
         var product models.Product
         var totalStock int
+        var displayPrice *float64
         if err := rows.Scan(
             &product.ID,
             &product.CategoryID,
@@ -239,6 +238,7 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
             &product.CreatedAt,
             &product.UpdatedAt,
             &totalStock,
+            &displayPrice,
         ); err != nil {
             return nil, err
         }
@@ -278,18 +278,10 @@ func CancelOrder(orderID int) error {
 
 	// Restore stock for each item
 	for _, item := range orderItems {
-		if item.VariantID != nil {
-			// Restore stock in product_variants
-			err = RestoreVariantStock(*item.VariantID, item.Quantity)
-			if err != nil {
-				return err
-			}
-		} else {
-			// Restore stock in products table
-			err = RestoreProductStock(item.ProductID, item.Quantity)
-			if err != nil {
-				return err
-			}
+		// Restore stock in product_variants
+		err = RestoreVariantStock(item.VariantID, item.Quantity)
+		if err != nil {
+			return err
 		}
 	}
 
@@ -297,7 +289,7 @@ func CancelOrder(orderID int) error {
 	return UpdateOrderStatus(orderID, "cancelled", nil)
 }
 
-func GetOrderItemsByOrderID(orderID int) ([]OrderItem, error) {
+func GetOrderItemsByOrderID(orderID int) ([]models.OrderItem, error) {
 	query := `
 		SELECT id, order_id, product_id, variant_id, weight, quantity, price_per_unit
 		FROM order_items
@@ -310,9 +302,9 @@ func GetOrderItemsByOrderID(orderID int) ([]OrderItem, error) {
 	}
 	defer rows.Close()
 
-	var items []OrderItem
+	var items []models.OrderItem
 	for rows.Next() {
-		var item OrderItem
+		var item models.OrderItem
 		err := rows.Scan(
 			&item.ID,
 			&item.OrderID,
@@ -384,10 +376,45 @@ func GetOrdersByUserID(userID int) ([]models.Order, error) {
 		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
 		FROM orders
 		WHERE user_id = $1
-		ORDER BY created_at DESC
+		ORDER BY id ASC
 	`
 
 	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var order models.Order
+		err := rows.Scan(
+			&order.ID,
+			&order.UserID,
+			&order.TotalAmount,
+			&order.Status,
+			&order.TrackingNumber,
+			&order.CustomerName,
+			&order.ShippingAddress,
+			&order.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, order)
+	}
+
+	return orders, nil
+}
+
+func GetAllOrders() ([]models.Order, error) {
+	query := `
+		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
+		FROM orders
+		ORDER BY id ASC
+	`
+
+	rows, err := DB.Query(query)
 	if err != nil {
 		return nil, err
 	}
@@ -725,25 +752,18 @@ func CreateOrder(userID int, req models.CreateOrderRequest) (*models.Order, erro
 	// Calculate total amount and validate stock
 	var totalAmount float64
 	for _, item := range req.Items {
-		// Get product price and stock (use FOR UPDATE to prevent race conditions)
+		// Get variant price and stock (use FOR UPDATE to prevent race conditions)
 		var price float64
 		var stock int
-		if item.VariantID != nil {
-			// Get variant price and stock
-			query := `SELECT price, stock FROM product_variants WHERE id = $1 AND is_active = true FOR UPDATE`
-			err = tx.QueryRow(query, *item.VariantID).Scan(&price, &stock)
-		} else {
-			// Get product price and stock
-			query := `SELECT price, stock FROM products WHERE id = $1 AND is_active = true FOR UPDATE`
-			err = tx.QueryRow(query, item.ProductID).Scan(&price, &stock)
-		}
+		query := `SELECT price, stock FROM product_variants WHERE id = $1 AND is_active = true FOR UPDATE`
+		err = tx.QueryRow(query, item.VariantID).Scan(&price, &stock)
 		if err != nil {
-			return nil, fmt.Errorf("product not found: %d", item.ProductID)
+			return nil, fmt.Errorf("variant not found: %d", item.VariantID)
 		}
 
 		// Check stock
 		if item.Quantity > stock {
-			return nil, fmt.Errorf("insufficient stock for product %d (requested: %d, available: %d)", item.ProductID, item.Quantity, stock)
+			return nil, fmt.Errorf("insufficient stock for variant %d (requested: %d, available: %d)", item.VariantID, item.Quantity, stock)
 		}
 
 		totalAmount += price * float64(item.Quantity)
@@ -764,13 +784,8 @@ func CreateOrder(userID int, req models.CreateOrderRequest) (*models.Order, erro
 	// Create order items and update stock
 	for _, item := range req.Items {
 		var price float64
-		if item.VariantID != nil {
-			query := `SELECT price FROM product_variants WHERE id = $1`
-			err = tx.QueryRow(query, *item.VariantID).Scan(&price)
-		} else {
-			query := `SELECT price FROM products WHERE id = $1`
-			err = tx.QueryRow(query, item.ProductID).Scan(&price)
-		}
+		query := `SELECT price FROM product_variants WHERE id = $1`
+		err = tx.QueryRow(query, item.VariantID).Scan(&price)
 		if err != nil {
 			return nil, err
 		}
@@ -786,11 +801,7 @@ func CreateOrder(userID int, req models.CreateOrderRequest) (*models.Order, erro
 		}
 
 		// Update stock
-		if item.VariantID != nil {
-			_, err = tx.Exec("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", item.Quantity, *item.VariantID)
-		} else {
-			_, err = tx.Exec("UPDATE products SET stock = stock - $1 WHERE id = $2", item.Quantity, item.ProductID)
-		}
+		_, err = tx.Exec("UPDATE product_variants SET stock = stock - $1 WHERE id = $2", item.Quantity, item.VariantID)
 		if err != nil {
 			return nil, err
 		}
@@ -841,11 +852,14 @@ func GetLowStockVariants() ([]models.LowStockVariant, error) {
 func GetAllLowStockItems() ([]models.LowStockItem, error) {
 	var items []models.LowStockItem
 
-	// Query 1: Get low stock variants
-	variantQuery := `
+	// Query: Get low stock variants
+	query := `
 		SELECT
 			p.name as product_name,
-			CONCAT(p.name, ' (', pv.weight, 'g)') as variant_name,
+			CASE
+				WHEN pv.weight IS NOT NULL THEN CONCAT(p.name, ' (', pv.weight, 'g)')
+				ELSE p.name
+			END as variant_name,
 			pv.stock
 		FROM products p
 		JOIN product_variants pv ON p.id = pv.product_id
@@ -853,17 +867,17 @@ func GetAllLowStockItems() ([]models.LowStockItem, error) {
 		ORDER BY pv.stock ASC
 	`
 
-	variantRows, err := DB.Query(variantQuery)
+	rows, err := DB.Query(query)
 	if err != nil {
 		return nil, err
 	}
-	defer variantRows.Close()
+	defer rows.Close()
 
-	for variantRows.Next() {
+	for rows.Next() {
 		var productName string
 		var variantName string
 		var stock int
-		err := variantRows.Scan(&productName, &variantName, &stock)
+		err := rows.Scan(&productName, &variantName, &stock)
 		if err != nil {
 			return nil, err
 		}
@@ -872,39 +886,6 @@ func GetAllLowStockItems() ([]models.LowStockItem, error) {
 			VariantName: &variantName,
 			Stock:       stock,
 			ItemType:    "variant",
-		})
-	}
-
-	// Query 2: Get low stock products (those without variants or in accessory categories)
-	productQuery := `
-		SELECT p.name, p.stock
-		FROM products p
-		WHERE p.stock < 10 AND p.is_active = true
-		AND NOT EXISTS (
-			SELECT 1 FROM product_variants pv
-			WHERE pv.product_id = p.id AND pv.is_active = true
-		)
-		ORDER BY p.stock ASC
-	`
-
-	productRows, err := DB.Query(productQuery)
-	if err != nil {
-		return nil, err
-	}
-	defer productRows.Close()
-
-	for productRows.Next() {
-		var productName string
-		var stock int
-		err := productRows.Scan(&productName, &stock)
-		if err != nil {
-			return nil, err
-		}
-		items = append(items, models.LowStockItem{
-			ProductName: productName,
-			VariantName: nil,
-			Stock:       stock,
-			ItemType:    "product",
 		})
 	}
 
@@ -1382,48 +1363,45 @@ func GetCategories() ([]models.Category, error) {
 }
 
 func GetProductByID(productID int) (*models.Product, error) {
- 	query := `
- 		SELECT
- 			p.id,
- 			p.category_id,
- 			p.name,
- 			p.description,
- 			p.image_url,
- 			p.is_active,
- 			p.created_at,
- 			p.updated_at,
- 			CASE
- 				WHEN COUNT(pv.id) > 0 THEN COALESCE(SUM(pv.stock), 0)
- 				ELSE p.stock
- 			END as total_stock
- 		FROM products p
- 		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
- 		WHERE p.id = $1 AND p.is_active = true
- 		GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at
- 	`
+  	query := `
+  		SELECT
+  			p.id,
+  			p.category_id,
+  			p.name,
+  			p.description,
+  			p.image_url,
+  			p.is_active,
+  			p.created_at,
+  			p.updated_at,
+  			COALESCE(SUM(pv.stock), 0) as total_stock
+  		FROM products p
+  		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
+  		WHERE p.id = $1 AND p.is_active = true
+  		GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at
+  	`
 
- 	var product models.Product
- 	var totalStock int
- 	err := DB.QueryRow(query, productID).Scan(
- 		&product.ID,
- 		&product.CategoryID,
- 		&product.Name,
- 		&product.Description,
- 		&product.ImageURL,
- 		&product.IsActive,
- 		&product.CreatedAt,
- 		&product.UpdatedAt,
- 		&totalStock,
- 	)
+  	var product models.Product
+  	var totalStock int
+  	err := DB.QueryRow(query, productID).Scan(
+  		&product.ID,
+  		&product.CategoryID,
+  		&product.Name,
+  		&product.Description,
+  		&product.ImageURL,
+  		&product.IsActive,
+  		&product.CreatedAt,
+  		&product.UpdatedAt,
+  		&totalStock,
+  	)
 
- 	if err == sql.ErrNoRows {
- 		return nil, nil // Product not found
- 	}
- 	if err != nil {
- 		return nil, err
- 	}
+  	if err == sql.ErrNoRows {
+  		return nil, nil // Product not found
+  	}
+  	if err != nil {
+  		return nil, err
+  	}
 
- 	return &product, nil
+  	return &product, nil
 }
 
 func CheckUsernameExists(username string, excludeUserID int) (bool, error) {
@@ -1475,53 +1453,121 @@ func UpdateUserProfile(userID int, firstName, lastName, username, passwordHash *
 }
 
 func GetProductsByCategory(categoryID int) ([]models.Product, error) {
- 	query := `
- 		SELECT
- 			p.id,
- 			p.category_id,
- 			p.name,
- 			p.description,
- 			p.image_url,
- 			p.is_active,
- 			p.created_at,
- 			p.updated_at,
- 			CASE
- 				WHEN COUNT(pv.id) > 0 THEN COALESCE(SUM(pv.stock), 0)
- 				ELSE p.stock
- 			END as total_stock
- 		FROM products p
- 		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
- 		WHERE p.category_id = $1 AND p.is_active = true
- 		GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at
- 		ORDER BY p.created_at DESC
- 	`
+  	query := `
+  		SELECT
+  			p.id,
+  			p.category_id,
+  			p.name,
+  			p.description,
+  			p.image_url,
+  			p.is_active,
+  			p.created_at,
+  			p.updated_at,
+  			COALESCE(SUM(pv.stock), 0) as total_stock,
+  			MIN(pv.price) as display_price
+  		FROM products p
+  		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
+  		WHERE p.category_id = $1 AND p.is_active = true
+  		GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at
+  		ORDER BY p.created_at DESC
+  	`
 
- 	rows, err := DB.Query(query, categoryID)
- 	if err != nil {
- 		return nil, err
- 	}
- 	defer rows.Close()
+  	rows, err := DB.Query(query, categoryID)
+  	if err != nil {
+  		return nil, err
+  	}
+  	defer rows.Close()
 
- 	var products []models.Product
- 	for rows.Next() {
- 		var product models.Product
- 		var totalStock int
- 		err := rows.Scan(
- 			&product.ID,
- 			&product.CategoryID,
- 			&product.Name,
- 			&product.Description,
- 			&product.ImageURL,
- 			&product.IsActive,
- 			&product.CreatedAt,
- 			&product.UpdatedAt,
- 			&totalStock,
- 		)
- 		if err != nil {
- 			return nil, err
- 		}
- 		products = append(products, product)
- 	}
+  	var products []models.Product
+  	for rows.Next() {
+  		var product models.Product
+  		var totalStock int
+  		var displayPrice *float64
+  		err := rows.Scan(
+  			&product.ID,
+  			&product.CategoryID,
+  			&product.Name,
+  			&product.Description,
+  			&product.ImageURL,
+  			&product.IsActive,
+  			&product.CreatedAt,
+  			&product.UpdatedAt,
+  			&totalStock,
+  			&displayPrice,
+  		)
+  		if err != nil {
+  			return nil, err
+  		}
+  		products = append(products, product)
+  	}
 
- 	return products, nil
+  	return products, nil
+}
+
+// ===================== Product Attribute Database Functions =====================
+func GetAttributeConfig(categoryID int) (*models.AttributeConfig, error) {
+	currentCategoryID := categoryID
+
+	for {
+		query := `
+			SELECT id, category_id, schema, updated_at
+			FROM product_attribute_config
+			WHERE category_id = $1
+		`
+
+		var config models.AttributeConfig
+		var schemaJSON []byte
+		err := DB.QueryRow(query, currentCategoryID).Scan(
+			&config.ID,
+			&config.CategoryID,
+			&schemaJSON,
+			&config.UpdatedAt,
+		)
+
+		if err == nil {
+			// Config found, unmarshal and return
+			err = json.Unmarshal(schemaJSON, &config.Schema)
+			if err != nil {
+				return nil, err
+			}
+			return &config, nil
+		}
+
+		if err != sql.ErrNoRows {
+			// Some other error, return it
+			return nil, err
+		}
+
+		// No config found, check parent
+		parentQuery := `SELECT parent_id FROM categories WHERE id = $1`
+		var parentID *int
+		err = DB.QueryRow(parentQuery, currentCategoryID).Scan(&parentID)
+		if err != nil {
+			return nil, err
+		}
+
+		if parentID == nil {
+			// No parent, no config found
+			return nil, nil
+		}
+
+		// Set to parent and continue loop
+		currentCategoryID = *parentID
+	}
+}
+
+func UpdateAttributeConfig(categoryID int, schema interface{}) error {
+	schemaJSON, err := json.Marshal(schema)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		UPDATE product_attribute_config
+		SET schema = $1, updated_at = NOW()
+		WHERE category_id = $2
+	`
+
+	_, err = DB.Exec(query, schemaJSON, categoryID)
+	return err
 }
