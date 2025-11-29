@@ -5,6 +5,7 @@ import {
   LogoutIcon,
   HomeIcon,
   CollectionIcon,
+  ClipboardListIcon,
 } from "@heroicons/react/outline";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen, handleLogout }) => {
@@ -14,13 +15,13 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, handleLogout }) => {
   const navItems = [
     { name: "Dashboard", icon: HomeIcon, path: "/admin/dashboard" },
     { name: "จัดการสินค้า", icon: CollectionIcon, path: "/admin/products" },
+    { name: "จัดการคำสั่งซื้อ", icon: ClipboardListIcon, path: "/admin/orders" },
   ];
 
   const isActive = (path) => location.pathname.startsWith(path);
 
   return (
     <aside
-      // แก้ไขตรงนี้: เพิ่ม sticky top-0 เพื่อให้เกาะติดขอบบนตลอดเวลา
       className={`sticky top-0 h-screen bg-viridian-800 text-white flex flex-col transition-all duration-300 shadow-xl ${
         sidebarOpen ? "w-64" : "w-20"
       }`}

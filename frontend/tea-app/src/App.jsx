@@ -30,6 +30,7 @@ import RegisterPage from "./pages/Registerpage";
 import DeleteTeaPage from "./pages/DeleteTeaPage";
 import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
 import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
+import AdminOrderpage from "./pages/AdminOrderpage";
 import AdminProductPage from "./pages/AdminDashboard/AdminProductPage";
 import CategoryProductspage from "./pages/CategoryProductspage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -115,6 +116,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
                 <AdminProductPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/orders"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminOrderpage />
               </ProtectedRoute>
             }
           />
