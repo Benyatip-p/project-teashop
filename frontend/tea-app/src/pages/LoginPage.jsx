@@ -9,7 +9,13 @@ import {
 } from "@heroicons/react/outline";
 import { jwtDecode } from "jwt-decode";
 
-const getRoleFromToken = (token) => {
+// Map role names to role_id
+const ROLE_ID_MAP = {
+  admin: 1,
+  user: 2,
+};
+
+const getRoleIdFromToken = (token) => {
   if (!token) return null;
 
   try {
@@ -20,7 +26,8 @@ const getRoleFromToken = (token) => {
     }
 
     const roles = Array.isArray(decoded.roles) ? decoded.roles : [];
-    return roles[0] || "user";
+    const roleName = roles[0] || "user";
+    return ROLE_ID_MAP[roleName] || 2; // Default to user (role_id = 2)
   } catch {
     return null;
   }
@@ -30,43 +37,52 @@ const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
 
-  const redirectTo = location.state?.redirectTo || null;
+  // Get the previous page from location state, or use referrer
+  const from = location.state?.from?.pathname || location.state?.redirectTo || null;
   const redirectState = location.state?.checkoutData || null;
 
-  const redirectByRole = useCallback(
-    (role) => {
-      if (redirectTo) {
-        navigate(redirectTo, { replace: true, state: redirectState });
-        return;
-      }
-
-      if (role === "admin") {
-        navigate("/admin/dashboard", { replace: true });
+  const redirectByRoleId = useCallback(
+    (roleId) => {
+      if (roleId === 1) {
+        // Store manager (admin) - always redirect to store manager dashboard
+        navigate("/store-manager/dashboard", { replace: true });
+      } else if (roleId === 2) {
+        // Regular user - redirect to previous page or home
+        if (from) {
+          navigate(from, { replace: true, state: redirectState });
+        } else {
+          navigate("/", { replace: true });
+        }
       } else {
-        navigate("/profile", { replace: true });
+        // Fallback to home
+        navigate("/", { replace: true });
       }
     },
-    [navigate, redirectTo, redirectState]
+    [navigate, from, redirectState]
   );
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    // Check both localStorage and sessionStorage for existing token
+    const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
     if (!token) return;
 
-    const role = getRoleFromToken(token);
-    if (!role) {
+    const roleId = getRoleIdFromToken(token);
+    if (!roleId) {
+      // Clear from both storages if token is invalid
       localStorage.removeItem("access_token");
+      sessionStorage.removeItem("access_token");
       return;
     }
 
-    redirectByRole(role);
-  }, [redirectByRole]);
+    redirectByRoleId(roleId);
+  }, [redirectByRoleId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -80,16 +96,28 @@ const LoginPage = () => {
       });
 
       const token = res.data.access_token;
-      localStorage.setItem("access_token", token);
-
-      const role = getRoleFromToken(token);
-      if (!role) {
+      
+      // Store token based on "Remember Me" preference
+      if (rememberMe) {
+        localStorage.setItem("access_token", token);
+        // Clear sessionStorage if it exists from a previous session
+        sessionStorage.removeItem("access_token");
+      } else {
+        sessionStorage.setItem("access_token", token);
+        // Clear localStorage if it exists from a previous session
         localStorage.removeItem("access_token");
+      }
+
+      const roleId = getRoleIdFromToken(token);
+      if (!roleId) {
+        // Clear from both storages if token is invalid
+        localStorage.removeItem("access_token");
+        sessionStorage.removeItem("access_token");
         setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
         return;
       }
 
-      redirectByRole(role);
+      redirectByRoleId(roleId);
     } catch (err) {
       const msg =
         err.response?.data?.message ||
@@ -219,17 +247,17 @@ const LoginPage = () => {
             </div>
 
             <div className="flex items-center justify-between text-xs text-gray-600 md:text-sm">
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked
-                  readOnly
-                  className="h-4 w-4 text-viridian-700"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-viridian-700 cursor-pointer"
                 />
                 <span>จดจำการเข้าสู่ระบบบนอุปกรณ์นี้</span>
               </label>
               <Link
-                to="/"
+                to="/forgot-password"
                 className="text-viridian-800 hover:text-viridian-900 hover:underline"
               >
                 ลืมรหัสผ่าน?

@@ -83,12 +83,36 @@ const Navbar = () => {
     setIsSearchOpen(false);
   };
 
-  const handleSearchSubmit = (query) => {
-    const q = query.trim();
-    if (!q) return;
-    navigate(`/products?search=${encodeURIComponent(q)}`);
-    setIsSearchOpen(false);
-  };
+  const handleSearchSubmit = query => {
+    const q = query.trim()
+    if (!q) return
+    navigate(`/products?search=${encodeURIComponent(q)}`)
+    setIsSearchOpen(false)
+  }
+
+  const isBrowser = typeof window !== 'undefined'
+  let isLoggedIn = false
+  let isAdmin = false
+  let username = ''
+
+  if (isBrowser) {
+    // Check both localStorage and sessionStorage for token
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
+    if (token) {
+      try {
+        const decoded = jwtDecode(token)
+        const roles = Array.isArray(decoded.roles) ? decoded.roles : []
+        isLoggedIn = true
+        isAdmin =
+          roles.includes('admin') || roles.includes('store_manager')
+        username = decoded.username || ''
+      } catch (e) {
+        isLoggedIn = false
+        isAdmin = false
+        username = ''
+      }
+    }
+  }
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -112,7 +136,8 @@ const Navbar = () => {
 
   const handleUserIconClick = () => {
     if (isLoggedIn) {
-      setIsUserDropdownOpen((prev) => !prev);
+      // Both admin and customer can open dropdown, but with different menu items
+      setIsUserDropdownOpen(prev => !prev)
     } else {
       navigate("/login", { state: { from: location } });
     }
@@ -120,7 +145,7 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      const refreshToken = localStorage.getItem("refresh_token");
+      const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token')
       if (refreshToken) {
         await axios.post("http://localhost:8080/auth/logout", {
           refresh_token: refreshToken,
@@ -129,12 +154,15 @@ const Navbar = () => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("adminUser");
-      setIsUserDropdownOpen(false);
-      setAuthState({ isLoggedIn: false, isAdmin: false, username: "" });
-      navigate("/");
+      // Clear from both localStorage and sessionStorage
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('adminUser')
+      sessionStorage.removeItem('access_token')
+      sessionStorage.removeItem('refresh_token')
+      sessionStorage.removeItem('adminUser')
+      setIsUserDropdownOpen(false)
+      navigate('/')
     }
   };
 
@@ -254,23 +282,29 @@ const Navbar = () => {
                 {isLoggedIn && isUserDropdownOpen && (
                   <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
-                      <Link
-                        to="/user/account/profile"
-                        onClick={() => setIsUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
-                      >
-                        <UserIcon className="mr-3 h-5 w-5 text-viridian-600" />
-                        บัญชีของฉัน
-                      </Link>
-                      <Link
-                        to="/orders"
-                        onClick={() => setIsUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
-                      >
-                        <ShoppingCartIcon className="mr-3 h-5 w-5 text-viridian-600" />
-                        การซื้อของฉัน
-                      </Link>
-                      <hr className="my-1 border-gray-200" />
+                      {/* Only show My Account and My Purchases for non-admin users */}
+                      {!isAdmin && (
+                        <>
+                          <Link
+                            to="/user/account/profile"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                            className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+                          >
+                            <UserIcon className="mr-3 h-5 w-5 text-viridian-600" />
+                            บัญชีของฉัน
+                          </Link>
+                          <Link
+                            to="/user/purchase"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                            className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+                          >
+                            <ShoppingCartIcon className="mr-3 h-5 w-5 text-viridian-600" />
+                            การซื้อของฉัน
+                          </Link>
+                          <hr className="my-1 border-gray-200" />
+                        </>
+                      )}
+                      {/* Logout is shown for all users */}
                       <button
                         type="button"
                         onClick={handleLogout}

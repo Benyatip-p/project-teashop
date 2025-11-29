@@ -15,16 +15,24 @@ import Aboutpage from "./pages/Aboutpage";
 import Productpage from "./pages/Productpage";
 import Favoritepage from "./pages/Favoritepage";
 import Cartpage from "./pages/Cartpage";
+
+import SidebarProfile from "./components/SidebarProfile";
+import Purchasepage from "./pages/Purchasepage";
 import Profilepage from "./pages/Profilepage";
+import Profilepaypage from "./pages/Profilepaypage";
+import Addresspage from "./pages/Addresspage";
+
 import ProductDetailpage from "./pages/ProductDetailpage";
+
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/Registerpage";
+
 import DeleteTeaPage from "./pages/DeleteTeaPage";
 import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
 import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
 import AdminProductPage from "./pages/AdminDashboard/AdminProductPage";
-import Paymentpage from "./pages/Paymentpage";
 import CategoryProductspage from "./pages/CategoryProductspage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 import CreateTeaPage from "./pages/EditTeaPage/CreateTeaPage"; 
 
@@ -43,7 +51,16 @@ const AuthLayout = ({ children }) => (
   </div>
 );
 
-// ===================== ROUTING =====================
+const AccountLayout = ({ children }) => (
+  <PublicLayout>
+    <div className="container mx-auto px-4 py-8 flex flex-col md:flex-row gap-6">
+      <SidebarProfile />
+      <div className="flex-1 w-full min-w-0">{children}</div>
+    </div>
+  </PublicLayout>
+);
+
+
 function App() {
   return (
     <ShopProvider>
@@ -116,21 +133,43 @@ function App() {
             path="/user/account/profile"
             element={
               <ProtectedRoute>
-                <PublicLayout>
+                <AccountLayout>
                   <Profilepage />
-                </PublicLayout>
+                </AccountLayout>
+              </ProtectedRoute>
+            }
+          />
+
+           <Route
+            path="/user/account/payment"
+            element={
+              <ProtectedRoute>
+                <AccountLayout>
+                  <Profilepaypage />
+                </AccountLayout>
               </ProtectedRoute>
             }
           />
 
           {/* PAYMENT */}
           <Route
-            path="/payment"
+            path="/user/account/address"
             element={
               <ProtectedRoute>
-                <PublicLayout>
-                  <Paymentpage />
-                </PublicLayout>
+                <AccountLayout>
+                  <Addresspage />
+                </AccountLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/user/purchase"
+            element={
+              <ProtectedRoute>
+                <AccountLayout>
+                  <Purchasepage />
+                </AccountLayout>
               </ProtectedRoute>
             }
           />
