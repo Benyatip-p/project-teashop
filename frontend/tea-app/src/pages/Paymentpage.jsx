@@ -40,51 +40,97 @@ const Paymentpage = () => {
   // state สำหรับบัตร
   const [cardNumber, setCardNumber] = useState("");
   const [cardError, setCardError] = useState("");
-  const [cardType, setCardType] = useState(""); // "visa" | "master" | ""
+  const [cardType, setCardType] = useState(""); 
+  const [cardExpiry, setCardExpiry] = useState(""); // <-- เพิ่มบรรทัดนี้
+  const [cardCvv, setCardCvv] = useState(""); 
 
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  useEffect(() => {
-  const fetchDefaultAddress = async () => {
-    try {
-      const res = await fetch("addresses/default");
 
-      if (!res.ok) {
-        console.error("Failed to fetch default address", res.status);
-        return;
+    useEffect(() => {
+    const fetchDefaultAddress = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+          console.error("No token found. Please login first.");
+          return;
+        }
+
+        const res = await fetch("/api/v1/addresses/default", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          console.error("Failed to fetch default address", res.status);
+          try {
+            const errData = await res.json();
+            console.error("Error detail:", errData);
+          } catch (_) {}
+          return;
+        }
+
+        const addr = await res.json();
+        console.log("default address from API:", addr);
+
+        let rawAddress = addr.address || "";
+        let mainAddress = rawAddress;
+        let subDistrict = ""; // แขวง / ตำบล
+        let district = "";    // เขต / อำเภอ
+
+        // ----- เริ่มส่วนที่แก้ไข: สลับตำแหน่ง -----
+
+        // 1. ดึง "เขต..." ออกก่อน
+        const distMatch = rawAddress.match(/เขต\s*(.+)$/);
+        if (distMatch) {
+          district = distMatch[1].trim();
+          // ใช้ distMatch[0] ที่มีคำว่า "เขต" อยู่ด้วยในการแทนที่
+          mainAddress = mainAddress.replace(distMatch[0], "").trim(); 
+        }
+
+        // 2. ดึง "แขวง..." ออกทีหลัง
+        // Regex นี้จะหา "แขวง... เขต" แต่ตอนนี้คำว่า "เขต" อาจจะหายไปแล้ว
+        // เราจะใช้ Regex ที่หาแค่ "แขวง..." ก็พอ
+        const subMatch = mainAddress.match(/แขวง\s*([^ ]+(?:\s[^ ]+)*)/);
+        if (subMatch) {
+          subDistrict = subMatch[1].trim();
+          // ใช้ subMatch[0] ที่มีคำว่า "แขวง" อยู่ด้วยในการแทนที่
+          mainAddress = mainAddress.replace(subMatch[0], "").trim();
+        }
+
+        // ----- จบส่วนที่แก้ไข -----
+
+        setShipping({
+          name: addr.recipient_name || "",
+          phone: addr.phone_number || "",
+          address: mainAddress.trim(), // trim() อีกครั้งเพื่อความแน่นอน
+          province: addr.province || "",
+          subDistrict: subDistrict,
+          district: district,
+          zipcode: addr.postal_code || "",
+        });
+
+      } catch (err) {
+        console.error("โหลดที่อยู่เริ่มต้นไม่สำเร็จ:", err);
       }
+    };
 
-      const addr = await res.json();
-      console.log("default address from API:", addr);
+    fetchDefaultAddress();
+  }, []);
 
-      setShipping((prev) => ({
-        ...prev,
-        name: addr.recipient_name || prev.name || "",
-        phone: addr.phone_number || prev.phone || "",
-        address: addr.address || prev.address || "",
-        province: addr.province || prev.province || "",
-        district: prev.district || "",
-        subDistrict: prev.subDistrict || "",
-        zipcode: addr.postal_code || prev.zipcode || "",
-      }));
-    } catch (err) {
-      console.error("โหลดที่อยู่เริ่มต้นไม่สำเร็จ:", err);
-    }
-  };
-
-  fetchDefaultAddress();
-}, []);
-  // โหลดรายการจังหวัดจากไฟล์ / API
   useEffect(() => {
     const fetchProvinces = async () => {
       try {
         const res = await fetch("/provinces.json");
         const data = await res.json();
-        // แปลงข้อมูลให้มี key เป็น value และ label
+
         const formattedProvinces = data.map((p) => ({
-          value: p.name, // ค่าจริงที่จะใช้
-          label: p.name, // ข้อความที่แสดงให้ผู้ใช้เห็นและใช้ค้นหา
+          value: p.name,
+          label: p.name,
         }));
         setProvinces(formattedProvinces);
       } catch (err) {
@@ -293,96 +339,131 @@ const Paymentpage = () => {
     return false;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    // ฟังก์ชันตรวจสอบวันหมดอายุ
+  const validateExpiry = () => {
+    let error = "";
+    const value = cardExpiry;
 
-    if (!triedSubmit) setTriedSubmit(true);
+    if (!value.trim()) {
+      error = "กรุณากรอกวันหมดอายุ";
+    } else if (!/^\d{2} \/ \d{2}$/.test(value)) {
+      error = "รูปแบบไม่ถูกต้อง (MM / YY)";
+    } else {
+      const [month, year] = value.split(" / ");
+      const expMonth = parseInt(month, 10);
+      const expYear = parseInt(year, 10);
+      const currentYear = new Date().getFullYear() % 100; // ปีปัจจุบัน 2 หลักท้าย
+      const currentMonth = new Date().getMonth() + 1; // เดือนปัจจุบัน (1-12)
 
-    // 1. Validation (เหมือนเดิม)
-    const shippingOK = validateShipping();
-    if (!shippingOK) return;
-
-    if (!paymentMethod) {
-      return;
-    }
-
-    if (paymentMethod === "card") {
-      const ok = validateCardNumber();
-      if (!ok) return;
-    }
-
-    // เริ่มประมวลผล
-    setIsProcessing(true);
-
-    try {
-      // 2. จัดเตรียมข้อมูล (Payload) ที่จะส่งไปให้ API
-      const orderItems = selectedItems.map(item => ({
-        productId: item.id,
-        quantity: item.qty || 1,
-        price: item.price,
-      }));
-
-      const orderPayload = {
-        items: orderItems,
-        shippingAddress: shipping,
-        paymentMethod: paymentMethod,
-        summary: {
-            subtotal: cartSubtotal,
-            shippingFee: cartShipping,
-            couponDiscount: cartCouponDiscount,
-            total: cartTotal,
-        }
-        // หากมีการส่งข้อมูลบัตรเครดิต (ผ่าน Token) ให้เพิ่มที่นี่
-        // paymentToken: "tokn_xxxxxx"
-      };
-
-      // 3. เรียก API ด้วย fetch
-      const response = await fetch('/api/v1/orders', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // หากมีระบบ Login ต้องแนบ Token ไปด้วย
-          // 'Authorization': `Bearer ${yourAuthToken}` 
-        },
-        body: JSON.stringify(orderPayload),
-      });
-
-      // 4. ตรวจสอบผลลัพธ์จาก API
-      if (!response.ok) {
-        // หาก API ตอบกลับมาว่ามีปัญหา (เช่น status 400, 500)
-        const errorData = await response.json(); // อ่าน error message จาก body
-        throw new Error(errorData.message || 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ');
+      if (expMonth < 1 || expMonth > 12) {
+        error = "เดือนไม่ถูกต้อง";
+      } else if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+        error = "บัตรหมดอายุแล้ว";
       }
-      
-      // หากสำเร็จ
-      const result = await response.json();
-      console.log('Order created successfully:', result);
-
-      toast.success("ชำระเงินสำเร็จ", {
-        position: "top-right",
-        autoClose: 2000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: false,
-        draggable: true,
-      });
-
-      // Navigate ไปหน้าแรกหลังชำระเงินสำเร็จ
-      setTimeout(() => {
-        navigate("/");
-      }, 2000);
-
-    } catch (error) {
-      // 5. จัดการ Error (เช่น network ขัดข้อง หรือ error ที่เรา throw ไว้)
-      console.error("Failed to submit order:", error);
-      toast.error(error.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
-    
-    } finally {
-      // 6. ไม่ว่าจะสำเร็จหรือล้มเหลว ให้หยุดการประมวลผล
-      setIsProcessing(false);
     }
+    
+    setErrors((prev) => ({ ...prev, cardExpiry: error }));
+    return !error;
   };
 
+  // ฟังก์ชันตรวจสอบ CVV
+  const validateCvv = () => {
+    let error = "";
+    const value = cardCvv;
+
+    if (!value.trim()) {
+      error = "กรุณากรอก CVV";
+    } else if (!/^\d{3}$/.test(value.trim())) {
+      error = "CVV ต้องเป็นตัวเลข 3 หลัก";
+    }
+
+    setErrors((prev) => ({ ...prev, cardCvv: error }));
+    return !error;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setTriedSubmit(true);
+
+    const shippingOK = validateShipping();
+
+    let cardDetailsOK = true;
+    if (paymentMethod === 'card') {
+      const cardNumberOK = validateCardNumber();
+      const cardExpiryOK = validateExpiry();
+      const cardCvvOK = validateCvv();
+      cardDetailsOK = cardNumberOK && cardExpiryOK && cardCvvOK;
+    }
+
+    if (!shippingOK || !paymentMethod || !cardDetailsOK) {
+        return;
+    }
+
+    setIsProcessing(true);
+
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    try {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+          toast.error("กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ");
+          setIsProcessing(false);
+          return;
+        }
+
+        const orderPayload = {
+            customer_name: shipping.name, 
+            shipping_address: ` ${shipping.address} แขวง${shipping.subDistrict} เขต${shipping.district}, ${shipping.province} ${shipping.zipcode}`,
+            total_amount: cartTotal,   
+            items: selectedItems.map(item => ({
+                product_id: item.id,
+                quantity: item.qty || 1,
+                price: item.price
+            })),
+            payment_method: paymentMethod,
+            summary: {
+                subtotal: cartSubtotal,
+                shipping_fee: cartShipping,
+                coupon_discount: cartCouponDiscount,
+                total: cartTotal
+            }
+        };
+        
+        if (paymentMethod === 'card') {
+          orderPayload.card_details = {
+            card_number: cardNumber.replace(/\s/g, ''),
+            expiry_date: cardExpiry,
+            cvv: cardCvv,
+          };
+        }
+
+        console.log("Sending payload to backend:", JSON.stringify(orderPayload, null, 2));
+
+        const response = await fetch('/api/v1/orders', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                Authorization: `Bearer ${token}` 
+            },
+            body: JSON.stringify(orderPayload),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Backend error:", errorData); 
+            throw new Error(errorData.error || 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ');
+        }
+
+        toast.success("สั่งซื้อสำเร็จแล้ว!");
+        setTimeout(() => navigate("/"), 2000);
+
+    } catch (error) {
+        console.error("Failed to submit order:", error);
+        toast.error(error.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
+    } finally {
+        setIsProcessing(false);
+    }
+};
   // จัดการเลขบัตร
   const handleCardNumberChange = (e) => {
     const raw = e.target.value;
@@ -422,6 +503,23 @@ const Paymentpage = () => {
   };
 
   const handleCardFocus = () => {};
+
+  const handleExpiryChange = (e) => {
+      let value = e.target.value.replace(/\D/g, ""); // เอาเฉพาะตัวเลข
+      if (value.length > 2) {
+        // เพิ่ม "/" หลังเดือน
+        value = value.slice(0, 2) + " / " + value.slice(2, 4);
+      } else if (value.length > 4) {
+        value = value.slice(0, 5); // จำกัดความยาว
+      }
+      setCardExpiry(value);
+  };
+
+  // จัดการการเปลี่ยนแปลงของ CVV
+  const handleCvvChange = (e) => {
+      const value = e.target.value.replace(/\D/g, ""); // เอาเฉพาะตัวเลข
+      setCardCvv(value.slice(0, 3)); // จำกัดแค่ 3 หลัก
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -546,46 +644,28 @@ const Paymentpage = () => {
 
                 {/* อำเภอ */}
                 <div>
-                  <label className="block text-sm mb-1">
-                    อำเภอ <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="district"
-                    value={shipping.district}
-                    onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 ${
-                      errors.district ? "border-red-500" : "border-gray-300"
-                    }`}
-                  />
-                  {errors.district && (
-                    <p className="mt-1 text-xs text-red-500">
-                      {errors.district}
-                    </p>
-                  )}
-                </div>
-
-                {/* ตำบล */}
-                <div>
-                  <label className="block text-sm mb-1">
-                    ตำบล <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-sm mb-1">แขวง/ตำบล <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     name="subDistrict"
                     value={shipping.subDistrict}
                     onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 ${
-                      errors.subDistrict
-                        ? "border-red-500"
-                        : "border-gray-300"
-                    }`}
+                    className={`w-full border rounded px-3 py-2 ${errors.subDistrict ? "border-red-500" : "border-gray-300"}`}
                   />
-                  {errors.subDistrict && (
-                    <p className="mt-1 text-xs text-red-500">
-                      {errors.subDistrict}
-                    </p>
-                  )}
+                  {errors.subDistrict && <p className="mt-1 text-xs text-red-500">{errors.subDistrict}</p>}
+                </div>
+
+                {/* เขต/อำเภอ (district) */}
+                <div>
+                  <label className="block text-sm mb-1">เขต/อำเภอ <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    name="district"
+                    value={shipping.district}
+                    onChange={handleChange}
+                    className={`w-full border rounded px-3 py-2 ${errors.district ? "border-red-500" : "border-gray-300"}`}
+                  />
+                  {errors.district && <p className="mt-1 text-xs text-red-500">{errors.district}</p>}
                 </div>
 
                 {/* รหัสไปรษณีย์ */}
@@ -671,27 +751,50 @@ const Paymentpage = () => {
                     </div>
 
                     <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        วันหมดอายุ
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-1">วันหมดอายุ</label>
                       <input
                         type="text"
-                        className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="MM/YY"
+                        name="cardExpiry"
+                        value={cardExpiry}
+                        onChange={handleExpiryChange}
+                        onBlur={validateExpiry}
+                        autoComplete="off"
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
+                          errors.cardExpiry
+                            ? "border-red-500 focus:ring-red-400"
+                            : "focus:ring-green-500"
+                        }`}
+                        placeholder="MM / YY"
                         disabled={isProcessing}
                       />
+                      {errors.cardExpiry && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.cardExpiry}
+                        </p>
+                      )}
                     </div>
-
                     <div>
-                      <label className="block text-sm text-gray-700 mb-1">
-                        CVV
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-1">CVV</label>
                       <input
                         type="password"
-                        className="w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        name="cardCvv"
+                        value={cardCvv}
+                        onChange={handleCvvChange}
+                        onBlur={validateCvv}
+                        autoComplete="off"
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
+                          errors.cardCvv
+                            ? "border-red-500 focus:ring-red-400"
+                            : "focus:ring-green-500"
+                        }`}
                         placeholder="XXX"
                         disabled={isProcessing}
                       />
+                      {errors.cardCvv && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.cardCvv}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
