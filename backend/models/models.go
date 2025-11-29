@@ -113,10 +113,10 @@ type CreateProductRequest struct {
 
 type UpdateProductRequest struct {
     CategoryID  *int    `json:"category_id"`
-    Name        string  `json:"name"`
-    Description string  `json:"description"`
+    Name        *string `json:"name"`
+    Description *string `json:"description"`
     ImageURL    *string `json:"image_url"`
-    IsActive    bool    `json:"is_active"`
+    IsActive    *bool   `json:"is_active"`
 }
 
 type CreateVariantRequest struct {

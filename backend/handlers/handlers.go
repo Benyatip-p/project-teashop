@@ -5,6 +5,7 @@ import (
 	"backend/database"
 	"backend/models"
 	"database/sql"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -1825,16 +1826,6 @@ func CreateProductHandler(c *gin.Context) {
 		return
 	}
 
-	// Auto-create default variant (simplest approach)
-	variantQuery := `INSERT INTO product_variants (product_id, weight, price, stock, is_active, created_at, updated_at)
-	                 VALUES ($1, NULL, 0, 0, true, NOW(), NOW())`
-	_, err = tx.Exec(variantQuery, newID)
-	if err != nil {
-		log.Printf("Error creating default variant: %v", err)
-		c.JSON(500, gin.H{"error": "failed to create product"})
-		return
-	}
-
 	// Commit transaction
 	err = tx.Commit()
 	if err != nil {
@@ -1901,19 +1892,57 @@ return
         return
     }
 
-    // แปลง ImageURL เป็น sql.NullString
-    var img sql.NullString
-    if req.ImageURL != nil && *req.ImageURL != "" {
-        img = sql.NullString{String: *req.ImageURL, Valid: true}
-    } else {
-        img = sql.NullString{Valid: false}
+    // Build dynamic update query based on provided fields
+    query := "UPDATE products SET updated_at=NOW()"
+    args := []interface{}{}
+    argID := 1
+
+    if req.CategoryID != nil {
+        query += fmt.Sprintf(", category_id=$%d", argID)
+        args = append(args, *req.CategoryID)
+        argID++
     }
 
-    query := `UPDATE products
-              SET category_id=$1, name=$2, description=$3, image_url=$4, is_active=$5, updated_at=NOW()
-              WHERE id=$6`
+    if req.Name != nil {
+        query += fmt.Sprintf(", name=$%d", argID)
+        args = append(args, *req.Name)
+        argID++
+    }
 
-    res, err := database.DB.Exec(query, req.CategoryID, req.Name, req.Description, img, req.IsActive, pid)
+    if req.Description != nil {
+        query += fmt.Sprintf(", description=$%d", argID)
+        args = append(args, *req.Description)
+        argID++
+    }
+
+    if req.ImageURL != nil {
+        var img sql.NullString
+        if *req.ImageURL != "" {
+            img = sql.NullString{String: *req.ImageURL, Valid: true}
+        } else {
+            img = sql.NullString{Valid: false}
+        }
+        query += fmt.Sprintf(", image_url=$%d", argID)
+        args = append(args, img)
+        argID++
+    }
+
+    if req.IsActive != nil {
+        query += fmt.Sprintf(", is_active=$%d", argID)
+        args = append(args, *req.IsActive)
+        argID++
+    }
+
+    // If no fields to update, return early
+    if len(args) == 0 {
+        c.JSON(200, gin.H{"message": "no changes to update"})
+        return
+    }
+
+    query += fmt.Sprintf(" WHERE id=$%d", argID)
+    args = append(args, pid)
+
+    res, err := database.DB.Exec(query, args...)
     if err != nil {
         log.Printf("Error updating product: %v", err)
         c.JSON(500, gin.H{"error": "failed to update product"})

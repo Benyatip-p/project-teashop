@@ -41,14 +41,14 @@ const CreateTeaPage = () => {
       prev.map((v, i) =>
         i === index
           ? {
-              ...v,
-              [field]:
-                field === "weight"
-                  ? value
-                  : value === ""
+            ...v,
+            [field]:
+              field === "weight"
+                ? value
+                : value === ""
                   ? ""
                   : Number(value),
-            }
+          }
           : v
       )
     )
@@ -99,9 +99,8 @@ const CreateTeaPage = () => {
       const productRes = await api.post("/products", {
         name,
         category_id: categoryId ? Number(categoryId) : null,
-        price: Number(baseVariant.price || 0),
-        stock: Number(baseVariant.stock || 0),
         image_url: imageUrl,
+        is_active: true,
       })
 
       const createdProduct =
@@ -126,8 +125,8 @@ const CreateTeaPage = () => {
     } catch (err) {
       setError(
         err?.response?.data?.detail ||
-          err?.message ||
-          "เกิดข้อผิดพลาดขณะบันทึกข้อมูลสินค้า"
+        err?.message ||
+        "เกิดข้อผิดพลาดขณะบันทึกข้อมูลสินค้า"
       )
     } finally {
       setSaving(false)
@@ -169,7 +168,7 @@ const CreateTeaPage = () => {
                 เพิ่มสินค้าใหม่
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                สร้างสินค้าใหม่สำหรับร้าน GOODTEA กำหนดชื่อ หมวดหมู่ ราคา และรูปภาพ
+                สร้างสินค้าใหม่สำหรับร้าน GOODTEA กำหนดชื่อ หมวดหมู่ ราคา และรูปภาพ (รูปภาพไม่บังคับ)
               </p>
             </div>
           </div>
@@ -222,102 +221,102 @@ const CreateTeaPage = () => {
               </div>
 
               <div className="space-y-2">
-  <label className="mb-1 block text-sm font-medium text-slate-700">
-    ขนาดสินค้า / ราคา / สต็อก
-  </label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">
+                  ขนาดสินค้า / ราคา / สต็อก
+                </label>
 
-  <div className="rounded-xl border border-slate-200 p-3">
-    {/* ส่วนหัวตาราง: ซ่อนบนมือถือ (hidden) แสดงบนจอใหญ่ (sm:grid) */}
-    <div className="hidden sm:grid grid-cols-[1.2fr,1fr,1fr,auto] gap-3 text-xs font-semibold text-slate-500 mb-2">
-      <span>น้ำหนัก (กรัม)</span>
-      <span>ราคา (บาท)</span>
-      <span>สต็อก</span>
-      <span />
-    </div>
+                <div className="rounded-xl border border-slate-200 p-3">
+                  {/* ส่วนหัวตาราง: ซ่อนบนมือถือ (hidden) แสดงบนจอใหญ่ (sm:grid) */}
+                  <div className="hidden sm:grid grid-cols-[1.2fr,1fr,1fr,auto] gap-3 text-xs font-semibold text-slate-500 mb-2">
+                    <span>น้ำหนัก (กรัม)</span>
+                    <span>ราคา (บาท)</span>
+                    <span>สต็อก</span>
+                    <span />
+                  </div>
 
-    <div className="space-y-4 sm:space-y-2">
-      {variants.map((variant, index) => (
-        <div
-          key={index}
-          // Responsive Grid: มือถือเป็น 2 คอลัมน์ (มีพื้นหลังสีเทาอ่อน), จอใหญ่เป็นแถวเดียว (พื้นหลังขาว)
-          className="grid grid-cols-2 gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 sm:grid-cols-[1.2fr,1fr,1fr,auto] sm:border-0 sm:bg-white sm:p-0"
-        >
-          {/* Input น้ำหนัก */}
-          <div className="col-span-2 sm:col-span-1">
-            <label className="mb-1 block text-xs text-slate-500 sm:hidden">
-              น้ำหนัก (กรัม)
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={variant.weight}
-              onChange={e =>
-                handleVariantChange(index, "weight", e.target.value)
-              }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
-              placeholder="เช่น 50"
-            />
-          </div>
+                  <div className="space-y-4 sm:space-y-2">
+                    {variants.map((variant, index) => (
+                      <div
+                        key={index}
+                        // Responsive Grid: มือถือเป็น 2 คอลัมน์ (มีพื้นหลังสีเทาอ่อน), จอใหญ่เป็นแถวเดียว (พื้นหลังขาว)
+                        className="grid grid-cols-2 gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 sm:grid-cols-[1.2fr,1fr,1fr,auto] sm:border-0 sm:bg-white sm:p-0"
+                      >
+                        {/* Input น้ำหนัก */}
+                        <div className="col-span-2 sm:col-span-1">
+                          <label className="mb-1 block text-xs text-slate-500 sm:hidden">
+                            น้ำหนัก (กรัม)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={variant.weight}
+                            onChange={e =>
+                              handleVariantChange(index, "weight", e.target.value)
+                            }
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                            placeholder="เช่น 50"
+                          />
+                        </div>
 
-          {/* Input ราคา */}
-          <div className="col-span-1">
-            <label className="mb-1 block text-xs text-slate-500 sm:hidden">
-              ราคา
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={variant.price}
-              onChange={e =>
-                handleVariantChange(index, "price", e.target.value)
-              }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
-              placeholder="ราคา"
-            />
-          </div>
+                        {/* Input ราคา */}
+                        <div className="col-span-1">
+                          <label className="mb-1 block text-xs text-slate-500 sm:hidden">
+                            ราคา
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={variant.price}
+                            onChange={e =>
+                              handleVariantChange(index, "price", e.target.value)
+                            }
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                            placeholder="ราคา"
+                          />
+                        </div>
 
-          {/* Input สต็อก */}
-          <div className="col-span-1">
-            <label className="mb-1 block text-xs text-slate-500 sm:hidden">
-              สต็อก
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={variant.stock}
-              onChange={e =>
-                handleVariantChange(index, "stock", e.target.value)
-              }
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
-              placeholder="สต็อก"
-            />
-          </div>
+                        {/* Input สต็อก */}
+                        <div className="col-span-1">
+                          <label className="mb-1 block text-xs text-slate-500 sm:hidden">
+                            สต็อก
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={variant.stock}
+                            onChange={e =>
+                              handleVariantChange(index, "stock", e.target.value)
+                            }
+                            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                            placeholder="สต็อก"
+                          />
+                        </div>
 
-          {/* ปุ่มลบ */}
-          <div className="col-span-2 flex items-end justify-end sm:col-span-1 sm:items-center">
-            {variants.length > 1 && (
-              <button
-                type="button"
-                onClick={() => handleRemoveVariant(index)}
-                className="w-full rounded-lg bg-rose-100 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-200 sm:w-auto sm:rounded-full sm:bg-rose-50 sm:py-1.5"
-              >
-                ลบ
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
+                        {/* ปุ่มลบ */}
+                        <div className="col-span-2 flex items-end justify-end sm:col-span-1 sm:items-center">
+                          {variants.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveVariant(index)}
+                              className="w-full rounded-lg bg-rose-100 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-200 sm:w-auto sm:rounded-full sm:bg-rose-50 sm:py-1.5"
+                            >
+                              ลบ
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-    <button
-      type="button"
-      onClick={handleAddVariant}
-      className="mt-3 w-full rounded-xl border border-dashed border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-    >
-      + เพิ่มขนาดสินค้า
-    </button>
-  </div>
-</div>
+                  <button
+                    type="button"
+                    onClick={handleAddVariant}
+                    className="mt-3 w-full rounded-xl border border-dashed border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+                  >
+                    + เพิ่มขนาดสินค้า
+                  </button>
+                </div>
+              </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
@@ -330,7 +329,7 @@ const CreateTeaPage = () => {
                   className="w-full text-sm"
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  รองรับไฟล์ภาพ เช่น .jpg, .png ขนาดแนะนำ 800×800px ขึ้นไป
+                  รองรับไฟล์ภาพ เช่น .jpg, .png ขนาดแนะนำ 800×800px ขึ้นไป (ไม่บังคับ)
                 </p>
                 {uploading && (
                   <p className="mt-1 text-xs text-emerald-600">
@@ -349,7 +348,7 @@ const CreateTeaPage = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving || uploading || !imageUrl}
+                  disabled={saving || uploading}
                   className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {saving ? "กำลังบันทึก..." : "บันทึกสินค้าใหม่"}
@@ -367,29 +366,66 @@ const CreateTeaPage = () => {
             </p>
 
             <div className="mt-6 flex h-full items-center justify-center">
-              <div className="flex w-full max-w-xs flex-col items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
-                <div className="h-48 w-full overflow-hidden rounded-xl bg-emerald-50">
-                  {previewSrc ? (
-                    <img
-                      src={previewSrc}
-                      alt={name}
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-slate-400">
-                      ไม่มีตัวอย่างรูปภาพ
-                    </div>
-                  )}
+              <div className="flex w-full max-w-xs flex-col gap-4">
+                {/* รูปภาพตัวอย่าง */}
+                <div className="flex flex-col items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
+                  <div className="h-48 w-full overflow-hidden rounded-xl bg-emerald-50">
+                    {previewSrc ? (
+                      <img
+                        src={previewSrc}
+                        alt={name}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                        ไม่มีตัวอย่างรูปภาพ
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-full space-y-1 text-center">
+                    <div className="text-sm font-semibold text-slate-900">{name || "ชื่อสินค้า"}</div>
+                    <div className="text-xs text-slate-500">{selectedCategoryName || "หมวดหมู่"}</div>
+                    <div className="text-sm font-semibold text-emerald-700">฿{previewPrice}</div>
+                  </div>
                 </div>
-                <div className="w-full space-y-1 text-center">
-                  <div className="text-sm font-semibold text-slate-900">
-                    {name || "ชื่อสินค้า"}
+
+                {/* ข้อมูลตัวเลือกสินค้าแบบเรียลไทม์ */}
+                <div className="rounded-2xl bg-slate-50 p-4 shadow-sm">
+                  <h3 className="text-xs font-semibold text-slate-700 mb-3">ตัวเลือกสินค้า</h3>
+                  <div className="space-y-2">
+                    {variants.map((variant, index) => (
+                      <div key={index} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500">
+                            {variant.weight ? `${variant.weight}g` : "ไม่ระบุน้ำหนัก"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-emerald-700">฿{variant.price || 0}</span>
+                          <span className="text-slate-500">({variant.stock || 0} ชิ้น)</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-xs text-slate-500">
-                    {selectedCategoryName || "หมวดหมู่"}
-                  </div>
-                  <div className="text-sm font-semibold text-emerald-700">
-                    ฿{previewPrice}
+
+                  {/* สรุปข้อมูล */}
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600">รวมตัวเลือก:</span>
+                      <span className="font-medium text-slate-900">{variants.length} ตัวเลือก</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs mt-1">
+                      <span className="text-slate-600">ราคาเริ่มต้น:</span>
+                      <span className="font-medium text-emerald-700">
+                        ฿{Math.min(...variants.map(v => v.price || 0).filter(p => p > 0)) || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs mt-1">
+                      <span className="text-slate-600">สต็อกรวม:</span>
+                      <span className="font-medium text-slate-900">
+                        {variants.reduce((sum, v) => sum + (v.stock || 0), 0)} ชิ้น
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
