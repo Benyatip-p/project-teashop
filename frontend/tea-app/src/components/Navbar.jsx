@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from "react";
 import {
   Link,
   NavLink,
   useLocation,
   useNavigate,
-} from 'react-router-dom'
+} from "react-router-dom";
 import {
   ShoppingCartIcon,
   SearchIcon,
@@ -13,45 +13,74 @@ import {
   XIcon,
   HeartIcon,
   LogoutIcon,
-} from '@heroicons/react/outline'
-import axios from 'axios'
-import { jwtDecode } from 'jwt-decode'
-import { useShop } from '../context/ShopContext'
-import SearchOverlay from './SearchOverlay'
+} from "@heroicons/react/outline";
+import axios from "axios";
+import { jwtDecode } from "jwt-decode";
+import { useShop } from "../context/ShopContext";
+import SearchOverlay from "./SearchOverlay";
+
+const getAuthState = () => {
+  if (typeof window === "undefined") {
+    return { isLoggedIn: false, isAdmin: false, username: "" };
+  }
+
+  const token = localStorage.getItem("access_token");
+  if (!token) {
+    return { isLoggedIn: false, isAdmin: false, username: "" };
+  }
+
+  try {
+    const decoded = jwtDecode(token);
+    const roles = Array.isArray(decoded.roles) ? decoded.roles : [];
+    const isAdmin =
+      roles.includes("admin") || roles.includes("store_manager");
+
+    return {
+      isLoggedIn: true,
+      isAdmin,
+      username: decoded.username || "",
+    };
+  } catch {
+    return { isLoggedIn: false, isAdmin: false, username: "" };
+  }
+};
 
 const Navbar = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const [searchText, setSearchText] = useState('')
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false)
-  const userDropdownRef = useRef(null)
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [authState, setAuthState] = useState(getAuthState);
 
-  const { cartCount } = useShop()
-  const location = useLocation()
-  const navigate = useNavigate()
+  const userDropdownRef = useRef(null);
 
-  const isActivePath = path => location.pathname.startsWith(path)
+  const { cartCount } = useShop();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+
+  const isActivePath = (path) => location.pathname.startsWith(path);
 
   const desktopNavLinkClass = ({ isActive }) =>
     `text-sm font-medium tracking-wide text-emerald-50 hover:text-viridian-200 transition-colors ${
-      isActive ? 'border-b-2 border-emerald-200 pb-1' : ''
-    }`
+      isActive ? "border-b-2 border-emerald-200 pb-1" : ""
+    }`;
 
   const mobileNavLinkClass =
-    'block py-2 text-sm font-medium text-emerald-50 hover:text-viridian-200 transition-colors'
+    "block py-2 text-sm font-medium text-emerald-50 hover:text-viridian-200 transition-colors";
 
   const toggleMenu = () => {
-    setIsMenuOpen(prev => !prev)
-  }
+    setIsMenuOpen((prev) => !prev);
+  };
 
   const openSearch = () => {
-    setIsSearchOpen(true)
-    setSearchText('')
-  }
+    setIsSearchOpen(true);
+    setSearchText("");
+  };
 
   const closeSearch = () => {
-    setIsSearchOpen(false)
-  }
+    setIsSearchOpen(false);
+  };
 
   const handleSearchSubmit = query => {
     const q = query.trim()
@@ -85,39 +114,44 @@ const Navbar = () => {
   }
 
   useEffect(() => {
-    const handleClickOutside = event => {
+    const handleClickOutside = (event) => {
       if (
         userDropdownRef.current &&
         !userDropdownRef.current.contains(event.target)
       ) {
-        setIsUserDropdownOpen(false)
+        setIsUserDropdownOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
+    setAuthState(getAuthState());
+  }, [location.pathname]);
 
   const handleUserIconClick = () => {
     if (isLoggedIn) {
+      // Both admin and customer can open dropdown, but with different menu items
       setIsUserDropdownOpen(prev => !prev)
     } else {
-      navigate('/login', { state: { from: location } })
+      navigate("/login", { state: { from: location } });
     }
-  }
+  };
 
   const handleLogout = async () => {
     try {
       const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token')
       if (refreshToken) {
-        await axios.post('http://localhost:8080/auth/logout', {
+        await axios.post("http://localhost:8080/auth/logout", {
           refresh_token: refreshToken,
-        })
+        });
       }
     } catch (error) {
-      console.error('Logout error:', error)
+      console.error("Logout error:", error);
     } finally {
       // Clear from both localStorage and sessionStorage
       localStorage.removeItem('access_token')
@@ -129,7 +163,7 @@ const Navbar = () => {
       setIsUserDropdownOpen(false)
       navigate('/')
     }
-  }
+  };
 
   return (
     <>
@@ -184,7 +218,7 @@ const Navbar = () => {
               {isAdmin && (
                 <button
                   type="button"
-                  onClick={() => navigate('/admin/dashboard')}
+                  onClick={() => navigate("/admin/dashboard")}
                   className="hidden items-center rounded-full border border-emerald-300/70 bg-emerald-100/5 px-3 py-1 text-xs font-semibold text-emerald-50 transition-colors hover:bg-emerald-100/15 hover:text-emerald-100 md:inline-flex"
                 >
                   จัดการร้าน
@@ -202,9 +236,9 @@ const Navbar = () => {
               <Link
                 to="/favorites"
                 className={`p-2 transition-colors ${
-                  isActivePath('/favorites')
-                    ? 'text-emerald-300'
-                    : 'text-emerald-50 hover:text-emerald-200'
+                  isActivePath("/favorites")
+                    ? "text-emerald-300"
+                    : "text-emerald-50 hover:text-emerald-200"
                 }`}
               >
                 <HeartIcon className="h-6 w-6" />
@@ -213,9 +247,9 @@ const Navbar = () => {
               <Link
                 to="/cart"
                 className={`relative p-2 transition-colors ${
-                  isActivePath('/cart')
-                    ? 'text-emerald-300'
-                    : 'text-emerald-50 hover:text-emerald-200'
+                  isActivePath("/cart")
+                    ? "text-emerald-300"
+                    : "text-emerald-50 hover:text-emerald-200"
                 }`}
               >
                 <ShoppingCartIcon className="h-6 w-6" />
@@ -232,8 +266,8 @@ const Navbar = () => {
                   onClick={handleUserIconClick}
                   className={`flex items-center space-x-2 p-2 transition-colors ${
                     isUserDropdownOpen
-                      ? 'text-emerald-300'
-                      : 'text-emerald-50 hover:text-emerald-200'
+                      ? "text-emerald-300"
+                      : "text-emerald-50 hover:text-emerald-200"
                   }`}
                 >
                   <UserIcon className="h-6 w-6" />
@@ -247,23 +281,29 @@ const Navbar = () => {
                 {isLoggedIn && isUserDropdownOpen && (
                   <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
-                      <Link
-                        to="/user/account/profile"
-                        onClick={() => setIsUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
-                      >
-                        <UserIcon className="mr-3 h-5 w-5 text-viridian-600" />
-                        บัญชีของฉัน
-                      </Link>
-                      <Link
-                        to="/user/purchase"
-                        onClick={() => setIsUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
-                      >
-                        <ShoppingCartIcon className="mr-3 h-5 w-5 text-viridian-600" />
-                        การซื้อของฉัน
-                      </Link>
-                      <hr className="my-1 border-gray-200" />
+                      {/* Only show My Account and My Purchases for non-admin users */}
+                      {!isAdmin && (
+                        <>
+                          <Link
+                            to="/user/account/profile"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                            className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+                          >
+                            <UserIcon className="mr-3 h-5 w-5 text-viridian-600" />
+                            บัญชีของฉัน
+                          </Link>
+                          <Link
+                            to="/user/purchase"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                            className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+                          >
+                            <ShoppingCartIcon className="mr-3 h-5 w-5 text-viridian-600" />
+                            การซื้อของฉัน
+                          </Link>
+                          <hr className="my-1 border-gray-200" />
+                        </>
+                      )}
+                      {/* Logout is shown for all users */}
                       <button
                         type="button"
                         onClick={handleLogout}
@@ -294,8 +334,8 @@ const Navbar = () => {
           <div
             className={`transition-all duration-300 ease-in-out lg:hidden ${
               isMenuOpen
-                ? 'max-h-64 opacity-100'
-                : 'max-h-0 overflow-hidden opacity-0'
+                ? "max-h-64 opacity-100"
+                : "max-h-0 overflow-hidden opacity-0"
             }`}
           >
             <div className="border-t border-emerald-800 py-4">
@@ -339,8 +379,8 @@ const Navbar = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setIsMenuOpen(false)
-                    navigate('/admin/dashboard')
+                    setIsMenuOpen(false);
+                    navigate("/admin/dashboard");
                   }}
                   className="mt-2 w-full rounded-md bg-emerald-600 py-2 text-center text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
                 >
@@ -352,7 +392,7 @@ const Navbar = () => {
         </div>
       </nav>
     </>
-  )
-}
+  );
+};
 
-export default Navbar
+export default Navbar;

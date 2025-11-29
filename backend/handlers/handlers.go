@@ -5,6 +5,7 @@ import (
 	"backend/database"
 	"backend/models"
 	"database/sql"
+	"fmt"
 	"log"
 	"strconv"
 	"time"
@@ -115,10 +116,11 @@ func GetProductsHandler(c *gin.Context) {
         return
     }
 
-	// Add average rating to each product
+	// Add average rating and review count to each product
 	type ProductWithRating struct {
 		models.Product
-		AvgRating float64 `json:"avg_rating"`
+		AvgRating   float64 `json:"avg_rating"`
+		ReviewCount int     `json:"review_count"`
 	}
 
 	productsWithRating := make([]ProductWithRating, len(products))
@@ -128,9 +130,17 @@ func GetProductsHandler(c *gin.Context) {
 			log.Printf("Error getting average rating for product %d: %v", product.ID, err)
 			avgRating = 0
 		}
+
+		reviewCount, err := database.GetReviewCountByProductID(product.ID)
+		if err != nil {
+			log.Printf("Error getting review count for product %d: %v", product.ID, err)
+			reviewCount = 0
+		}
+
 		productsWithRating[i] = ProductWithRating{
-			Product:   product,
-			AvgRating: avgRating,
+			Product:     product,
+			AvgRating:   avgRating,
+			ReviewCount: reviewCount,
 		}
 	}
 
@@ -353,6 +363,89 @@ func UpdateOrderStatusHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "order status updated successfully"})
 }
 
+// UpdateOrderTrackingNumberHandler godoc
+// @Summary Update tracking number for shipped order
+// @Description Update the tracking number for an order with status 'shipped' (Admin only)
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param request body models.UpdateTrackingNumberRequest true "Tracking number data"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders/{id}/tracking [put]
+func UpdateOrderTrackingNumberHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if user is admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	orderIDStr := c.Param("id")
+	orderID, err := strconv.Atoi(orderIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	var req models.UpdateTrackingNumberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if order exists and is in shipped status
+	order, err := database.GetOrderByID(orderID)
+	if err != nil {
+		log.Printf("Error getting order: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if order == nil {
+		c.JSON(404, gin.H{"error": "order not found"})
+		return
+	}
+
+	// Only allow tracking number update for shipped orders
+	if order.Status != "shipped" {
+		c.JSON(400, gin.H{"error": "tracking number can only be updated for orders with status 'shipped'"})
+		return
+	}
+
+	err = database.UpdateOrderStatus(orderID, "shipped", &req.TrackingNumber)
+	if err != nil {
+		log.Printf("Error updating tracking number: %v", err)
+		c.JSON(500, gin.H{"error": "failed to update tracking number"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "tracking number updated successfully"})
+}
+
 // CancelOrderHandler godoc
 // @Summary Cancel an order
 // @Description Cancel an order and restore stock (User/Admin). Only the order owner or admin can cancel.
@@ -421,9 +514,9 @@ func CancelOrderHandler(c *gin.Context) {
 		return
 	}
 
-	// Only allow cancellation if status is pending or paid
-	if order.Status != "pending" && order.Status != "paid" {
-		c.JSON(400, gin.H{"error": "order cannot be cancelled"})
+	// Only allow cancellation if status is paid or processing
+	if order.Status != "paid" && order.Status != "processing" {
+		c.JSON(400, gin.H{"error": "order cannot be canceled"})
 		return
 	}
 
@@ -434,12 +527,12 @@ func CancelOrderHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "order cancelled successfully"})
+	c.JSON(200, gin.H{"message": "order canceled successfully"})
 }
 
 // GetUserOrdersHandler godoc
 // @Summary Get user order history
-// @Description Get all orders for the authenticated user
+// @Description Get all orders for the authenticated user. If admin, returns all orders in the system.
 // @Tags orders
 // @Accept json
 // @Produce json
@@ -455,11 +548,38 @@ func GetUserOrdersHandler(c *gin.Context) {
 		return
 	}
 
-	orders, err := database.GetOrdersByUserID(userID.(int))
+	// Check if user is admin
+	roles, err := database.GetUserRoles(userID.(int))
 	if err != nil {
-		log.Printf("Error getting orders: %v", err)
+		log.Printf("Error getting roles: %v", err)
 		c.JSON(500, gin.H{"error": "internal server error"})
 		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+
+	var orders []models.OrderWithItems
+	if isAdmin {
+		// Admin can see all orders in the system
+		orders, err = database.GetAllOrders()
+		if err != nil {
+			log.Printf("Error getting all orders: %v", err)
+			c.JSON(500, gin.H{"error": "internal server error"})
+			return
+		}
+	} else {
+		// Regular user can only see their own orders
+		orders, err = database.GetOrdersByUserID(userID.(int))
+		if err != nil {
+			log.Printf("Error getting orders: %v", err)
+			c.JSON(500, gin.H{"error": "internal server error"})
+			return
+		}
 	}
 
 	c.JSON(200, gin.H{"orders": orders})
@@ -602,7 +722,7 @@ func GetAllUsersSpendingHandler(c *gin.Context) {
 // @Tags orders
 // @Accept json
 // @Produce json
-// @Param status query string true "Order status to filter by" Enums(paid,shipped,completed,cancelled,refunded)
+// @Param status query string true "Order status to filter by" Enums(paid,processing,shipped,completed,canceled,refunded)
 // @Security BearerAuth
 // @Success 200 {object} object
 // @Failure 400 {object} models.ErrorResponse
@@ -642,21 +762,24 @@ func GetOrdersByStatusHandler(c *gin.Context) {
 	// Validate allowed statuses based on role
 	allowedStatuses := map[string]bool{}
 	if isAdmin {
-		// Admin can query: paid, completed, cancelled, refunded
+		// Admin can query: paid, processing, shipped, completed, canceled, refunded
 		allowedStatuses = map[string]bool{
-			"paid":      true,
-			"completed": true,
-			"cancelled": true,
-			"refunded":  true,
+			"paid":       true,
+			"processing": true,
+			"shipped":    true,
+			"completed":  true,
+			"canceled":   true,
+			"refunded":   true,
 		}
 	} else {
-		// User can query: paid, shipped, completed, cancelled, refunded
+		// User can query: paid, processing, shipped, completed, canceled, refunded
 		allowedStatuses = map[string]bool{
-			"paid":      true,
-			"shipped":   true,
-			"completed": true,
-			"cancelled": true,
-			"refunded":  true,
+			"paid":       true,
+			"processing": true,
+			"shipped":    true,
+			"completed":  true,
+			"canceled":   true,
+			"refunded":   true,
 		}
 	}
 
@@ -666,7 +789,7 @@ func GetOrdersByStatusHandler(c *gin.Context) {
 	}
 
 	// Get orders based on role
-	var orders []models.Order
+	var orders []models.OrderWithItems
 	if isAdmin {
 		// Admin can see all orders with the status
 		orders, err = database.GetOrdersByStatus(status)
@@ -1026,6 +1149,394 @@ func GetUserStatsHandler(c *gin.Context) {
 	c.JSON(200, response)
 }
 
+// GetOrderStatusDistributionHandler godoc
+// @Summary Get order status distribution (Admin only)
+// @Description Get count of orders by status for dashboard
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/orders/status-distribution [get]
+func GetOrderStatusDistributionHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	distribution, err := database.GetOrderStatusDistribution()
+	if err != nil {
+		log.Printf("Error getting order status distribution: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"distribution": distribution})
+}
+
+// GetAverageOrderValueHandler godoc
+// @Summary Get average order value (Admin only)
+// @Description Get average order value for completed orders
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/orders/average-value [get]
+func GetAverageOrderValueHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	avgValue, err := database.GetAverageOrderValue()
+	if err != nil {
+		log.Printf("Error getting average order value: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"average_order_value": avgValue})
+}
+
+// GetTotalProductsCountHandler godoc
+// @Summary Get total products count (Admin only)
+// @Description Get count of active products
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/products/count [get]
+func GetTotalProductsCountHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	count, err := database.GetTotalProductsCount()
+	if err != nil {
+		log.Printf("Error getting total products count: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"total_products": count})
+}
+
+// GetRevenueByCategoryHandler godoc
+// @Summary Get revenue by category (Admin only)
+// @Description Get revenue breakdown by product categories
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/revenue/by-category [get]
+func GetRevenueByCategoryHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	revenue, err := database.GetRevenueByCategory()
+	if err != nil {
+		log.Printf("Error getting revenue by category: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"revenue_by_category": revenue})
+}
+
+// GetRecentActivitiesHandler godoc
+// @Summary Get recent activities (Admin only)
+// @Description Get recent orders, user registrations, and reviews
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param limit query int false "Number of activities to return (default 10, max 50)"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/activities/recent [get]
+func GetRecentActivitiesHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		c.JSON(400, gin.H{"error": "invalid limit parameter"})
+		return
+	}
+
+	// Cap the limit to prevent abuse
+	if limit > 50 {
+		limit = 50
+	}
+
+	activities, err := database.GetRecentActivities(limit)
+	if err != nil {
+		log.Printf("Error getting recent activities: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+
+	c.JSON(200, gin.H{"activities": activities})
+}
+
+// GetAttributeConfigHandler godoc
+// @Summary Get product attribute configuration
+// @Description Get the current field definitions for product attributes by category (Admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param category_id query int true "Category ID"
+// @Security BearerAuth
+// @Success 200 {object} models.AttributeConfig
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/attributes/config [get]
+func GetAttributeConfigHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	categoryIDStr := c.Query("category_id")
+	if categoryIDStr == "" {
+		c.JSON(400, gin.H{"error": "category_id parameter is required"})
+		return
+	}
+	categoryID, err := strconv.Atoi(categoryIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid category_id"})
+		return
+	}
+
+	config, err := database.GetAttributeConfig(categoryID)
+	if err != nil {
+		log.Printf("Error getting attribute config: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if config == nil {
+		c.JSON(404, gin.H{"error": "attribute configuration not found for this category"})
+		return
+	}
+
+	c.JSON(200, config)
+}
+
+// UpdateAttributeConfigHandler godoc
+// @Summary Update product attribute configuration
+// @Description Update the field definitions for product attributes by category (Admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param category_id query int true "Category ID"
+// @Param request body interface{} true "Updated attribute schema"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/attributes/config [put]
+func UpdateAttributeConfigHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	categoryIDStr := c.Query("category_id")
+	if categoryIDStr == "" {
+		c.JSON(400, gin.H{"error": "category_id parameter is required"})
+		return
+	}
+	categoryID, err := strconv.Atoi(categoryIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid category_id"})
+		return
+	}
+
+	var schema interface{}
+	if err := c.ShouldBindJSON(&schema); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = database.UpdateAttributeConfig(categoryID, schema)
+	if err != nil {
+		log.Printf("Error updating attribute config: %v", err)
+		c.JSON(500, gin.H{"error": "failed to update attribute configuration"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "attribute configuration updated successfully"})
+}
+
 // GetMonthlySalesHistoryHandler godoc
 // @Summary Get monthly sales history (Admin only)
 // @Description Get all monthly sales data grouped by year from completed orders
@@ -1294,14 +1805,32 @@ func CreateProductHandler(c *gin.Context) {
 		return
 	}
 
+	// Start transaction
+	tx, err := database.DB.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	defer tx.Rollback()
+
+	// Insert product
 	query := `INSERT INTO products (category_id, name, description, image_url, is_active, created_at, updated_at)
 	          VALUES ($1,$2,$3,$4,$5,NOW(),NOW()) RETURNING id`
 
 	var newID int
-	err = database.DB.QueryRow(query, input.CategoryID, input.Name, input.Description, input.ImageURL, input.IsActive).Scan(&newID)
+	err = tx.QueryRow(query, input.CategoryID, input.Name, input.Description, input.ImageURL, input.IsActive).Scan(&newID)
 	if err != nil {
 		log.Printf("Error creating product: %v", err)
 		c.JSON(500, gin.H{"error": "failed to create product"})
+		return
+	}
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
 
@@ -1363,19 +1892,57 @@ return
         return
     }
 
-    // แปลง ImageURL เป็น sql.NullString
-    var img sql.NullString
-    if req.ImageURL != nil && *req.ImageURL != "" {
-        img = sql.NullString{String: *req.ImageURL, Valid: true}
-    } else {
-        img = sql.NullString{Valid: false}
+    // Build dynamic update query based on provided fields
+    query := "UPDATE products SET updated_at=NOW()"
+    args := []interface{}{}
+    argID := 1
+
+    if req.CategoryID != nil {
+        query += fmt.Sprintf(", category_id=$%d", argID)
+        args = append(args, *req.CategoryID)
+        argID++
     }
 
-    query := `UPDATE products
-              SET category_id=$1, name=$2, description=$3, image_url=$4, is_active=$5, updated_at=NOW()
-              WHERE id=$6`
+    if req.Name != nil {
+        query += fmt.Sprintf(", name=$%d", argID)
+        args = append(args, *req.Name)
+        argID++
+    }
 
-    res, err := database.DB.Exec(query, req.CategoryID, req.Name, req.Description, img, req.IsActive, pid)
+    if req.Description != nil {
+        query += fmt.Sprintf(", description=$%d", argID)
+        args = append(args, *req.Description)
+        argID++
+    }
+
+    if req.ImageURL != nil {
+        var img sql.NullString
+        if *req.ImageURL != "" {
+            img = sql.NullString{String: *req.ImageURL, Valid: true}
+        } else {
+            img = sql.NullString{Valid: false}
+        }
+        query += fmt.Sprintf(", image_url=$%d", argID)
+        args = append(args, img)
+        argID++
+    }
+
+    if req.IsActive != nil {
+        query += fmt.Sprintf(", is_active=$%d", argID)
+        args = append(args, *req.IsActive)
+        argID++
+    }
+
+    // If no fields to update, return early
+    if len(args) == 0 {
+        c.JSON(200, gin.H{"message": "no changes to update"})
+        return
+    }
+
+    query += fmt.Sprintf(" WHERE id=$%d", argID)
+    args = append(args, pid)
+
+    res, err := database.DB.Exec(query, args...)
     if err != nil {
         log.Printf("Error updating product: %v", err)
         c.JSON(500, gin.H{"error": "failed to update product"})
@@ -1549,7 +2116,7 @@ func CreateVariantHandler(c *gin.Context) {
 	variant := models.ProductVariant{
 		ID:        newID,
 		ProductID: productID,
-		Weight:    req.Weight,
+		Weight:    &req.Weight,
 		Price:     req.Price,
 		Stock:     req.Stock,
 		IsActive:  req.IsActive,

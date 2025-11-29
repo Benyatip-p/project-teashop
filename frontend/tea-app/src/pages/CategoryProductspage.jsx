@@ -1,4 +1,3 @@
-// src/pages/CategoryProductsPage.js
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ProductCard from "../components/ProductCard";

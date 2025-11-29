@@ -18,6 +18,16 @@ definitions:
       user_id:
         type: integer
     type: object
+  models.AttributeConfig:
+    properties:
+      category_id:
+        type: integer
+      id:
+        type: integer
+      schema: {}
+      updated_at:
+        type: string
+    type: object
   models.CreateAddressRequest:
     properties:
       address:
@@ -51,6 +61,7 @@ definitions:
     required:
     - product_id
     - quantity
+    - variant_id
     type: object
   models.CreateOrderRequest:
     properties:
@@ -232,11 +243,11 @@ definitions:
     properties:
       status:
         enum:
-        - pending
         - paid
+        - processing
         - shipped
         - completed
-        - cancelled
+        - canceled
         - refunded
         type: string
       tracking_number:
@@ -254,6 +265,13 @@ definitions:
         type: string
       username:
         type: string
+    type: object
+  models.UpdateTrackingNumberRequest:
+    properties:
+      tracking_number:
+        type: string
+    required:
+    - tracking_number
     type: object
   models.UpdateVariantRequest:
     properties:
@@ -493,6 +511,132 @@ paths:
       summary: Get default address
       tags:
       - addresses
+  /api/v1/admin/activities/recent:
+    get:
+      consumes:
+      - application/json
+      description: Get recent orders, user registrations, and reviews
+      parameters:
+      - description: Number of activities to return (default 10, max 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get recent activities (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/attributes/config:
+    get:
+      consumes:
+      - application/json
+      description: Get the current field definitions for product attributes by category
+        (Admin only)
+      parameters:
+      - description: Category ID
+        in: query
+        name: category_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AttributeConfig'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get product attribute configuration
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Update the field definitions for product attributes by category
+        (Admin only)
+      parameters:
+      - description: Category ID
+        in: query
+        name: category_id
+        required: true
+        type: integer
+      - description: Updated attribute schema
+        in: body
+        name: request
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update product attribute configuration
+      tags:
+      - admin
   /api/v1/admin/items/low-stock:
     get:
       consumes:
@@ -521,6 +665,122 @@ paths:
       security:
       - BearerAuth: []
       summary: Get low stock items (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/orders/average-value:
+    get:
+      consumes:
+      - application/json
+      description: Get average order value for completed orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get average order value (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/orders/status-distribution:
+    get:
+      consumes:
+      - application/json
+      description: Get count of orders by status for dashboard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get order status distribution (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/products/count:
+    get:
+      consumes:
+      - application/json
+      description: Get count of active products
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get total products count (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/revenue/by-category:
+    get:
+      consumes:
+      - application/json
+      description: Get revenue breakdown by product categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get revenue by category (Admin only)
       tags:
       - admin
   /api/v1/admin/sales/daily:
@@ -832,7 +1092,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get all orders for the authenticated user
+      description: Get all orders for the authenticated user. If admin, returns all
+        orders in the system.
       produces:
       - application/json
       responses:
@@ -1025,6 +1286,56 @@ paths:
       summary: Update order status
       tags:
       - orders
+  /api/v1/orders/{id}/tracking:
+    put:
+      consumes:
+      - application/json
+      description: Update the tracking number for an order with status 'shipped' (Admin
+        only)
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Tracking number data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTrackingNumberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update tracking number for shipped order
+      tags:
+      - orders
   /api/v1/orders/status:
     get:
       consumes:
@@ -1035,9 +1346,10 @@ paths:
       - description: Order status to filter by
         enum:
         - paid
+        - processing
         - shipped
         - completed
-        - cancelled
+        - canceled
         - refunded
         in: query
         name: status

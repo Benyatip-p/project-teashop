@@ -52,7 +52,7 @@ const LoginPage = () => {
     (roleId) => {
       if (roleId === 1) {
         // Store manager (admin) - always redirect to store manager dashboard
-        navigate("/store-manager/dashboard", { replace: true });
+        navigate("/Admin/dashboard", { replace: true });
       } else if (roleId === 2) {
         // Regular user - redirect to previous page or home
         if (from) {
@@ -257,7 +257,7 @@ const LoginPage = () => {
                 <span>จดจำการเข้าสู่ระบบบนอุปกรณ์นี้</span>
               </label>
               <Link
-                to="/"
+                to="/forgot-password"
                 className="text-viridian-800 hover:text-viridian-900 hover:underline"
               >
                 ลืมรหัสผ่าน?

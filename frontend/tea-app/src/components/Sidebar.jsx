@@ -4,8 +4,8 @@ import {
   MenuAlt2Icon,
   LogoutIcon,
   HomeIcon,
-  ChartBarIcon,
   CollectionIcon,
+  ClipboardListIcon,
 } from "@heroicons/react/outline";
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen, handleLogout }) => {
@@ -14,15 +14,15 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, handleLogout }) => {
 
   const navItems = [
     { name: "Dashboard", icon: HomeIcon, path: "/admin/dashboard" },
-    { name: "รายงาน", icon: ChartBarIcon, path: "/reports" },
     { name: "จัดการสินค้า", icon: CollectionIcon, path: "/admin/products" },
+    { name: "จัดการคำสั่งซื้อ", icon: ClipboardListIcon, path: "/admin/orders" },
   ];
 
   const isActive = (path) => location.pathname.startsWith(path);
 
   return (
     <aside
-      className={`h-screen bg-viridian-800 text-white flex flex-col transition-all duration-300 shadow-xl ${
+      className={`sticky top-0 h-screen bg-viridian-800 text-white flex flex-col transition-all duration-300 shadow-xl ${
         sidebarOpen ? "w-64" : "w-20"
       }`}
     >
@@ -85,7 +85,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, handleLogout }) => {
               )}
 
               {!sidebarOpen && (
-                <span className="absolute left-full ml-3 rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 whitespace-nowrap">
+                <span className="absolute left-full ml-3 rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 whitespace-nowrap z-50">
                   {item.name}
                 </span>
               )}
@@ -106,7 +106,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen, handleLogout }) => {
             <span className="ml-3 text-sm font-medium">ออกจากระบบ</span>
           )}
           {!sidebarOpen && (
-            <span className="absolute left-full ml-3 rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 whitespace-nowrap">
+            <span className="absolute left-full ml-3 rounded-md bg-slate-900 px-2 py-1 text-xs text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 whitespace-nowrap z-50">
               ออกจากระบบ
             </span>
           )}

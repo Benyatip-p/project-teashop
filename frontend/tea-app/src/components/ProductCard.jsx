@@ -1,41 +1,72 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { HeartIcon, ShoppingCartIcon, StarIcon } from '@heroicons/react/outline';
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import { HeartIcon, ShoppingCartIcon, StarIcon } from '@heroicons/react/outline'
 import {
   HeartIcon as HeartSolidIcon,
   StarIcon as StarSolidIcon,
-} from '@heroicons/react/solid';
-import { useShop } from '../context/ShopContext';
-import AddToCartModal from './AddToCartModal';
+} from '@heroicons/react/solid'
+import { useShop } from '../context/ShopContext'
+import AddToCartModal from './AddToCartModal'
+import { getVariantsByProductId } from '../api/product/product'
+
 
 const ProductCard = ({ product }) => {
-  const { toggleFavorite, addToCart, isFavorite, isInCart } = useShop();
-  const [openAddModal, setOpenAddModal] = useState(false);
+  const { toggleFavorite, addToCart, isFavorite, isInCart } = useShop()
+  const [openAddModal, setOpenAddModal] = useState(false)
+  const [variantMinPrice, setVariantMinPrice] = useState(null)
 
-  const favorite = isFavorite(product.id);
-  const inCart = isInCart(product.id);
+  const favorite = isFavorite(product.id)
+  const inCart = isInCart(product.id)
+  
+  useEffect(() => {
+    let isMounted = true
 
-  const handleQuickAddToCart = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    addToCart(product, 1);
-  };
+    const loadVariants = async () => {
+      try {
+        const variants = await getVariantsByProductId(product.id)
+        if (!isMounted) return
+        if (Array.isArray(variants) && variants.length > 0) {
+          const minPrice = Math.min(...variants.map(v => v.price || 0))
+          setVariantMinPrice(minPrice)
+        } else {
+          setVariantMinPrice(null)
+        }
+      } catch (err) {
+        console.error('Error loading variants', err)
+        if (isMounted) setVariantMinPrice(null)
+      }
+    }
 
-  const handleToggleFavorite = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleFavorite(product);
-  };
+    loadVariants()
+    return () => {
+      isMounted = false
+    }
+  }, [product.id])
 
-  const handleOpenModal = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setOpenAddModal(true);
-  };
+  // const handleQuickAddToCart = e => {
+  //   e.preventDefault()
+  //   e.stopPropagation()
+  //   addToCart(product, 1)
+  // }
+
+  const handleToggleFavorite = e => {
+    e.preventDefault()
+    e.stopPropagation()
+    toggleFavorite(product)
+  }
+
+  const handleOpenModal = e => {
+    e.preventDefault()
+    e.stopPropagation()
+    setOpenAddModal(true)
+  }
 
   const handleCloseModal = () => {
-    setOpenAddModal(false);
-  };
+    setOpenAddModal(false)
+  }
+
+  const displayPrice =
+    variantMinPrice != null ? variantMinPrice : product.price
 
   return (
     <>
@@ -73,7 +104,7 @@ const ProductCard = ({ product }) => {
                   )}
                 </button>
 
-                <button
+                {/* <button
                   onClick={handleQuickAddToCart}
                   className={`rounded-full p-3 transition-colors ${
                     inCart ? 'bg-green-900 hover:bg-green-800' : 'bg-white hover:bg-green-50'
@@ -82,7 +113,7 @@ const ProductCard = ({ product }) => {
                   <ShoppingCartIcon
                     className={`h-6 w-6 ${inCart ? 'text-white' : 'text-gray-700'}`}
                   />
-                </button>
+                </button> */}
               </div>
             </div>
           </div>
@@ -112,14 +143,9 @@ const ProductCard = ({ product }) => {
             </div>
 
             <div className="flex items-center justify-between">
-              <div>
-                {product.originalPrice && product.originalPrice !== product.price && (
-                  <span className="mr-2 text-sm text-gray-400 line-through">
-                    ฿{product.originalPrice}
-                  </span>
-                )}
-                <span className="text-2xl font-bold text-black">฿{product.price}</span>
-              </div>
+              <span className="text-2xl font-bold text-black">
+                ฿{displayPrice}
+              </span>
 
               <button
                 onClick={handleOpenModal}
@@ -127,6 +153,7 @@ const ProductCard = ({ product }) => {
               >
                 เพิ่มลงตะกร้า
               </button>
+
             </div>
           </div>
         </Link>
@@ -134,7 +161,7 @@ const ProductCard = ({ product }) => {
 
       <AddToCartModal open={openAddModal} onClose={handleCloseModal} product={product} />
     </>
-  );
-};
+  )
+}
 
-export default ProductCard;
+export default ProductCard

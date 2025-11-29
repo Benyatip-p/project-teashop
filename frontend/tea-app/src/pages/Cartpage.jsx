@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useShop } from '../context/ShopContext'
+
+const getRowId = item =>
+  item.cartItemId ||
+  `${item.id}-${item.variantId ?? 'noVar'}-${item.variantWeight ?? item.selectedSize ?? 'noSize'}`
 
 const Cartpage = () => {
   const navigate = useNavigate()
@@ -12,7 +16,7 @@ const Cartpage = () => {
   })
 
   const [couponInput, setCouponInput] = useState(
-    () => localStorage.getItem('couponInput') || '',
+    () => localStorage.getItem('couponInput') || ''
   )
 
   const [appliedCoupon, setAppliedCoupon] = useState(() => {
@@ -21,7 +25,7 @@ const Cartpage = () => {
   })
 
   const [couponError, setCouponError] = useState(
-    () => localStorage.getItem('couponError') || '',
+    () => localStorage.getItem('couponError') || ''
   )
 
   const [isLoggedIn] = useState(() => {
@@ -31,7 +35,10 @@ const Cartpage = () => {
   })
 
   useEffect(() => {
-    setSelectedIds(prev => prev.filter(id => cart.some(item => item.id === id)))
+    setSelectedIds(prev => {
+      const validIds = cart.map(getRowId)
+      return prev.filter(id => validIds.includes(id))
+    })
   }, [cart])
 
   useEffect(() => {
@@ -54,11 +61,14 @@ const Cartpage = () => {
     localStorage.setItem('couponError', couponError)
   }, [couponError])
 
-  const selectedItems = cart.filter(item => selectedIds.includes(item.id))
+  const selectedItems = useMemo(
+    () => cart.filter(item => selectedIds.includes(getRowId(item))),
+    [cart, selectedIds]
+  )
 
   const subtotal = selectedItems.reduce(
     (sum, item) => sum + (item.price || 0) * (item.qty || 1),
-    0,
+    0
   )
 
   const shipping = subtotal === 0 ? 0 : subtotal >= 1000 ? 0 : 50
@@ -85,7 +95,7 @@ const Cartpage = () => {
     }
 
     setCouponError('')
-  }, [subtotal, appliedCoupon, selectedItems.length])
+  }, [subtotal, appliedCoupon, selectedItems])
 
   const handleDecrease = item => {
     const currentQty = item.qty || 1
@@ -104,13 +114,15 @@ const Cartpage = () => {
     if (allSelected) {
       setSelectedIds([])
     } else {
-      setSelectedIds(cart.map(item => item.id))
+      setSelectedIds(cart.map(getRowId))
     }
   }
 
-  const handleToggleSelectItem = id => {
+  const handleToggleSelectItem = rowId => {
     setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(itemId => itemId !== id) : [...prev, id],
+      prev.includes(rowId)
+        ? prev.filter(id => id !== rowId)
+        : [...prev, rowId]
     )
   }
 
@@ -207,75 +219,83 @@ const Cartpage = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {[...cart].reverse().map(item => (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3"
-                  >
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 accent-[#0b2f27]"
-                      checked={selectedIds.includes(item.id)}
-                      onChange={() => handleToggleSelectItem(item.id)}
-                    />
+                {[...cart].reverse().map(item => {
+                  const rowId = getRowId(item)
+                  const sizeLabel = item.variantWeight
+                    ? `${item.variantWeight}g`
+                    : item.selectedSize || ''
 
-                    <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-white shadow-sm">
-                      <img
-                        src={item.coverImage || item.image}
-                        alt={item.title}
-                        className="h-full w-full object-cover"
+                  return (
+                    <div
+                      key={rowId}
+                      className="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50/60 px-4 py-3"
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-[#0b2f27]"
+                        checked={selectedIds.includes(rowId)}
+                        onChange={() => handleToggleSelectItem(rowId)}
                       />
-                    </div>
 
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-gray-900">
-                        {item.title}
-                      </p>
-                      {item.selectedSize && (
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          ขนาด {item.selectedSize}
+                      <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-white shadow-sm">
+                        <img
+                          src={item.coverImage || item.image}
+                          alt={item.title}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-gray-900">
+                          {item.title}
                         </p>
-                      )}
-                      <p className="mt-1 text-sm font-semibold text-gray-900">
-                        ฿{item.price?.toFixed(2)}
-                      </p>
-                    </div>
+                        {sizeLabel && (
+                          <p className="mt-0.5 text-xs text-gray-500">
+                            ขนาด {sizeLabel}
+                          </p>
+                        )}
+                        <p className="mt-1 text-sm font-semibold text-gray-900">
+                          ฿{Number(item.price || 0).toFixed(2)}
+                        </p>
+                      </div>
 
-                    <div className="flex w-32 flex-col items-end gap-2 text-right">
-                      <div className="inline-flex items-center rounded-lg border border-gray-300 bg-white">
+                      <div className="flex w-32 flex-col items-end gap-2 text-right">
+                        <div className="inline-flex items-center rounded-lg border border-gray-300 bg-white">
+                          <button
+                            type="button"
+                            className="px-3 py-1 text-sm text-gray-500 hover:bg-gray-50"
+                            onClick={() => handleDecrease(item)}
+                          >
+                            −
+                          </button>
+                          <span className="border-l border-r border-gray-300 bg-gray-50 px-4 py-1 text-sm font-medium">
+                            {item.qty || 1}
+                          </span>
+                          <button
+                            type="button"
+                            className="px-3 py-1 text-sm text-gray-500 hover:bg-gray-50"
+                            onClick={() => handleIncrease(item)}
+                          >
+                            +
+                          </button>
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          ฿
+                          {(
+                            (item.price || 0) * (item.qty || 1)
+                          ).toFixed(2)}
+                        </div>
                         <button
                           type="button"
-                          className="px-3 py-1 text-sm text-gray-500 hover:bg-gray-50"
-                          onClick={() => handleDecrease(item)}
+                          className="text-xs text-red-500 hover:underline"
+                          onClick={() => removeFromCart(item.id)}
                         >
-                          −
-                        </button>
-                        <span className="border-l border-r border-gray-300 bg-gray-50 px-4 py-1 text-sm font-medium">
-                          {item.qty || 1}
-                        </span>
-                        <button
-                          type="button"
-                          className="px-3 py-1 text-sm text-gray-500 hover:bg-gray-50"
-                          onClick={() => handleIncrease(item)}
-                        >
-                          +
+                          ลบ
                         </button>
                       </div>
-                      <div className="text-xs text-gray-600">
-                        ฿
-                        {(
-                          (item.price || 0) * (item.qty || 1)
-                        ).toFixed(2)}
-                      </div>
-                      <button
-                        className="text-xs text-red-500 hover:underline"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        ลบ
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </section>
@@ -313,7 +333,7 @@ const Cartpage = () => {
                 <button
                   type="button"
                   onClick={handleApplyCoupon}
-                  className="ml-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-black"
+                  className="ml-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg.black"
                 >
                   ใช้คูปอง
                 </button>
@@ -354,7 +374,7 @@ const Cartpage = () => {
                 ยอดรวม 1,000 บาทขึ้นไป ส่งฟรีอัตโนมัติ
               </div>
 
-              <div className="mb-1 flex justify_between text-xs text-gray-500">
+              <div className="mb-1 flex justify-between text-xs text-gray-500">
                 <span>ยอดรวมก่อนหักส่วนลด</span>
                 <span>฿{totalBeforeDiscount.toFixed(2)}</span>
               </div>
@@ -372,7 +392,8 @@ const Cartpage = () => {
               </div>
 
               <button
-                className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-colors ${
+                type="button"
+                className={`w-full rounded-xl py-3 text-sm font-semibold text.white transition-colors ${
                   selectedItems.length === 0
                     ? 'cursor-not-allowed bg-gray-300'
                     : 'bg-[#0b2f27] hover:bg-[#13493d]'

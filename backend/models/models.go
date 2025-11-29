@@ -83,14 +83,14 @@ type Product struct {
 }
 
 type ProductVariant struct {
-	ID        int       `json:"id"`
-	ProductID int       `json:"product_id"`
-	Weight    float64   `json:"weight"`
-	Price     float64   `json:"price"`
-	Stock     int       `json:"stock"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        int        `json:"id"`
+	ProductID int        `json:"product_id"`
+	Weight    *float64   `json:"weight"`
+	Price     float64    `json:"price"`
+	Stock     int        `json:"stock"`
+	IsActive  bool       `json:"is_active"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 type Category struct {
@@ -103,12 +103,20 @@ type Category struct {
 	CreatedAt   time.Time      `json:"created_at"`
 }
 
-type UpdateProductRequest struct {
+type CreateProductRequest struct {
     CategoryID  *int    `json:"category_id"`
-    Name        string  `json:"name"`
+    Name        string  `json:"name" binding:"required"`
     Description string  `json:"description"`
     ImageURL    *string `json:"image_url"`
     IsActive    bool    `json:"is_active"`
+}
+
+type UpdateProductRequest struct {
+    CategoryID  *int    `json:"category_id"`
+    Name        *string `json:"name"`
+    Description *string `json:"description"`
+    ImageURL    *string `json:"image_url"`
+    IsActive    *bool   `json:"is_active"`
 }
 
 type CreateVariantRequest struct {
@@ -171,10 +179,17 @@ type OrderItem struct {
 	ID            int     `json:"id"`
 	OrderID       int     `json:"order_id"`
 	ProductID     int     `json:"product_id"`
-	VariantID     *int    `json:"variant_id"`
+	VariantID     int     `json:"variant_id"`
 	Weight        float64 `json:"weight"`
 	Quantity      int     `json:"quantity"`
 	PricePerUnit  float64 `json:"price_per_unit"`
+	ProductName   string  `json:"product_name"`
+	ImageURL      *string `json:"image_url"`
+}
+
+type OrderWithItems struct {
+	Order
+	Items []OrderItem `json:"items"`
 }
 
 type CreateOrderRequest struct {
@@ -184,14 +199,18 @@ type CreateOrderRequest struct {
 }
 
 type CreateOrderItemRequest struct {
-	ProductID int  `json:"product_id" binding:"required"`
-	VariantID *int `json:"variant_id"`
-	Quantity  int  `json:"quantity" binding:"required,min=1"`
+	ProductID int `json:"product_id" binding:"required"`
+	VariantID int `json:"variant_id" binding:"required"`
+	Quantity  int `json:"quantity" binding:"required,min=1"`
 }
 
 type UpdateOrderStatusRequest struct {
-	Status         string  `json:"status" binding:"required,oneof=pending paid shipped completed cancelled refunded"`
+	Status         string  `json:"status" binding:"required,oneof=paid processing shipped completed canceled refunded"`
 	TrackingNumber *string `json:"tracking_number"`
+}
+
+type UpdateTrackingNumberRequest struct {
+	TrackingNumber string `json:"tracking_number" binding:"required"`
 }
 
 // ===================== Review Models =====================
@@ -218,9 +237,9 @@ type TopSellingProduct struct {
 
 // ===================== Low Stock Variant Model =====================
 type LowStockVariant struct {
-	ProductName string  `json:"product_name"`
-	Weight      float64 `json:"weight"`
-	Stock       int     `json:"stock"`
+	ProductName string   `json:"product_name"`
+	Weight      *float64 `json:"weight"`
+	Stock       int      `json:"stock"`
 }
 
 // ===================== Low Stock Item Model =====================
@@ -272,4 +291,19 @@ type YearlySalesHistoryItem struct {
 	TotalSales  float64 `json:"total_sales"`
 	OrderCount  int     `json:"order_count"`
 	Currency    string  `json:"currency"`
+}
+
+// ===================== Product Attribute Models =====================
+type AttributeConfig struct {
+	ID         int         `json:"id"`
+	CategoryID int         `json:"category_id"`
+	Schema     interface{} `json:"schema"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+}
+
+type AttributeField struct {
+	Key     string   `json:"key"`
+	Label   string   `json:"label"`
+	Type    string   `json:"type"`
+	Options []string `json:"options,omitempty"`
 }
