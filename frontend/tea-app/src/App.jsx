@@ -16,9 +16,7 @@ import Favoritepage from "./pages/Favoritepage";
 import Cartpage from "./pages/Cartpage";
 
 import SidebarProfile from "./components/SidebarProfile";
-import Purchasepage from "./pages/Purchasepage";
 import Profilepage from "./pages/Profilepage";
-import Profilepaypage from "./pages/Profilepaypage";
 import Addresspage from "./pages/Addresspage";
 
 import ProductDetailpage from "./pages/ProductDetailpage";
@@ -32,6 +30,8 @@ import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
 import AdminProductPage from "./pages/AdminDashboard/AdminProductPage";
 import Paymentpage from "./pages/Paymentpage";
 import CategoryProductspage from "./pages/CategoryProductspage";
+import Purchasepage from "./pages/Purchasepage";
+
 
 const PublicLayout = ({ children }) => (
   <div className="flex min-h-screen flex-col bg-gray-50">
@@ -202,22 +202,22 @@ function App() {
           />
 
           <Route
+            path="/payment"
+            element={
+              <ProtectedRoute>
+                <PublicLayout>
+                  <Paymentpage />
+                </PublicLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/user/account/profile"
             element={
               <ProtectedRoute>
                 <AccountLayout>
                   <Profilepage />
-                </AccountLayout>
-              </ProtectedRoute>
-            }
-          />
-
-           <Route
-            path="/user/account/payment"
-            element={
-              <ProtectedRoute>
-                <AccountLayout>
-                  <Profilepaypage />
                 </AccountLayout>
               </ProtectedRoute>
             }
@@ -238,9 +238,9 @@ function App() {
             path="/user/purchase"
             element={
               <ProtectedRoute>
-                <AccountLayout>
+                <PublicLayout>
                   <Purchasepage />
-                </AccountLayout>
+                </PublicLayout>
               </ProtectedRoute>
             }
           />

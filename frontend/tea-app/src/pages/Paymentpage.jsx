@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Select from "react-select"; 
+import Select from "react-select";
+import api from "../api/api";
 
 const Paymentpage = () => {
   const location = useLocation();
@@ -20,14 +21,14 @@ const Paymentpage = () => {
   const cartTotal = location.state?.total || 0;
 
   const [shipping, setShipping] = useState({
-  name: "",
-  phone: "",
-  address: "",
-  province: "",
-  district: "",
-  subDistrict: "",
-  zipcode: "",
-});
+    name: "",
+    phone: "",
+    address: "",      // บ้านเลขที่ / หมู่บ้าน / ซอย / ถนน
+    province: "",
+    district: "",     // เขต/อำเภอ
+    subDistrict: "",  // แขวง/ตำบล
+    zipcode: "",
+  });
 
   const [errors, setErrors] = useState({});
   const [provinces, setProvinces] = useState([]);
@@ -37,91 +38,112 @@ const Paymentpage = () => {
 
   const [paymentMethod, setPaymentMethod] = useState("");
 
-  // state สำหรับบัตร
+  // card state
   const [cardNumber, setCardNumber] = useState("");
   const [cardError, setCardError] = useState("");
-  const [cardType, setCardType] = useState(""); 
-  const [cardExpiry, setCardExpiry] = useState(""); // <-- เพิ่มบรรทัดนี้
-  const [cardCvv, setCardCvv] = useState(""); 
+  const [cardType, setCardType] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
 
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // ---------------- parseAddress (อิงจาก AddressForm) ----------------
+  const parseAddress = (fullAddress) => {
+    console.log("Parsing address from default:", fullAddress);
 
-    useEffect(() => {
+    let mainAddress = fullAddress;
+    let subdistrict = "";
+    let district = "";
+    let postal_code = "";
+    let province = "";
+
+    // 1) รหัสไปรษณีย์ (5 หลักท้าย)
+    const postalMatch = mainAddress.match(/\s*(\d{5})\s*$/);
+    if (postalMatch) {
+      postal_code = postalMatch[1];
+      mainAddress = mainAddress.replace(postalMatch[0], "").trim();
+    }
+
+    // 2) จังหวัด
+    const provinceMatch = mainAddress.match(/จังหวัด([^\s,]+)/);
+    if (provinceMatch) {
+      province = provinceMatch[1].trim();
+      mainAddress = mainAddress.replace(provinceMatch[0], "").trim();
+    }
+
+    // 3) เขต/อำเภอ
+    const districtMatch = mainAddress.match(/(?:เขต|อำเภอ)([^\s,]+)/);
+    if (districtMatch) {
+      district = districtMatch[1].trim();
+      mainAddress = mainAddress.replace(districtMatch[0], "").trim();
+    }
+
+    // 4) แขวง/ตำบล
+    const subdistrictMatch = mainAddress.match(/(?:แขวง|ตำบล)([^\s,]+)/);
+    if (subdistrictMatch) {
+      subdistrict = subdistrictMatch[1].trim();
+      mainAddress = mainAddress.replace(subdistrictMatch[0], "").trim();
+    }
+
+    // 5) ทำความสะอาดคอมมา / ช่องว่าง
+    mainAddress = mainAddress
+      .replace(/,+/g, ",")
+      .replace(/^,|,$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    console.log("Parsed default address:", {
+      address: mainAddress,
+      subdistrict,
+      district,
+      province,
+      postal_code,
+    });
+
+    return {
+      address: mainAddress,
+      subdistrict,
+      district,
+      province,
+      postal_code,
+    };
+  };
+
+  // ---------------- โหลดที่อยู่เริ่มต้น ----------------
+  useEffect(() => {
     const fetchDefaultAddress = async () => {
       try {
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-          console.error("No token found. Please login first.");
-          return;
-        }
-
-        const res = await fetch("/api/v1/addresses/default", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to fetch default address", res.status);
-          try {
-            const errData = await res.json();
-            console.error("Error detail:", errData);
-          } catch (_) {}
-          return;
-        }
-
-        const addr = await res.json();
+        console.log("Fetching default address...");
+        const res = await api.get("/addresses/default");
+        const addr = res.data;
         console.log("default address from API:", addr);
 
-        let rawAddress = addr.address || "";
-        let mainAddress = rawAddress;
-        let subDistrict = ""; // แขวง / ตำบล
-        let district = "";    // เขต / อำเภอ
-
-        // ----- เริ่มส่วนที่แก้ไข: สลับตำแหน่ง -----
-
-        // 1. ดึง "เขต..." ออกก่อน
-        const distMatch = rawAddress.match(/เขต\s*(.+)$/);
-        if (distMatch) {
-          district = distMatch[1].trim();
-          // ใช้ distMatch[0] ที่มีคำว่า "เขต" อยู่ด้วยในการแทนที่
-          mainAddress = mainAddress.replace(distMatch[0], "").trim(); 
-        }
-
-        // 2. ดึง "แขวง..." ออกทีหลัง
-        // Regex นี้จะหา "แขวง... เขต" แต่ตอนนี้คำว่า "เขต" อาจจะหายไปแล้ว
-        // เราจะใช้ Regex ที่หาแค่ "แขวง..." ก็พอ
-        const subMatch = mainAddress.match(/แขวง\s*([^ ]+(?:\s[^ ]+)*)/);
-        if (subMatch) {
-          subDistrict = subMatch[1].trim();
-          // ใช้ subMatch[0] ที่มีคำว่า "แขวง" อยู่ด้วยในการแทนที่
-          mainAddress = mainAddress.replace(subMatch[0], "").trim();
-        }
-
-        // ----- จบส่วนที่แก้ไข -----
+        const parsed = parseAddress(addr.address || "");
 
         setShipping({
           name: addr.recipient_name || "",
           phone: addr.phone_number || "",
-          address: mainAddress.trim(), // trim() อีกครั้งเพื่อความแน่นอน
-          province: addr.province || "",
-          subDistrict: subDistrict,
-          district: district,
-          zipcode: addr.postal_code || "",
+          address: parsed.address || "",
+          province: addr.province || parsed.province || "",
+          subDistrict: parsed.subdistrict || "",
+          district: parsed.district || "",
+          zipcode: addr.postal_code || parsed.postal_code || "",
         });
-
       } catch (err) {
-        console.error("โหลดที่อยู่เริ่มต้นไม่สำเร็จ:", err);
+        console.error(
+          "โหลดที่อยู่เริ่มต้นไม่สำเร็จ:",
+          err.response?.data || err
+        );
+        // จะไม่ toast ก็ได้ หรือถ้าต้องการ:
+        // toast.error('ไม่สามารถโหลดที่อยู่เริ่มต้นได้');
       }
     };
 
     fetchDefaultAddress();
   }, []);
 
+  // ---------------- โหลดจังหวัด (static JSON) ----------------
   useEffect(() => {
     const fetchProvinces = async () => {
       try {
@@ -135,6 +157,7 @@ const Paymentpage = () => {
         setProvinces(formattedProvinces);
       } catch (err) {
         console.error("โหลดจังหวัดไม่สำเร็จ:", err);
+        toast.error("ไม่สามารถโหลดข้อมูลจังหวัดได้");
       }
     };
     fetchProvinces();
@@ -143,6 +166,7 @@ const Paymentpage = () => {
   if (!selectedItems || selectedItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
+        <ToastContainer />
         <h1 className="text-4xl font-semibold mb-6">หน้าชำระเงิน</h1>
         <div className="text-center text-gray-500">
           ไม่มีสินค้าเลือกมาชำระเงิน
@@ -160,115 +184,57 @@ const Paymentpage = () => {
   const subtotal = calculateSubtotal();
   const total = subtotal + shippingFee;
 
-  // validate เฉพาะ field เดียว (ไม่รวม phone)
+  // ---------------- validation ฟอร์มที่อยู่ ----------------
   const validateField = (name, value) => {
     let error = "";
 
-    if (name === "name") {
-      if (!value.trim()) {
-        error = "กรุณากรอกชื่อ";
-      }
-    }
-
-    if (name === "address") {
-      if (!value.trim()) {
-        error = "กรุณากรอกที่อยู่";
-      }
-    }
-
-    if (name === "province") {
-      if (!value) {
-        error = "กรุณาเลือกจังหวัด";
-      }
-    }
-
-    if (name === "district") {
-      if (!value.trim()) {
-        error = "กรุณากรอกอำเภอ";
-      }
-    }
-
-    if (name === "subDistrict") {
-      if (!value.trim()) {
-        error = "กรุณากรอกตำบล";
-      }
-    }
-
+    if (name === "name" && !value.trim()) error = "กรุณากรอกชื่อ";
+    if (name === "address" && !value.trim()) error = "กรุณากรอกที่อยู่";
+    if (name === "province" && !value) error = "กรุณาเลือกจังหวัด";
+    if (name === "district" && !value.trim()) error = "กรุณากรอกอำเภอ";
+    if (name === "subDistrict" && !value.trim())
+      error = "กรุณากรอกตำบล";
     if (name === "zipcode") {
-      if (!value.trim()) {
-        error = "กรุณากรอกรหัสไปรษณีย์";
-      } else if (!/^[0-9]{5}$/.test(value.trim())) {
+      if (!value.trim()) error = "กรุณากรอกรหัสไปรษณีย์";
+      else if (!/^[0-9]{5}$/.test(value.trim()))
         error = "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก";
-      }
     }
 
-    // ไม่จัดการ phone ที่นี่
     if (name !== "phone") {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: error,
-      }));
+      setErrors((prev) => ({ ...prev, [name]: error }));
     }
 
     return !error;
   };
 
-  // validate เบอร์โทร ใช้ทั้งตอน blur และตอน submit
   const validatePhone = (value) => {
     let error = "";
     const v = value.trim();
 
-    if (!v) {
-      error = "กรุณากรอกเบอร์โทรศัพท์";
-    } else if (!/^\d+$/.test(v)) {
-      error = "เบอร์โทรศัพท์ต้องเป็นตัวเลขเท่านั้น";
-    } else if (v.length < 9) {
-      // ปรับจำนวนหลักได้ตามต้องการ
-      error = "เบอร์โทรศัพท์ต้องมีอย่างน้อย 9 หลัก";
-    }
+    if (!v) error = "กรุณากรอกเบอร์โทรศัพท์";
+    else if (!/^\d+$/.test(v)) error = "เบอร์โทรศัพท์ต้องเป็นตัวเลขเท่านั้น";
+    else if (v.length < 9) error = "เบอร์โทรศัพท์ต้องมีอย่างน้อย 9 หลัก";
 
-    setErrors((prev) => ({
-      ...prev,
-      phone: error,
-    }));
-
+    setErrors((prev) => ({ ...prev, phone: error }));
     return !error;
   };
 
-  // handle เปลี่ยนค่า input
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // เบอร์โทร: ให้พิมพ์ได้เฉพาะตัวเลข
-    if (name === "phone") {
-      if (!/^\d*$/.test(value)) {
-        // ถ้าไม่ใช่ตัวเลข ไม่อัปเดต state
-        return;
-      }
-    }
+    if (name === "phone" && !/^\d*$/.test(value)) return;
 
-    setShipping((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setShipping((prev) => ({ ...prev, [name]: value }));
 
-    // validate ทันทีสำหรับ field อื่น ๆ ยกเว้น phone
-    if (name !== "phone") {
-      validateField(name, value);
-    }
+    if (name !== "phone") validateField(name, value);
   };
+
   const handleProvinceChange = (selectedOption) => {
-    // selectedOption จะเป็น object { value: '...', label: '...' } หรือ null ถ้าผู้ใช้ลบค่า
     const provinceValue = selectedOption ? selectedOption.value : "";
-    setShipping((prev) => ({
-      ...prev,
-      province: provinceValue,
-    }));
-    // เรียกใช้ validation ทันที
+    setShipping((prev) => ({ ...prev, province: provinceValue }));
     validateField("province", provinceValue);
   };
 
-  // validate ทั้งฟอร์มที่อยู่ (รวม phone ด้วย)
   const validateShipping = () => {
     const fields = [
       "name",
@@ -279,24 +245,21 @@ const Paymentpage = () => {
       "subDistrict",
       "zipcode",
     ];
-
     let isValid = true;
 
     fields.forEach((field) => {
       const value = shipping[field];
       if (field === "phone") {
-        const ok = validatePhone(value);
-        if (!ok) isValid = false;
+        if (!validatePhone(value)) isValid = false;
       } else {
-        const ok = validateField(field, value);
-        if (!ok) isValid = false;
+        if (!validateField(field, value)) isValid = false;
       }
     });
 
     return isValid;
   };
 
-  // ตรวจสอบเลขบัตร
+  // ---------------- validation บัตร ----------------
   const validateCardNumber = () => {
     if (paymentMethod !== "card") {
       setCardError("");
@@ -309,7 +272,6 @@ const Paymentpage = () => {
       setCardError("กรุณากรอกเลขบัตร");
       return false;
     }
-
     if (!/^\d+$/.test(clean)) {
       setCardError("เลขบัตรต้องเป็นตัวเลขเท่านั้น");
       return false;
@@ -339,7 +301,6 @@ const Paymentpage = () => {
     return false;
   };
 
-    // ฟังก์ชันตรวจสอบวันหมดอายุ
   const validateExpiry = () => {
     let error = "";
     const value = cardExpiry;
@@ -352,35 +313,36 @@ const Paymentpage = () => {
       const [month, year] = value.split(" / ");
       const expMonth = parseInt(month, 10);
       const expYear = parseInt(year, 10);
-      const currentYear = new Date().getFullYear() % 100; // ปีปัจจุบัน 2 หลักท้าย
-      const currentMonth = new Date().getMonth() + 1; // เดือนปัจจุบัน (1-12)
+      const currentYear = new Date().getFullYear() % 100;
+      const currentMonth = new Date().getMonth() + 1;
 
       if (expMonth < 1 || expMonth > 12) {
         error = "เดือนไม่ถูกต้อง";
-      } else if (expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+      } else if (
+        expYear < currentYear ||
+        (expYear === currentYear && expMonth < currentMonth)
+      ) {
         error = "บัตรหมดอายุแล้ว";
       }
     }
-    
+
     setErrors((prev) => ({ ...prev, cardExpiry: error }));
     return !error;
   };
 
-  // ฟังก์ชันตรวจสอบ CVV
   const validateCvv = () => {
     let error = "";
     const value = cardCvv;
 
-    if (!value.trim()) {
-      error = "กรุณากรอก CVV";
-    } else if (!/^\d{3}$/.test(value.trim())) {
+    if (!value.trim()) error = "กรุณากรอก CVV";
+    else if (!/^\d{3}$/.test(value.trim()))
       error = "CVV ต้องเป็นตัวเลข 3 หลัก";
-    }
 
     setErrors((prev) => ({ ...prev, cardCvv: error }));
     return !error;
   };
 
+  // ---------------- submit คำสั่งซื้อ ----------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setTriedSubmit(true);
@@ -388,83 +350,81 @@ const Paymentpage = () => {
     const shippingOK = validateShipping();
 
     let cardDetailsOK = true;
-    if (paymentMethod === 'card') {
+    if (paymentMethod === "card") {
       const cardNumberOK = validateCardNumber();
       const cardExpiryOK = validateExpiry();
       const cardCvvOK = validateCvv();
       cardDetailsOK = cardNumberOK && cardExpiryOK && cardCvvOK;
     }
 
-    if (!shippingOK || !paymentMethod || !cardDetailsOK) {
-        return;
-    }
+    if (!shippingOK || !paymentMethod || !cardDetailsOK) return;
 
     setIsProcessing(true);
-
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise((r) => setTimeout(r, 3000)); // จำลองรอ
 
     try {
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-          toast.error("กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ");
-          setIsProcessing(false);
-          return;
-        }
-
-        const orderPayload = {
-            customer_name: shipping.name, 
-            shipping_address: ` ${shipping.address} แขวง${shipping.subDistrict} เขต${shipping.district}, ${shipping.province} ${shipping.zipcode}`,
-            total_amount: cartTotal,   
-            items: selectedItems.map(item => ({
-                product_id: item.id,
-                quantity: item.qty || 1,
-                price: item.price
-            })),
-            payment_method: paymentMethod,
-            summary: {
-                subtotal: cartSubtotal,
-                shipping_fee: cartShipping,
-                coupon_discount: cartCouponDiscount,
-                total: cartTotal
-            }
-        };
-        
-        if (paymentMethod === 'card') {
-          orderPayload.card_details = {
-            card_number: cardNumber.replace(/\s/g, ''),
-            expiry_date: cardExpiry,
-            cvv: cardCvv,
-          };
-        }
-
-        console.log("Sending payload to backend:", JSON.stringify(orderPayload, null, 2));
-
-        const response = await fetch('/api/v1/orders', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                Authorization: `Bearer ${token}` 
-            },
-            body: JSON.stringify(orderPayload),
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Backend error:", errorData); 
-            throw new Error(errorData.error || 'เกิดข้อผิดพลาดในการสร้างคำสั่งซื้อ');
-        }
-
-        toast.success("สั่งซื้อสำเร็จแล้ว!");
-        setTimeout(() => navigate("/"), 2000);
-
-    } catch (error) {
-        console.error("Failed to submit order:", error);
-        toast.error(error.message || "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้");
-    } finally {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        toast.error("กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ");
         setIsProcessing(false);
+        return;
+      }
+
+      // ประกอบ full address แบบเดียวกับ AddressForm
+      const fullAddress = `${shipping.address}, ตำบล${shipping.subDistrict}, อำเภอ${shipping.district}`;
+
+      const orderPayload = {
+        customer_name: shipping.name,
+        shipping_address: fullAddress,
+        province: shipping.province,
+        postal_code: shipping.zipcode,
+        total_amount: cartTotal,
+        items: selectedItems.map((item) => ({
+          product_id: item.id,
+          quantity: item.qty || 1,
+          price: item.price,
+        })),
+        payment_method: paymentMethod,
+        summary: {
+          subtotal: cartSubtotal,
+          shipping_fee: cartShipping,
+          coupon_discount: cartCouponDiscount,
+          total: cartTotal,
+        },
+      };
+
+      if (paymentMethod === "card") {
+        orderPayload.card_details = {
+          card_number: cardNumber.replace(/\s/g, ""),
+          expiry_date: cardExpiry,
+          cvv: cardCvv,
+        };
+      }
+
+      console.log(
+        "Sending payload to backend:",
+        JSON.stringify(orderPayload, null, 2)
+      );
+
+      const response = await api.post("/orders", orderPayload);
+      console.log("Order response:", response.data);
+
+      toast.success("สั่งซื้อสำเร็จแล้ว!");
+      setTimeout(() => navigate("/"), 2000);
+    } catch (error) {
+      console.error("Failed to submit order:", error);
+      const msg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้";
+      toast.error(msg);
+    } finally {
+      setIsProcessing(false);
     }
-};
-  // จัดการเลขบัตร
+  };
+
+  // ---------------- จัดการเลขบัตร ----------------
   const handleCardNumberChange = (e) => {
     const raw = e.target.value;
     if (!/^[0-9\s]*$/.test(raw)) return;
@@ -479,14 +439,10 @@ const Paymentpage = () => {
       setCardType(currentType);
     }
 
-    if (currentType === "visa") {
-      digits = digits.slice(0, 16);
-    } else if (currentType === "master") {
-      digits = digits.slice(0, 10);
-    }
+    if (currentType === "visa") digits = digits.slice(0, 16);
+    else if (currentType === "master") digits = digits.slice(0, 10);
 
     let formatted = digits;
-
     if (currentType === "visa") {
       formatted = digits.match(/.{1,4}/g)?.join(" ") || "";
     } else if (currentType === "master") {
@@ -505,22 +461,21 @@ const Paymentpage = () => {
   const handleCardFocus = () => {};
 
   const handleExpiryChange = (e) => {
-      let value = e.target.value.replace(/\D/g, ""); // เอาเฉพาะตัวเลข
-      if (value.length > 2) {
-        // เพิ่ม "/" หลังเดือน
-        value = value.slice(0, 2) + " / " + value.slice(2, 4);
-      } else if (value.length > 4) {
-        value = value.slice(0, 5); // จำกัดความยาว
-      }
-      setCardExpiry(value);
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 2) {
+      value = value.slice(0, 2) + " / " + value.slice(2, 4);
+    } else if (value.length > 4) {
+      value = value.slice(0, 5);
+    }
+    setCardExpiry(value);
   };
 
-  // จัดการการเปลี่ยนแปลงของ CVV
   const handleCvvChange = (e) => {
-      const value = e.target.value.replace(/\D/g, ""); // เอาเฉพาะตัวเลข
-      setCardCvv(value.slice(0, 3)); // จำกัดแค่ 3 หลัก
+    const value = e.target.value.replace(/\D/g, "");
+    setCardCvv(value.slice(0, 3));
   };
 
+  // ---------------- JSX ----------------
   return (
     <div className="container mx-auto px-4 py-8">
       <ToastContainer />
@@ -581,7 +536,7 @@ const Paymentpage = () => {
                   )}
                 </div>
 
-                {/* ที่อยู่ */}
+                {/* ที่อยู่ (ไม่ต้องใส่แขวง/อำเภอ/จังหวัด/รหัสไปรษณีย์) */}
                 <div className="md:col-span-2">
                   <label className="block text-sm mb-1">
                     ที่อยู่ <span className="text-red-500">*</span>
@@ -593,6 +548,7 @@ const Paymentpage = () => {
                     className={`w-full border rounded px-3 py-2 h-20 ${
                       errors.address ? "border-red-500" : "border-gray-300"
                     }`}
+                    placeholder="บ้านเลขที่, หมู่บ้าน, ซอย, ถนน (ไม่ต้องใส่แขวง/เขต/จังหวัด/รหัสไปรษณีย์)"
                   />
                   {errors.address && (
                     <p className="mt-1 text-xs text-red-500">
@@ -601,36 +557,43 @@ const Paymentpage = () => {
                   )}
                 </div>
 
-                {/* จังหวัด (Dropdown) */}
-                <div> {/* ไม่ต้องใช้ relative แล้ว */}
+                {/* จังหวัด */}
+                <div>
                   <label className="block text-sm mb-1">
                     จังหวัด <span className="text-red-500">*</span>
                   </label>
-                  
-                  {/* ใช้คอมโพเนนท์ Select ที่นี่ */}
+
                   <Select
-                    instanceId="province-select" // ID เฉพาะสำหรับ accessibility
+                    instanceId="province-select"
                     options={provinces}
                     onChange={handleProvinceChange}
-                    value={provinces.find((p) => p.value === shipping.province)}
+                    value={provinces.find(
+                      (p) => p.value === shipping.province
+                    )}
                     placeholder="-- เลือกจังหวัด --"
-                    isClearable // อนุญาตให้ผู้ใช้กด x เพื่อลบค่าที่เลือก
-                    noOptionsMessage={() => 'ไม่พบจังหวัดที่ค้นหา'}
+                    isClearable
+                    noOptionsMessage={() => "ไม่พบจังหวัดที่ค้นหา"}
                     styles={{
-                      // ปรับแต่งสไตล์ให้เข้ากับ input อื่นๆ และแสดง error border
                       control: (baseStyles, state) => ({
                         ...baseStyles,
-                        minHeight: '42px', // ปรับความสูงให้เท่า input อื่น
-                        borderColor: errors.province ? '#ef4444' : (state.isFocused ? '#6366f1' : '#d1d5db'), // สีขอบตอน error, focus, ปกติ
-                        boxShadow: state.isFocused ? '0 0 0 1px #6366f1' : 'none', // ใส่เงาตอน focus
-                        '&:hover': {
-                          borderColor: errors.province ? '#ef4444' : '#9ca3af',
+                        minHeight: "42px",
+                        borderColor: errors.province
+                          ? "#ef4444"
+                          : state.isFocused
+                          ? "#6366f1"
+                          : "#d1d5db",
+                        boxShadow: state.isFocused
+                          ? "0 0 0 1px #6366f1"
+                          : "none",
+                        "&:hover": {
+                          borderColor: errors.province
+                            ? "#ef4444"
+                            : "#9ca3af",
                         },
                       }),
-                      // แก้ปัญหา dropdown โดนบัง
                       menu: (baseStyles) => ({
                         ...baseStyles,
-                        zIndex: 20, 
+                        zIndex: 20,
                       }),
                     }}
                   />
@@ -642,30 +605,52 @@ const Paymentpage = () => {
                   )}
                 </div>
 
-                {/* อำเภอ */}
+                {/* แขวง/ตำบล */}
                 <div>
-                  <label className="block text-sm mb-1">แขวง/ตำบล <span className="text-red-500">*</span></label>
+                  <label className="block text-sm mb-1">
+                    แขวง/ตำบล <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="subDistrict"
                     value={shipping.subDistrict}
                     onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 ${errors.subDistrict ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full border rounded px-3 py-2 ${
+                      errors.subDistrict
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="ระบุแขวง/ตำบล"
                   />
-                  {errors.subDistrict && <p className="mt-1 text-xs text-red-500">{errors.subDistrict}</p>}
+                  {errors.subDistrict && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.subDistrict}
+                    </p>
+                  )}
                 </div>
 
-                {/* เขต/อำเภอ (district) */}
+                {/* เขต/อำเภอ */}
                 <div>
-                  <label className="block text-sm mb-1">เขต/อำเภอ <span className="text-red-500">*</span></label>
+                  <label className="block text-sm mb-1">
+                    เขต/อำเภอ <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     name="district"
                     value={shipping.district}
                     onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 ${errors.district ? "border-red-500" : "border-gray-300"}`}
+                    className={`w-full border rounded px-3 py-2 ${
+                      errors.district
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="ระบุเขต/อำเภอ"
                   />
-                  {errors.district && <p className="mt-1 text-xs text-red-500">{errors.district}</p>}
+                  {errors.district && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.district}
+                    </p>
+                  )}
                 </div>
 
                 {/* รหัสไปรษณีย์ */}
@@ -681,6 +666,7 @@ const Paymentpage = () => {
                     className={`w-full border rounded px-3 py-2 ${
                       errors.zipcode ? "border-red-500" : "border-gray-300"
                     }`}
+                    placeholder="10110"
                   />
                   {errors.zipcode && (
                     <p className="mt-1 text-xs text-red-500">
