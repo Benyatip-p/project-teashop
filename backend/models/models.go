@@ -83,14 +83,14 @@ type Product struct {
 }
 
 type ProductVariant struct {
-	ID        int       `json:"id"`
-	ProductID int       `json:"product_id"`
-	Weight    float64   `json:"weight"`
-	Price     float64   `json:"price"`
-	Stock     int       `json:"stock"`
-	IsActive  bool      `json:"is_active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        int        `json:"id"`
+	ProductID int        `json:"product_id"`
+	Weight    *float64   `json:"weight"`
+	Price     float64    `json:"price"`
+	Stock     int        `json:"stock"`
+	IsActive  bool       `json:"is_active"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 type Category struct {
@@ -171,7 +171,7 @@ type OrderItem struct {
 	ID            int     `json:"id"`
 	OrderID       int     `json:"order_id"`
 	ProductID     int     `json:"product_id"`
-	VariantID     *int    `json:"variant_id"`
+	VariantID     int     `json:"variant_id"`
 	Weight        float64 `json:"weight"`
 	Quantity      int     `json:"quantity"`
 	PricePerUnit  float64 `json:"price_per_unit"`
@@ -184,9 +184,9 @@ type CreateOrderRequest struct {
 }
 
 type CreateOrderItemRequest struct {
-	ProductID int  `json:"product_id" binding:"required"`
-	VariantID *int `json:"variant_id"`
-	Quantity  int  `json:"quantity" binding:"required,min=1"`
+	ProductID int `json:"product_id" binding:"required"`
+	VariantID int `json:"variant_id" binding:"required"`
+	Quantity  int `json:"quantity" binding:"required,min=1"`
 }
 
 type UpdateOrderStatusRequest struct {

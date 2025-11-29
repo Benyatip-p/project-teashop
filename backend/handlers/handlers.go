@@ -439,7 +439,7 @@ func CancelOrderHandler(c *gin.Context) {
 
 // GetUserOrdersHandler godoc
 // @Summary Get user order history
-// @Description Get all orders for the authenticated user
+// @Description Get all orders for the authenticated user. If admin, returns all orders in the system.
 // @Tags orders
 // @Accept json
 // @Produce json
@@ -455,11 +455,38 @@ func GetUserOrdersHandler(c *gin.Context) {
 		return
 	}
 
-	orders, err := database.GetOrdersByUserID(userID.(int))
+	// Check if user is admin
+	roles, err := database.GetUserRoles(userID.(int))
 	if err != nil {
-		log.Printf("Error getting orders: %v", err)
+		log.Printf("Error getting roles: %v", err)
 		c.JSON(500, gin.H{"error": "internal server error"})
 		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+
+	var orders []models.Order
+	if isAdmin {
+		// Admin can see all orders in the system
+		orders, err = database.GetAllOrders()
+		if err != nil {
+			log.Printf("Error getting all orders: %v", err)
+			c.JSON(500, gin.H{"error": "internal server error"})
+			return
+		}
+	} else {
+		// Regular user can only see their own orders
+		orders, err = database.GetOrdersByUserID(userID.(int))
+		if err != nil {
+			log.Printf("Error getting orders: %v", err)
+			c.JSON(500, gin.H{"error": "internal server error"})
+			return
+		}
 	}
 
 	c.JSON(200, gin.H{"orders": orders})
@@ -1428,14 +1455,42 @@ func CreateProductHandler(c *gin.Context) {
 		return
 	}
 
+	// Start transaction
+	tx, err := database.DB.Begin()
+	if err != nil {
+		log.Printf("Error starting transaction: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	defer tx.Rollback()
+
+	// Insert product
 	query := `INSERT INTO products (category_id, name, description, image_url, is_active, created_at, updated_at)
 	          VALUES ($1,$2,$3,$4,$5,NOW(),NOW()) RETURNING id`
 
 	var newID int
-	err = database.DB.QueryRow(query, input.CategoryID, input.Name, input.Description, input.ImageURL, input.IsActive).Scan(&newID)
+	err = tx.QueryRow(query, input.CategoryID, input.Name, input.Description, input.ImageURL, input.IsActive).Scan(&newID)
 	if err != nil {
 		log.Printf("Error creating product: %v", err)
 		c.JSON(500, gin.H{"error": "failed to create product"})
+		return
+	}
+
+	// Auto-create default variant (simplest approach)
+	variantQuery := `INSERT INTO product_variants (product_id, weight, price, stock, is_active, created_at, updated_at)
+	                 VALUES ($1, NULL, 0, 0, true, NOW(), NOW())`
+	_, err = tx.Exec(variantQuery, newID)
+	if err != nil {
+		log.Printf("Error creating default variant: %v", err)
+		c.JSON(500, gin.H{"error": "failed to create product"})
+		return
+	}
+
+	// Commit transaction
+	err = tx.Commit()
+	if err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
 
@@ -1683,7 +1738,7 @@ func CreateVariantHandler(c *gin.Context) {
 	variant := models.ProductVariant{
 		ID:        newID,
 		ProductID: productID,
-		Weight:    req.Weight,
+		Weight:    &req.Weight,
 		Price:     req.Price,
 		Stock:     req.Stock,
 		IsActive:  req.IsActive,

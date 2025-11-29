@@ -18,6 +18,16 @@ definitions:
       user_id:
         type: integer
     type: object
+  models.AttributeConfig:
+    properties:
+      category_id:
+        type: integer
+      id:
+        type: integer
+      schema: {}
+      updated_at:
+        type: string
+    type: object
   models.CreateAddressRequest:
     properties:
       address:
@@ -51,6 +61,7 @@ definitions:
     required:
     - product_id
     - quantity
+    - variant_id
     type: object
   models.CreateOrderRequest:
     properties:
@@ -493,6 +504,94 @@ paths:
       summary: Get default address
       tags:
       - addresses
+  /api/v1/admin/attributes/config:
+    get:
+      consumes:
+      - application/json
+      description: Get the current field definitions for product attributes by category
+        (Admin only)
+      parameters:
+      - description: Category ID
+        in: query
+        name: category_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.AttributeConfig'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get product attribute configuration
+      tags:
+      - admin
+    put:
+      consumes:
+      - application/json
+      description: Update the field definitions for product attributes by category
+        (Admin only)
+      parameters:
+      - description: Category ID
+        in: query
+        name: category_id
+        required: true
+        type: integer
+      - description: Updated attribute schema
+        in: body
+        name: request
+        required: true
+        schema: {}
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update product attribute configuration
+      tags:
+      - admin
   /api/v1/admin/items/low-stock:
     get:
       consumes:
@@ -832,7 +931,8 @@ paths:
     get:
       consumes:
       - application/json
-      description: Get all orders for the authenticated user
+      description: Get all orders for the authenticated user. If admin, returns all
+        orders in the system.
       produces:
       - application/json
       responses:
