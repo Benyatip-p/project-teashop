@@ -20,7 +20,6 @@ const SidebarProfile = () => {
   // Define menu items with their paths
   const accountSubMenus = [
     { id: 'profile', label: 'ประวัติ', path: '/user/account/profile' },
-    { id: 'payment', label: 'บัญชีธนาคารและบัตร', path: '/user/account/payment' },
     { id: 'address', label: 'ที่อยู่', path: '/user/account/address' },
   ];
 
@@ -28,7 +27,7 @@ const SidebarProfile = () => {
   const isActive = (path) => location.pathname === path;
 
   // Check if any account-related page is active
-  const isAccountSectionActive = ['/user/account/profile', '/user/account/payment', '/user/account/address'].includes(location.pathname);
+  const isAccountSectionActive = ['/user/account/profile', '/user/account/address'].includes(location.pathname);
 
   // Fetch user profile data
   const fetchProfile = async () => {
@@ -42,7 +41,7 @@ const SidebarProfile = () => {
 
   // Set initial accordion state based on current route
   useEffect(() => {
-    const accountPaths = ['/user/account/profile', '/user/account/payment', '/user/account/address'];
+    const accountPaths = ['/user/account/profile', '/user/account/address'];
     if (location.pathname === '/user/purchase') {
       setIsAccountOpen(false);
     } else if (accountPaths.includes(location.pathname)) {

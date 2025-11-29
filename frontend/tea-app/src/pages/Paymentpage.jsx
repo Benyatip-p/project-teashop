@@ -1,11 +1,19 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Select from "react-select";
+import api from "../api/api";
 
 const Paymentpage = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
   const selectedItems = location.state?.selectedItems || [];
+
+  const initialShippingFee = location.state?.shippingFee || 0;
+  const initialShippingMethod = location.state?.shippingMethod || "";
+
   const cartSubtotal = location.state?.subtotal || 0;
   const cartShipping = location.state?.shipping || 0;
   const cartCouponDiscount = location.state?.couponDiscount || 0;
@@ -15,20 +23,151 @@ const Paymentpage = () => {
   const [shipping, setShipping] = useState({
     name: "",
     phone: "",
-    address: "",
+    address: "",      // บ้านเลขที่ / หมู่บ้าน / ซอย / ถนน
     province: "",
-    district: "",
-    subDistrict: "",
+    district: "",     // เขต/อำเภอ
+    subDistrict: "",  // แขวง/ตำบล
     zipcode: "",
   });
 
+  const [errors, setErrors] = useState({});
+  const [provinces, setProvinces] = useState([]);
+
+  const [shippingMethod, setShippingMethod] = useState(initialShippingMethod);
+  const [shippingFee] = useState(initialShippingFee);
+
   const [paymentMethod, setPaymentMethod] = useState("");
+
+  // card state
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardError, setCardError] = useState("");
+  const [cardType, setCardType] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+
   const [triedSubmit, setTriedSubmit] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // ---------------- parseAddress (อิงจาก AddressForm) ----------------
+  const parseAddress = (fullAddress) => {
+    console.log("Parsing address from default:", fullAddress);
+
+    let mainAddress = fullAddress;
+    let subdistrict = "";
+    let district = "";
+    let postal_code = "";
+    let province = "";
+
+    // 1) รหัสไปรษณีย์ (5 หลักท้าย)
+    const postalMatch = mainAddress.match(/\s*(\d{5})\s*$/);
+    if (postalMatch) {
+      postal_code = postalMatch[1];
+      mainAddress = mainAddress.replace(postalMatch[0], "").trim();
+    }
+
+    // 2) จังหวัด
+    const provinceMatch = mainAddress.match(/จังหวัด([^\s,]+)/);
+    if (provinceMatch) {
+      province = provinceMatch[1].trim();
+      mainAddress = mainAddress.replace(provinceMatch[0], "").trim();
+    }
+
+    // 3) เขต/อำเภอ
+    const districtMatch = mainAddress.match(/(?:เขต|อำเภอ)([^\s,]+)/);
+    if (districtMatch) {
+      district = districtMatch[1].trim();
+      mainAddress = mainAddress.replace(districtMatch[0], "").trim();
+    }
+
+    // 4) แขวง/ตำบล
+    const subdistrictMatch = mainAddress.match(/(?:แขวง|ตำบล)([^\s,]+)/);
+    if (subdistrictMatch) {
+      subdistrict = subdistrictMatch[1].trim();
+      mainAddress = mainAddress.replace(subdistrictMatch[0], "").trim();
+    }
+
+    // 5) ทำความสะอาดคอมมา / ช่องว่าง
+    mainAddress = mainAddress
+      .replace(/,+/g, ",")
+      .replace(/^,|,$/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    console.log("Parsed default address:", {
+      address: mainAddress,
+      subdistrict,
+      district,
+      province,
+      postal_code,
+    });
+
+    return {
+      address: mainAddress,
+      subdistrict,
+      district,
+      province,
+      postal_code,
+    };
+  };
+
+  // ---------------- โหลดที่อยู่เริ่มต้น ----------------
+  useEffect(() => {
+    const fetchDefaultAddress = async () => {
+      try {
+        console.log("Fetching default address...");
+        const res = await api.get("/addresses/default");
+        const addr = res.data;
+        console.log("default address from API:", addr);
+
+        const parsed = parseAddress(addr.address || "");
+
+        setShipping({
+          name: addr.recipient_name || "",
+          phone: addr.phone_number || "",
+          address: parsed.address || "",
+          province: addr.province || parsed.province || "",
+          subDistrict: parsed.subdistrict || "",
+          district: parsed.district || "",
+          zipcode: addr.postal_code || parsed.postal_code || "",
+        });
+      } catch (err) {
+        console.error(
+          "โหลดที่อยู่เริ่มต้นไม่สำเร็จ:",
+          err.response?.data || err
+        );
+        // จะไม่ toast ก็ได้ หรือถ้าต้องการ:
+        // toast.error('ไม่สามารถโหลดที่อยู่เริ่มต้นได้');
+      }
+    };
+
+    fetchDefaultAddress();
+  }, []);
+
+  // ---------------- โหลดจังหวัด (static JSON) ----------------
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const res = await fetch("/provinces.json");
+        const data = await res.json();
+
+        const formattedProvinces = data.map((p) => ({
+          value: p.name,
+          label: p.name,
+        }));
+        setProvinces(formattedProvinces);
+      } catch (err) {
+        console.error("โหลดจังหวัดไม่สำเร็จ:", err);
+        toast.error("ไม่สามารถโหลดข้อมูลจังหวัดได้");
+      }
+    };
+    fetchProvinces();
+  }, []);
 
   if (!selectedItems || selectedItems.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="mb-6 text-4xl font-semibold">หน้าชำระเงิน</h1>
+        <ToastContainer />
+        <h1 className="text-4xl font-semibold mb-6">หน้าชำระเงิน</h1>
         <div className="text-center text-gray-500">
           ไม่มีสินค้าเลือกมาชำระเงิน
         </div>
@@ -43,58 +182,320 @@ const Paymentpage = () => {
     }, 0);
 
   const subtotal = calculateSubtotal();
+  const total = subtotal + shippingFee;
 
-  const handleChange = e => {
-    const { name, value } = e.target;
-    setShipping(prev => ({ ...prev, [name]: value }));
+  // ---------------- validation ฟอร์มที่อยู่ ----------------
+  const validateField = (name, value) => {
+    let error = "";
+
+    if (name === "name" && !value.trim()) error = "กรุณากรอกชื่อ";
+    if (name === "address" && !value.trim()) error = "กรุณากรอกที่อยู่";
+    if (name === "province" && !value) error = "กรุณาเลือกจังหวัด";
+    if (name === "district" && !value.trim()) error = "กรุณากรอกอำเภอ";
+    if (name === "subDistrict" && !value.trim())
+      error = "กรุณากรอกตำบล";
+    if (name === "zipcode") {
+      if (!value.trim()) error = "กรุณากรอกรหัสไปรษณีย์";
+      else if (!/^[0-9]{5}$/.test(value.trim()))
+        error = "รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก";
+    }
+
+    if (name !== "phone") {
+      setErrors((prev) => ({ ...prev, [name]: error }));
+    }
+
+    return !error;
   };
 
-  const handleSubmit = e => {
-    e.preventDefault();
+  const validatePhone = (value) => {
+    let error = "";
+    const v = value.trim();
 
-    if (!triedSubmit) {
-      setTriedSubmit(true);
-    }
+    if (!v) error = "กรุณากรอกเบอร์โทรศัพท์";
+    else if (!/^\d+$/.test(v)) error = "เบอร์โทรศัพท์ต้องเป็นตัวเลขเท่านั้น";
+    else if (v.length < 9) error = "เบอร์โทรศัพท์ต้องมีอย่างน้อย 9 หลัก";
 
-    if (!paymentMethod) {
-      return;
-    }
+    setErrors((prev) => ({ ...prev, phone: error }));
+    return !error;
+  };
 
-    console.log("ORDER DATA:", {
-      items: selectedItems,
-      shipping,
-      paymentMethod,
-      subtotal: cartSubtotal,
-      shippingFee: cartShipping,
-      couponDiscount: cartCouponDiscount,
-      totalBeforeDiscount: cartTotalBeforeDiscount,
-      total: cartTotal,
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === "phone" && !/^\d*$/.test(value)) return;
+
+    setShipping((prev) => ({ ...prev, [name]: value }));
+
+    if (name !== "phone") validateField(name, value);
+  };
+
+  const handleProvinceChange = (selectedOption) => {
+    const provinceValue = selectedOption ? selectedOption.value : "";
+    setShipping((prev) => ({ ...prev, province: provinceValue }));
+    validateField("province", provinceValue);
+  };
+
+  const validateShipping = () => {
+    const fields = [
+      "name",
+      "phone",
+      "address",
+      "province",
+      "district",
+      "subDistrict",
+      "zipcode",
+    ];
+    let isValid = true;
+
+    fields.forEach((field) => {
+      const value = shipping[field];
+      if (field === "phone") {
+        if (!validatePhone(value)) isValid = false;
+      } else {
+        if (!validateField(field, value)) isValid = false;
+      }
     });
 
-    alert("สั่งซื้อเรียบร้อย (ตัวอย่าง)");
+    return isValid;
   };
 
+  // ---------------- validation บัตร ----------------
+  const validateCardNumber = () => {
+    if (paymentMethod !== "card") {
+      setCardError("");
+      return true;
+    }
+
+    const clean = cardNumber.replace(/\s+/g, "");
+
+    if (!clean) {
+      setCardError("กรุณากรอกเลขบัตร");
+      return false;
+    }
+    if (!/^\d+$/.test(clean)) {
+      setCardError("เลขบัตรต้องเป็นตัวเลขเท่านั้น");
+      return false;
+    }
+
+    if (clean.startsWith("4")) {
+      if (clean.length !== 16) {
+        setCardError("บัตร Visa ต้องมี 16 หลัก");
+        return false;
+      }
+      setCardError("");
+      return true;
+    }
+
+    if (clean.startsWith("5")) {
+      if (clean.length !== 10) {
+        setCardError("บัตร MasterCard ต้องมี 10 หลัก");
+        return false;
+      }
+      setCardError("");
+      return true;
+    }
+
+    setCardError(
+      "รองรับเฉพาะบัตร Visa (ขึ้นต้น 4) และ MasterCard (ขึ้นต้น 5)"
+    );
+    return false;
+  };
+
+  const validateExpiry = () => {
+    let error = "";
+    const value = cardExpiry;
+
+    if (!value.trim()) {
+      error = "กรุณากรอกวันหมดอายุ";
+    } else if (!/^\d{2} \/ \d{2}$/.test(value)) {
+      error = "รูปแบบไม่ถูกต้อง (MM / YY)";
+    } else {
+      const [month, year] = value.split(" / ");
+      const expMonth = parseInt(month, 10);
+      const expYear = parseInt(year, 10);
+      const currentYear = new Date().getFullYear() % 100;
+      const currentMonth = new Date().getMonth() + 1;
+
+      if (expMonth < 1 || expMonth > 12) {
+        error = "เดือนไม่ถูกต้อง";
+      } else if (
+        expYear < currentYear ||
+        (expYear === currentYear && expMonth < currentMonth)
+      ) {
+        error = "บัตรหมดอายุแล้ว";
+      }
+    }
+
+    setErrors((prev) => ({ ...prev, cardExpiry: error }));
+    return !error;
+  };
+
+  const validateCvv = () => {
+    let error = "";
+    const value = cardCvv;
+
+    if (!value.trim()) error = "กรุณากรอก CVV";
+    else if (!/^\d{3}$/.test(value.trim()))
+      error = "CVV ต้องเป็นตัวเลข 3 หลัก";
+
+    setErrors((prev) => ({ ...prev, cardCvv: error }));
+    return !error;
+  };
+
+  // ---------------- submit คำสั่งซื้อ ----------------
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setTriedSubmit(true);
+
+    const shippingOK = validateShipping();
+
+    let cardDetailsOK = true;
+    if (paymentMethod === "card") {
+      const cardNumberOK = validateCardNumber();
+      const cardExpiryOK = validateExpiry();
+      const cardCvvOK = validateCvv();
+      cardDetailsOK = cardNumberOK && cardExpiryOK && cardCvvOK;
+    }
+
+    if (!shippingOK || !paymentMethod || !cardDetailsOK) return;
+
+    setIsProcessing(true);
+    await new Promise((r) => setTimeout(r, 3000)); // จำลองรอ
+
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) {
+        toast.error("กรุณาเข้าสู่ระบบก่อนทำการสั่งซื้อ");
+        setIsProcessing(false);
+        return;
+      }
+
+      // ประกอบ full address แบบเดียวกับ AddressForm
+      const fullAddress = `${shipping.address}, เขต${shipping.district}, แขวง${shipping.subDistrict}`;
+
+      const orderPayload = {
+        customer_name: shipping.name,
+        shipping_address: fullAddress,
+        province: shipping.province,
+        postal_code: shipping.zipcode,
+        total_amount: cartTotal,
+        items: selectedItems.map((item) => ({
+          product_id: item.id,
+          quantity: item.qty || 1,
+          price: item.price,
+        })),
+        payment_method: paymentMethod,
+        summary: {
+          subtotal: cartSubtotal,
+          shipping_fee: cartShipping,
+          coupon_discount: cartCouponDiscount,
+          total: cartTotal,
+        },
+      };
+
+      if (paymentMethod === "card") {
+        orderPayload.card_details = {
+          card_number: cardNumber.replace(/\s/g, ""),
+          expiry_date: cardExpiry,
+          cvv: cardCvv,
+        };
+      }
+
+      console.log(
+        "Sending payload to backend:",
+        JSON.stringify(orderPayload, null, 2)
+      );
+
+      const response = await api.post("/orders", orderPayload);
+      console.log("Order response:", response.data);
+
+      toast.success("สั่งซื้อสำเร็จแล้ว!");
+      setTimeout(() => navigate("/"), 2000);
+    } catch (error) {
+      console.error("Failed to submit order:", error);
+      const msg =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        error.message ||
+        "ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้";
+      toast.error(msg);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // ---------------- จัดการเลขบัตร ----------------
+  const handleCardNumberChange = (e) => {
+    const raw = e.target.value;
+    if (!/^[0-9\s]*$/.test(raw)) return;
+
+    let digits = raw.replace(/\s+/g, "");
+
+    let currentType = cardType;
+    if (!currentType && digits.length > 0) {
+      if (digits.startsWith("4")) currentType = "visa";
+      else if (digits.startsWith("5")) currentType = "master";
+      else currentType = "";
+      setCardType(currentType);
+    }
+
+    if (currentType === "visa") digits = digits.slice(0, 16);
+    else if (currentType === "master") digits = digits.slice(0, 10);
+
+    let formatted = digits;
+    if (currentType === "visa") {
+      formatted = digits.match(/.{1,4}/g)?.join(" ") || "";
+    } else if (currentType === "master") {
+      const part1 = digits.slice(0, 4);
+      const part2 = digits.slice(4, 9);
+      const part3 = digits.slice(9, 10);
+      formatted = [part1, part2, part3].filter(Boolean).join(" ");
+    } else {
+      formatted = digits.match(/.{1,4}/g)?.join(" ") || "";
+    }
+
+    setCardNumber(formatted);
+    setCardError("");
+  };
+
+  const handleCardFocus = () => {};
+
+  const handleExpiryChange = (e) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (value.length > 2) {
+      value = value.slice(0, 2) + " / " + value.slice(2, 4);
+    } else if (value.length > 4) {
+      value = value.slice(0, 5);
+    }
+    setCardExpiry(value);
+  };
+
+  const handleCvvChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "");
+    setCardCvv(value.slice(0, 3));
+  };
+
+  // ---------------- JSX ----------------
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="mb-6 text-4xl font-semibold">หน้าชำระเงิน</h1>
+      <ToastContainer />
 
-      <button
-        type="button"
-        onClick={() => navigate("/cart")}
-        className="mb-6 rounded bg-gray-500 px-4 py-2 text-sm text-white hover:bg-gray-700"
-      >
-        ← ย้อนกลับ
-      </button>
+      <h1 className="text-4xl font-semibold mb-6">ชำระเงิน</h1>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="space-y-8 lg:col-span-2">
-            <div className="space-y-4 rounded-lg bg-white p-6 shadow">
-              <h2 className="mb-4 text-xl font-semibold">ที่อยู่ในการจัดส่ง</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* ซ้าย: ฟอร์มที่อยู่ + วิธีชำระเงิน */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* ที่อยู่จัดส่ง */}
+            <div className="bg-white shadow rounded-lg p-6 space-y-4">
+              <h2 className="text-xl font-semibold mb-4">
+                ที่อยู่ในการจัดส่ง
+              </h2>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* ชื่อ */}
                 <div>
-                  <label className="mb-1 block text-sm">
+                  <label className="block text-sm mb-1">
                     ชื่อ <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -102,13 +503,20 @@ const Paymentpage = () => {
                     name="name"
                     value={shipping.name}
                     onChange={handleChange}
-                    className="w-full rounded border px-3 py-2"
-                    required
+                    className={`w-full border rounded px-3 py-2 ${
+                      errors.name ? "border-red-500" : "border-gray-300"
+                    }`}
                   />
+                  {errors.name && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.name}
+                    </p>
+                  )}
                 </div>
 
+                {/* โทรศัพท์ */}
                 <div>
-                  <label className="mb-1 block text-sm">
+                  <label className="block text-sm mb-1">
                     โทรศัพท์ <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -116,69 +524,138 @@ const Paymentpage = () => {
                     name="phone"
                     value={shipping.phone}
                     onChange={handleChange}
-                    className="w-full rounded border px-3 py-2"
-                    required
+                    onBlur={(e) => validatePhone(e.target.value)}
+                    className={`w-full border rounded px-3 py-2 ${
+                      errors.phone ? "border-red-500" : "border-gray-300"
+                    }`}
                   />
+                  {errors.phone && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.phone}
+                    </p>
+                  )}
                 </div>
 
+                {/* ที่อยู่ (ไม่ต้องใส่แขวง/อำเภอ/จังหวัด/รหัสไปรษณีย์) */}
                 <div className="md:col-span-2">
-                  <label className="mb-1 block text-sm">
+                  <label className="block text-sm mb-1">
                     ที่อยู่ <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <textarea
                     name="address"
                     value={shipping.address}
                     onChange={handleChange}
-                    className="h-20 w-full rounded border px-3 py-2"
-                    required
+                    className={`w-full border rounded px-3 py-2 h-20 ${
+                      errors.address ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="บ้านเลขที่, หมู่บ้าน, ซอย, ถนน (ไม่ต้องใส่แขวง/เขต/จังหวัด/รหัสไปรษณีย์)"
                   />
+                  {errors.address && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.address}
+                    </p>
+                  )}
                 </div>
 
+                {/* จังหวัด */}
                 <div>
-                  <label className="mb-1 block text-sm">
+                  <label className="block text-sm mb-1">
                     จังหวัด <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="province"
-                    value={shipping.province}
-                    onChange={handleChange}
-                    className="w-full rounded border px-3 py-2"
-                    required
+
+                  <Select
+                    instanceId="province-select"
+                    options={provinces}
+                    onChange={handleProvinceChange}
+                    value={provinces.find(
+                      (p) => p.value === shipping.province
+                    )}
+                    placeholder="-- เลือกจังหวัด --"
+                    isClearable
+                    noOptionsMessage={() => "ไม่พบจังหวัดที่ค้นหา"}
+                    styles={{
+                      control: (baseStyles, state) => ({
+                        ...baseStyles,
+                        minHeight: "42px",
+                        borderColor: errors.province
+                          ? "#ef4444"
+                          : state.isFocused
+                          ? "#6366f1"
+                          : "#d1d5db",
+                        boxShadow: state.isFocused
+                          ? "0 0 0 1px #6366f1"
+                          : "none",
+                        "&:hover": {
+                          borderColor: errors.province
+                            ? "#ef4444"
+                            : "#9ca3af",
+                        },
+                      }),
+                      menu: (baseStyles) => ({
+                        ...baseStyles,
+                        zIndex: 20,
+                      }),
+                    }}
                   />
+
+                  {errors.province && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.province}
+                    </p>
+                  )}
                 </div>
 
+                {/* แขวง/ตำบล */}
                 <div>
-                  <label className="mb-1 block text-sm">
-                    อำเภอ <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="district"
-                    value={shipping.district}
-                    onChange={handleChange}
-                    className="w-full rounded border px-3 py-2"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm">
-                    ตำบล <span className="text-red-500">*</span>
+                  <label className="block text-sm mb-1">
+                    แขวง/ตำบล <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="subDistrict"
                     value={shipping.subDistrict}
                     onChange={handleChange}
-                    className="w-full rounded border px-3 py-2"
-                    required
+                    className={`w-full border rounded px-3 py-2 ${
+                      errors.subDistrict
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="ระบุแขวง/ตำบล"
                   />
+                  {errors.subDistrict && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.subDistrict}
+                    </p>
+                  )}
                 </div>
 
+                {/* เขต/อำเภอ */}
                 <div>
-                  <label className="mb-1 block text-sm">
+                  <label className="block text-sm mb-1">
+                    เขต/อำเภอ <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="district"
+                    value={shipping.district}
+                    onChange={handleChange}
+                    className={`w-full border rounded px-3 py-2 ${
+                      errors.district
+                        ? "border-red-500"
+                        : "border-gray-300"
+                    }`}
+                    placeholder="ระบุเขต/อำเภอ"
+                  />
+                  {errors.district && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.district}
+                    </p>
+                  )}
+                </div>
+
+                {/* รหัสไปรษณีย์ */}
+                <div>
+                  <label className="block text-sm mb-1">
                     รหัสไปรษณีย์ <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -186,79 +663,141 @@ const Paymentpage = () => {
                     name="zipcode"
                     value={shipping.zipcode}
                     onChange={handleChange}
-                    className="w-full rounded border px-3 py-2"
-                    required
+                    className={`w-full border rounded px-3 py-2 ${
+                      errors.zipcode ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="10110"
                   />
+                  {errors.zipcode && (
+                    <p className="mt-1 text-xs text-red-500">
+                      {errors.zipcode}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
-            <section className="rounded-lg bg-white p-6 shadow">
-              <h2 className="mb-4 text-xl font-semibold">วิธีการชำระเงิน</h2>
+            {/* วิธีชำระเงิน */}
+            <section className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">
+                วิธีการชำระเงิน
+              </h2>
 
               <div className="space-y-4">
-                <label className="flex cursor-pointer items-start gap-3">
+                {/* บัตร */}
+                <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="radio"
                     name="paymentMethod"
                     value="card"
                     checked={paymentMethod === "card"}
-                    onChange={e => setPaymentMethod(e.target.value)}
+                    onChange={(e) => {
+                      setPaymentMethod(e.target.value);
+                      setCardError("");
+                    }}
                     className="mt-1"
+                    disabled={isProcessing}
                   />
                   <div>
                     <div className="font-medium">
                       ชำระผ่านบัตรเครดิต / เดบิต
                     </div>
                     <div className="text-sm text-gray-500">
-                      Visa, MasterCard, JCB
+                      Visa (ขึ้นต้น 4, 16 หลัก), MasterCard (ขึ้นต้น 5,
+                      10 หลัก)
                     </div>
                   </div>
                 </label>
 
                 {paymentMethod === "card" && (
-                  <div className="mt-2 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                     <div className="md:col-span-2">
-                      <label className="mb-1 block text-sm text-gray-700">
+                      <label className="block text-sm text-gray-700 mb-1">
                         เลขที่บัตร
                       </label>
                       <input
                         type="text"
-                        className="w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="XXXX XXXX XXXX XXXX"
+                        value={cardNumber}
+                        onChange={handleCardNumberChange}
+                        onBlur={validateCardNumber}
+                        onFocus={handleCardFocus}
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
+                          cardError
+                            ? "border-red-500 focus:ring-red-400"
+                            : "focus:ring-green-500"
+                        }`}
+                        placeholder="4xxx xxxx xxxx xxxx หรือ 5xxx xxxxx x"
+                        disabled={isProcessing}
                       />
+                      {cardError && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {cardError}
+                        </p>
+                      )}
                     </div>
+
                     <div>
-                      <label className="mb-1 block text-sm text-gray-700">
-                        วันหมดอายุ
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-1">วันหมดอายุ</label>
                       <input
                         type="text"
-                        className="w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="MM/YY"
+                        name="cardExpiry"
+                        value={cardExpiry}
+                        onChange={handleExpiryChange}
+                        onBlur={validateExpiry}
+                        autoComplete="off"
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
+                          errors.cardExpiry
+                            ? "border-red-500 focus:ring-red-400"
+                            : "focus:ring-green-500"
+                        }`}
+                        placeholder="MM / YY"
+                        disabled={isProcessing}
                       />
+                      {errors.cardExpiry && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.cardExpiry}
+                        </p>
+                      )}
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm text-gray-700">
-                        CVV
-                      </label>
+                      <label className="block text-sm text-gray-700 mb-1">CVV</label>
                       <input
                         type="password"
-                        className="w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                        name="cardCvv"
+                        value={cardCvv}
+                        onChange={handleCvvChange}
+                        onBlur={validateCvv}
+                        autoComplete="off"
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
+                          errors.cardCvv
+                            ? "border-red-500 focus:ring-red-400"
+                            : "focus:ring-green-500"
+                        }`}
                         placeholder="XXX"
+                        disabled={isProcessing}
                       />
+                      {errors.cardCvv && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {errors.cardCvv}
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
 
-                <label className="flex cursor-pointer items-start gap-3">
+                {/* โอนธนาคาร */}
+                <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="radio"
                     name="paymentMethod"
                     value="bank"
                     checked={paymentMethod === "bank"}
-                    onChange={e => setPaymentMethod(e.target.value)}
+                    onChange={(e) => {
+                      setPaymentMethod(e.target.value);
+                      setCardError("");
+                    }}
                     className="mt-1"
+                    disabled={isProcessing}
                   />
                   <div>
                     <div className="font-medium">โอนเงินผ่านธนาคาร</div>
@@ -276,44 +815,28 @@ const Paymentpage = () => {
                     </p>
                   </div>
                 )}
-
-                <label className="flex cursor-pointer items-start gap-3">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="cod"
-                    checked={paymentMethod === "cod"}
-                    onChange={e => setPaymentMethod(e.target.value)}
-                    className="mt-1"
-                  />
-                  <div>
-                    <div className="font-medium">ชำระเงินปลายทาง (COD)</div>
-                    <div className="text-sm text-gray-500">
-                      จ่ายกับพนักงานจัดส่งเมื่อได้รับสินค้า
-                    </div>
-                  </div>
-                </label>
               </div>
             </section>
           </div>
 
-          <div className="h-fit space-y-4 rounded-lg bg-white p-6 shadow">
-            <h2 className="mb-4 text-xl font-semibold">สรุปรายการสั่งซื้อ</h2>
+          {/* ขวา: สรุปออเดอร์ */}
+          <div className="bg-white shadow rounded-lg p-6 h-fit space-y-4">
+            <h2 className="text-xl font-semibold mb-4">สรุปรายการสั่งซื้อ</h2>
 
-            {selectedItems.map(item => (
+            {selectedItems.map((item) => (
               <div key={item.id} className="flex items-center gap-4">
                 <img
                   src={item.coverImage || item.image}
                   alt={item.title}
-                  className="h-16 w-16 rounded object-cover"
+                  className="w-16 h-16 object-cover rounded"
                 />
                 <div className="flex-1">
-                  <div className="text-sm font-medium">{item.title}</div>
-                  <div className="text-xs text-gray-600">
+                  <div className="font-medium text-sm">{item.title}</div>
+                  <div className="text-gray-600 text-xs">
                     จำนวน: {item.qty || 1}
                   </div>
                 </div>
-                <div className="text-sm font-semibold text-green-700">
+                <div className="text-green-700 font-semibold text-sm">
                   ฿{(item.price * (item.qty || 1)).toLocaleString()}
                 </div>
               </div>
@@ -347,27 +870,66 @@ const Paymentpage = () => {
               </div>
             )}
 
-            <div className="mt-2 flex justify-between font-semibold">
+            <div className="flex justify-between mt-2 font-semibold">
               <span>ยอดรวมทั้งสิ้น</span>
               <span>฿{cartTotal.toFixed(2)}</span>
             </div>
 
+            {/* เตือนถ้ายังไม่เลือกวิธีชำระเงิน */}
             {triedSubmit && !paymentMethod && (
               <div className="mt-2 text-left text-sm text-red-500">
                 กรุณาเลือกวิธีการชำระเงิน
               </div>
             )}
 
+            {/* สถานะกำลังประมวลผล แบบ Loading UI */}
+            {isProcessing && (
+              <div className="mt-4 mx-auto max-w-xs rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-center text-sm text-blue-800">
+                <div className="flex items-center justify-center gap-2">
+                  <svg
+                    className="h-4 w-4 animate-spin text-blue-500"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4l3.5-3.5L12 1v4a7 7 0 00-7 7h-1z"
+                    ></path>
+                  </svg>
+                  <span>กำลังตรวจสอบการชำระเงิน โปรดรอสักครู่...</span>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
-              className={`mt-4 w-full rounded py-2 text-white ${
+              className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-colors ${
                 triedSubmit && !paymentMethod
-                  ? "cursor-not-allowed bg-green-300"
-                  : "bg-green-600 hover:bg-green-700"
-              }`}
-              disabled={triedSubmit && !paymentMethod}
+                  ? 'cursor-not-allowed bg-gray-300'
+                  : 'bg-[#0b2f27] hover:bg-[#13493d]'
+              } ${isProcessing ? "opacity-70 cursor-wait" : ""}`}
+              disabled={(triedSubmit && !paymentMethod) || isProcessing}
             >
-              ยืนยันการสั่งซื้อ
+              {isProcessing ? "กำลังดำเนินการ..." : "ยืนยันการสั่งซื้อ"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/cart")}
+              className="mt-3 w-full rounded-xl py-3 text-sm font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-70"
+              disabled={isProcessing}
+            >
+              ยกเลิก
             </button>
           </div>
         </div>
