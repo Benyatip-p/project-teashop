@@ -333,17 +333,17 @@ INSERT INTO products (category_id, name, description, image_url) VALUES
 -- Insert product variants
 INSERT INTO product_variants (product_id, weight, price, stock) VALUES
 -- Oolong teas
-(1, 50.00, 175.00, 80), (1, 100.00, 325.00, 60), (1, 250.00, 700.00, 40),
+(1, 50.00, 175.00, 7), (1, 100.00, 325.00, 9), (1, 250.00, 700.00, 40),
 (2, 50.00, 200.00, 70), (2, 100.00, 380.00, 50), (2, 250.00, 850.00, 35),
 -- Green teas
-(3, 20.00, 250.00, 100), (3, 50.00, 500.00, 50), (3, 100.00, 900.00, 30),
-(4, 50.00, 140.00, 90), (4, 100.00, 260.00, 70), (4, 250.00, 580.00, 45),
+(3, 20.00, 250.00, 4), (3, 50.00, 500.00, 50), (3, 100.00, 900.00, 30),
+(4, 50.00, 140.00, 90), (4, 100.00, 260.00, 2), (4, 250.00, 580.00, 45),
 (5, 50.00, 150.00, 85), (5, 100.00, 280.00, 65), (5, 250.00, 620.00, 40),
 -- Black teas
-(6, 50.00, 160.00, 75), (6, 100.00, 300.00, 55), (6, 250.00, 650.00, 35),
+(6, 50.00, 160.00, 1), (6, 100.00, 300.00, 55), (6, 250.00, 650.00, 35),
 (7, 50.00, 150.00, 80), (7, 100.00, 280.00, 60), (7, 250.00, 600.00, 40),
 -- Teapots (accessories - no weight)
-(8, NULL, 1200.00, 20), (9, NULL, 950.00, 30), (10, NULL, 800.00, 40),
+(8, NULL, 1200.00, 9), (9, NULL, 950.00, 30), (10, NULL, 800.00, 40),
 -- Accessories
 (11, NULL, 150.00, 200), (12, NULL, 250.00, 50);
 
@@ -418,6 +418,55 @@ INSERT INTO order_items (order_id, product_id, variant_id, weight, quantity, pri
 (18, 2, 4, 1, 1, 200.00),(18, 11, 25, 1, 1, 150.00);
 
 
+-- Add more orders with different dates for better testing
+INSERT INTO orders (user_id, total_amount, status, customer_name, shipping_address, tracking_number, created_at) VALUES
+(5, 450.00, 'completed', 'Bob Wilson', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '1 day'),
+(6, 320.00, 'completed', 'Alice Brown', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '2 days'),
+(7, 890.00, 'completed', 'Charlie Davis', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '3 days'),
+(8, 670.00, 'completed', 'Diana Evans', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '4 days'),
+(9, 520.00, 'completed', 'Frank Garcia', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '5 days'),
+(3, 380.00, 'completed', 'John Doe', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '6 days'),
+(4, 710.00, 'completed', 'Jane Smith', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '7 days'),
+(5, 290.00, 'completed', 'Bob Wilson', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '8 days'),
+(6, 950.00, 'completed', 'Alice Brown', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '9 days'),
+(7, 430.00, 'completed', 'Charlie Davis', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '10 days'),
+-- Add more orders for this month
+(3, 650.00, 'completed', 'John Doe', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '15 days'),
+(4, 480.00, 'completed', 'Jane Smith', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '18 days'),
+(5, 720.00, 'completed', 'Bob Wilson', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '22 days'),
+(6, 360.00, 'completed', 'Alice Brown', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '25 days'),
+-- Add orders for last month
+(7, 580.00, 'completed', 'Charlie Davis', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '35 days'),
+(8, 810.00, 'completed', 'Diana Evans', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '40 days'),
+(9, 390.00, 'completed', 'Frank Garcia', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '45 days'),
+(3, 920.00, 'completed', 'John Doe', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '50 days'),
+(4, 270.00, 'completed', 'Jane Smith', '123 ถนนสุขุมวิท แขวงคลองตัน เขตคลองเตย กรุงเทพฯ 10110', NULL, CURRENT_DATE - INTERVAL '55 days');
+
+-- Add order items for the new orders (order IDs start from 19)
+INSERT INTO order_items (order_id, product_id, variant_id, weight, quantity, price_per_unit) VALUES
+(19, 1, 1, 1, 1, 175.00),(19, 4, 10, 1, 1, 140.00),(19, 6, 16, 1, 1, 160.00),
+(20, 2, 4, 1, 1, 200.00),(20, 5, 13, 1, 1, 280.00),
+(21, 3, 8, 1, 1, 500.00),(21, 7, 19, 1, 1, 280.00),(21, 11, 25, 1, 1, 150.00),
+(22, 4, 12, 1, 1, 580.00),(22, 2, 4, 1, 1, 200.00),
+(23, 6, 17, 1, 1, 300.00),(23, 5, 14, 1, 1, 620.00),
+(24, 1, 2, 1, 1, 325.00),(24, 4, 10, 1, 1, 140.00),
+(25, 7, 20, 1, 1, 600.00),(25, 2, 5, 1, 1, 380.00),
+(26, 3, 7, 1, 1, 250.00),(26, 6, 16, 1, 1, 160.00),
+(27, 5, 15, 1, 1, 620.00),(27, 4, 10, 1, 1, 140.00),
+(28, 2, 6, 1, 1, 850.00),
+(29, 6, 18, 1, 1, 650.00),(29, 1, 1, 1, 1, 175.00),(29, 4, 10, 1, 1, 140.00),
+(30, 7, 19, 1, 1, 280.00),(30, 5, 13, 1, 1, 280.00),
+(31, 3, 9, 1, 1, 900.00),(31, 2, 4, 1, 1, 200.00),
+(32, 4, 11, 1, 1, 260.00),(32, 6, 16, 1, 1, 160.00),
+(33, 1, 3, 1, 1, 700.00),(33, 5, 13, 1, 1, 280.00),
+(34, 2, 5, 1, 1, 380.00),(34, 7, 19, 1, 1, 280.00),
+(35, 6, 17, 1, 1, 300.00),(35, 4, 10, 1, 1, 140.00),
+(36, 3, 8, 1, 1, 500.00),(36, 1, 1, 1, 1, 175.00),
+(37, 5, 15, 1, 1, 620.00),(37, 2, 4, 1, 1, 200.00);
+
 INSERT INTO reviews (product_id, user_id, rating) VALUES
 (1, 2, 5), (2, 2, 4), (3, 2, 5), (1, 3, 4), (4, 5, 3),
-(5, 6, 4), (6, 7, 5), (7, 8, 4), (8, 9, 5), (9, 3, 4), (10, 4, 5);
+(5, 6, 4), (6, 7, 5), (7, 8, 4), (8, 9, 5), (9, 3, 4), (10, 4, 5),
+(1, 5, 5), (2, 6, 4), (3, 7, 5), (4, 8, 4), (5, 9, 5),
+(6, 3, 4), (7, 4, 3), (8, 5, 5), (9, 6, 4), (10, 7, 5),
+(11, 8, 4), (12, 9, 5);

@@ -511,6 +511,44 @@ paths:
       summary: Get default address
       tags:
       - addresses
+  /api/v1/admin/activities/recent:
+    get:
+      consumes:
+      - application/json
+      description: Get recent orders, user registrations, and reviews
+      parameters:
+      - description: Number of activities to return (default 10, max 50)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get recent activities (Admin only)
+      tags:
+      - admin
   /api/v1/admin/attributes/config:
     get:
       consumes:
@@ -627,6 +665,122 @@ paths:
       security:
       - BearerAuth: []
       summary: Get low stock items (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/orders/average-value:
+    get:
+      consumes:
+      - application/json
+      description: Get average order value for completed orders
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get average order value (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/orders/status-distribution:
+    get:
+      consumes:
+      - application/json
+      description: Get count of orders by status for dashboard
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get order status distribution (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/products/count:
+    get:
+      consumes:
+      - application/json
+      description: Get count of active products
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get total products count (Admin only)
+      tags:
+      - admin
+  /api/v1/admin/revenue/by-category:
+    get:
+      consumes:
+      - application/json
+      description: Get revenue breakdown by product categories
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get revenue by category (Admin only)
       tags:
       - admin
   /api/v1/admin/sales/daily:

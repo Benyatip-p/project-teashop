@@ -103,6 +103,14 @@ type Category struct {
 	CreatedAt   time.Time      `json:"created_at"`
 }
 
+type CreateProductRequest struct {
+    CategoryID  *int    `json:"category_id"`
+    Name        string  `json:"name" binding:"required"`
+    Description string  `json:"description"`
+    ImageURL    *string `json:"image_url"`
+    IsActive    bool    `json:"is_active"`
+}
+
 type UpdateProductRequest struct {
     CategoryID  *int    `json:"category_id"`
     Name        string  `json:"name"`
@@ -229,9 +237,9 @@ type TopSellingProduct struct {
 
 // ===================== Low Stock Variant Model =====================
 type LowStockVariant struct {
-	ProductName string  `json:"product_name"`
-	Weight      float64 `json:"weight"`
-	Stock       int     `json:"stock"`
+	ProductName string   `json:"product_name"`
+	Weight      *float64 `json:"weight"`
+	Stock       int      `json:"stock"`
 }
 
 // ===================== Low Stock Item Model =====================

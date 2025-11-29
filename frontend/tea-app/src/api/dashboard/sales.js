@@ -14,17 +14,17 @@ const extractAmount = (data, keys) => {
 
 export const getDailySales = async () => {
   const { data } = await api.get('/admin/sales/daily')
-  return extractAmount(data, ['daily_sales', 'total', 'amount'])
+  return extractAmount(data, ['total_sales', 'daily_sales', 'total', 'amount'])
 }
 
 export const getMonthlySales = async () => {
   const { data } = await api.get('/admin/sales/monthly')
-  return extractAmount(data, ['monthly_sales', 'total', 'amount'])
+  return extractAmount(data, ['total_sales', 'monthly_sales', 'total', 'amount'])
 }
 
 export const getYearlySales = async () => {
   const { data } = await api.get('/admin/sales/yearly')
-  return extractAmount(data, ['yearly_sales', 'total', 'amount'])
+  return extractAmount(data, ['total_sales', 'yearly_sales', 'total', 'amount'])
 }
 
 const parseYear = item => {
@@ -54,18 +54,23 @@ const parseMonth = item => {
 export const getMonthlySalesHistory = async () => {
   const { data } = await api.get('/admin/sales/history/monthly')
   const raw = data.monthly_sales_history || data.history || data || []
-  return raw.map(item => {
-    const year = parseYear(item)
-    const month = parseMonth(item)
-    const amount = extractAmount(item, [
-      'monthly_sales',
-      'total_sales',
-      'total',
-      'amount',
-      'sum',
-    ])
-    return { year, month, amount }
+  const result = []
+  raw.forEach(yearItem => {
+    const yearMonths = yearItem.months || []
+    yearMonths.forEach(monthItem => {
+      const year = parseYear(monthItem)
+      const month = parseMonth(monthItem)
+      const amount = extractAmount(monthItem, [
+        'total_sales',
+        'monthly_sales',
+        'total',
+        'amount',
+        'sum',
+      ])
+      result.push({ year, month, amount })
+    })
   })
+  return result
 }
 
 export const getYearlySalesHistory = async () => {
@@ -87,4 +92,29 @@ export const getYearlySalesHistory = async () => {
 export const getTopSellingProducts = async () => {
   const { data } = await api.get('/products/top-selling')
   return data.top_selling_products || data.products || []
+}
+
+export const getOrderStatusDistribution = async () => {
+  const { data } = await api.get('/admin/orders/status-distribution')
+  return data.distribution || []
+}
+
+export const getAverageOrderValue = async () => {
+  const { data } = await api.get('/admin/orders/average-value')
+  return data.average_order_value || 0
+}
+
+export const getTotalProductsCount = async () => {
+  const { data } = await api.get('/admin/products/count')
+  return data.total_products || 0
+}
+
+export const getRevenueByCategory = async () => {
+  const { data } = await api.get('/admin/revenue/by-category')
+  return data.revenue_by_category || []
+}
+
+export const getRecentActivities = async (limit = 10) => {
+  const { data } = await api.get(`/admin/activities/recent?limit=${limit}`)
+  return data.activities || []
 }
