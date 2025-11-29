@@ -371,7 +371,7 @@ const Paymentpage = () => {
       }
 
       // ประกอบ full address แบบเดียวกับ AddressForm
-      const fullAddress = `${shipping.address}, ตำบล${shipping.subDistrict}, อำเภอ${shipping.district}`;
+      const fullAddress = `${shipping.address}, เขต${shipping.district}, แขวง${shipping.subDistrict}`;
 
       const orderPayload = {
         customer_name: shipping.name,
