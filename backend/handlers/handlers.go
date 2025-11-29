@@ -1026,6 +1026,140 @@ func GetUserStatsHandler(c *gin.Context) {
 	c.JSON(200, response)
 }
 
+// GetAttributeConfigHandler godoc
+// @Summary Get product attribute configuration
+// @Description Get the current field definitions for product attributes by category (Admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param category_id query int true "Category ID"
+// @Security BearerAuth
+// @Success 200 {object} models.AttributeConfig
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/attributes/config [get]
+func GetAttributeConfigHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	categoryIDStr := c.Query("category_id")
+	if categoryIDStr == "" {
+		c.JSON(400, gin.H{"error": "category_id parameter is required"})
+		return
+	}
+	categoryID, err := strconv.Atoi(categoryIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid category_id"})
+		return
+	}
+
+	config, err := database.GetAttributeConfig(categoryID)
+	if err != nil {
+		log.Printf("Error getting attribute config: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if config == nil {
+		c.JSON(404, gin.H{"error": "attribute configuration not found for this category"})
+		return
+	}
+
+	c.JSON(200, config)
+}
+
+// UpdateAttributeConfigHandler godoc
+// @Summary Update product attribute configuration
+// @Description Update the field definitions for product attributes by category (Admin only)
+// @Tags admin
+// @Accept json
+// @Produce json
+// @Param category_id query int true "Category ID"
+// @Param request body interface{} true "Updated attribute schema"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/admin/attributes/config [put]
+func UpdateAttributeConfigHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	categoryIDStr := c.Query("category_id")
+	if categoryIDStr == "" {
+		c.JSON(400, gin.H{"error": "category_id parameter is required"})
+		return
+	}
+	categoryID, err := strconv.Atoi(categoryIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid category_id"})
+		return
+	}
+
+	var schema interface{}
+	if err := c.ShouldBindJSON(&schema); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = database.UpdateAttributeConfig(categoryID, schema)
+	if err != nil {
+		log.Printf("Error updating attribute config: %v", err)
+		c.JSON(500, gin.H{"error": "failed to update attribute configuration"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "attribute configuration updated successfully"})
+}
+
 // GetMonthlySalesHistoryHandler godoc
 // @Summary Get monthly sales history (Admin only)
 // @Description Get all monthly sales data grouped by year from completed orders

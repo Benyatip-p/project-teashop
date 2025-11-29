@@ -1475,53 +1475,121 @@ func UpdateUserProfile(userID int, firstName, lastName, username, passwordHash *
 }
 
 func GetProductsByCategory(categoryID int) ([]models.Product, error) {
- 	query := `
- 		SELECT
- 			p.id,
- 			p.category_id,
- 			p.name,
- 			p.description,
- 			p.image_url,
- 			p.is_active,
- 			p.created_at,
- 			p.updated_at,
- 			CASE
- 				WHEN COUNT(pv.id) > 0 THEN COALESCE(SUM(pv.stock), 0)
- 				ELSE p.stock
- 			END as total_stock
- 		FROM products p
- 		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
- 		WHERE p.category_id = $1 AND p.is_active = true
- 		GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at
- 		ORDER BY p.created_at DESC
- 	`
+  	query := `
+  		SELECT
+  			p.id,
+  			p.category_id,
+  			p.name,
+  			p.description,
+  			p.image_url,
+  			p.is_active,
+  			p.created_at,
+  			p.updated_at,
+  			CASE
+  				WHEN COUNT(pv.id) > 0 THEN COALESCE(SUM(pv.stock), 0)
+  				ELSE p.stock
+  			END as total_stock
+  		FROM products p
+  		LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
+  		WHERE p.category_id = $1 AND p.is_active = true
+  		GROUP BY p.id, p.category_id, p.name, p.description, p.image_url, p.is_active, p.created_at, p.updated_at
+  		ORDER BY p.created_at DESC
+  	`
 
- 	rows, err := DB.Query(query, categoryID)
- 	if err != nil {
- 		return nil, err
- 	}
- 	defer rows.Close()
+  	rows, err := DB.Query(query, categoryID)
+  	if err != nil {
+  		return nil, err
+  	}
+  	defer rows.Close()
 
- 	var products []models.Product
- 	for rows.Next() {
- 		var product models.Product
- 		var totalStock int
- 		err := rows.Scan(
- 			&product.ID,
- 			&product.CategoryID,
- 			&product.Name,
- 			&product.Description,
- 			&product.ImageURL,
- 			&product.IsActive,
- 			&product.CreatedAt,
- 			&product.UpdatedAt,
- 			&totalStock,
- 		)
- 		if err != nil {
- 			return nil, err
- 		}
- 		products = append(products, product)
- 	}
+  	var products []models.Product
+  	for rows.Next() {
+  		var product models.Product
+  		var totalStock int
+  		err := rows.Scan(
+  			&product.ID,
+  			&product.CategoryID,
+  			&product.Name,
+  			&product.Description,
+  			&product.ImageURL,
+  			&product.IsActive,
+  			&product.CreatedAt,
+  			&product.UpdatedAt,
+  			&totalStock,
+  		)
+  		if err != nil {
+  			return nil, err
+  		}
+  		products = append(products, product)
+  	}
 
- 	return products, nil
+  	return products, nil
+}
+
+// ===================== Product Attribute Database Functions =====================
+func GetAttributeConfig(categoryID int) (*models.AttributeConfig, error) {
+	currentCategoryID := categoryID
+
+	for {
+		query := `
+			SELECT id, category_id, schema, updated_at
+			FROM product_attribute_config
+			WHERE category_id = $1
+		`
+
+		var config models.AttributeConfig
+		var schemaJSON []byte
+		err := DB.QueryRow(query, currentCategoryID).Scan(
+			&config.ID,
+			&config.CategoryID,
+			&schemaJSON,
+			&config.UpdatedAt,
+		)
+
+		if err == nil {
+			// Config found, unmarshal and return
+			err = json.Unmarshal(schemaJSON, &config.Schema)
+			if err != nil {
+				return nil, err
+			}
+			return &config, nil
+		}
+
+		if err != sql.ErrNoRows {
+			// Some other error, return it
+			return nil, err
+		}
+
+		// No config found, check parent
+		parentQuery := `SELECT parent_id FROM categories WHERE id = $1`
+		var parentID *int
+		err = DB.QueryRow(parentQuery, currentCategoryID).Scan(&parentID)
+		if err != nil {
+			return nil, err
+		}
+
+		if parentID == nil {
+			// No parent, no config found
+			return nil, nil
+		}
+
+		// Set to parent and continue loop
+		currentCategoryID = *parentID
+	}
+}
+
+func UpdateAttributeConfig(categoryID int, schema interface{}) error {
+	schemaJSON, err := json.Marshal(schema)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		UPDATE product_attribute_config
+		SET schema = $1, updated_at = NOW()
+		WHERE category_id = $2
+	`
+
+	_, err = DB.Exec(query, schemaJSON, categoryID)
+	return err
 }

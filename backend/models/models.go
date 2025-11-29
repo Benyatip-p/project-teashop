@@ -273,3 +273,18 @@ type YearlySalesHistoryItem struct {
 	OrderCount  int     `json:"order_count"`
 	Currency    string  `json:"currency"`
 }
+
+// ===================== Product Attribute Models =====================
+type AttributeConfig struct {
+	ID         int         `json:"id"`
+	CategoryID int         `json:"category_id"`
+	Schema     interface{} `json:"schema"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+}
+
+type AttributeField struct {
+	Key     string   `json:"key"`
+	Label   string   `json:"label"`
+	Type    string   `json:"type"`
+	Options []string `json:"options,omitempty"`
+}

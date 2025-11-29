@@ -11,7 +11,8 @@ DROP TABLE IF EXISTS
     permissions,
     user_roles,
     roles,
-    users
+    users,
+    product_attribute_config
 CASCADE;
 
 -- ===================================
@@ -195,6 +196,16 @@ CREATE TABLE reviews (
 );
 CREATE INDEX idx_reviews_product ON reviews(product_id);
 CREATE INDEX idx_reviews_user ON reviews(user_id);
+
+-- Product Attribute Configuration
+CREATE TABLE product_attribute_config (
+    id SERIAL PRIMARY KEY,
+    category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+    schema JSONB NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(category_id)
+);
+CREATE INDEX idx_product_attribute_config_category_id ON product_attribute_config(category_id);
 
 
 -- ===================================
@@ -693,3 +704,75 @@ INSERT INTO reviews (product_id, user_id, rating) VALUES
 (8, 9, 5),  -- กาชงชาดินเผา
 (9, 3, 4),  -- กาชงชากระเบื้องญี่ปุ่น
 (10, 4, 5); -- กาชงชาแก้วทนความร้อน
+
+INSERT INTO product_attribute_config (category_id, schema) VALUES 
+(1, '{
+  "fields": [
+    { 
+      "key": "origin", 
+      "label": "แหล่งที่มา", 
+      "type": "text",
+      "placeholder": "ระบุชื่อไร่ หรือ จังหวัด"
+    },
+    { 
+      "key": "special_production_method", 
+      "label": "วิธีการผลิตพิเศษ", 
+      "type": "textarea",
+      "placeholder": "เช่น คั่วด้วยถ่านไม้ลำไย, หมักในถังไม้โอ๊ค"
+    },
+    { 
+      "key": "highlights", 
+      "label": "จุดเด่นของชา", 
+      "type": "tags",
+      "placeholder": "พิมพ์แล้วกด Enter เพื่อเพิ่ม (เช่น ชุ่มคอ, กลิ่นหอม)"
+    },
+    { 
+      "key": "mood_flavor_notes", 
+      "label": "Mood & Flavor Notes", 
+      "type": "tags",
+      "placeholder": "เช่น Relaxing, Nutty, Floral"
+    }
+  ]
+}');
+
+INSERT INTO product_attribute_config (category_id, schema) VALUES 
+(2, '{
+  "fields": [
+    { 
+      "key": "origin", 
+      "label": "แหล่งที่มา", 
+      "type": "text" 
+    },
+    { 
+      "key": "special_production_method", 
+      "label": "วิธีการผลิตพิเศษ", 
+      "type": "textarea" 
+    },
+    { 
+      "key": "highlights", 
+      "label": "จุดเด่น", 
+      "type": "tags" 
+    }
+  ]
+}');
+
+INSERT INTO product_attribute_config (category_id, schema) VALUES 
+(3, '{
+  "fields": [
+    { 
+      "key": "origin", 
+      "label": "แหล่งที่มา", 
+      "type": "text" 
+    },
+    { 
+      "key": "special_production_method", 
+      "label": "วิธีการผลิตพิเศษ", 
+      "type": "textarea" 
+    },
+    { 
+      "key": "highlights", 
+      "label": "จุดเด่น", 
+      "type": "tags" 
+    }
+  ]
+}');

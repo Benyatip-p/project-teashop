@@ -86,6 +86,8 @@ func main() {
 			protected.GET("/orders", handlers.GetUserOrdersHandler)
 			protected.GET("/orders/:id", handlers.GetOrderDetailsHandler)
 			protected.GET("/orders/status", handlers.GetOrdersByStatusHandler)
+			protected.POST("/orders/:id/cancel", handlers.CancelOrderHandler)
+			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler)
 			protected.GET("/admin/spending", handlers.GetAllUsersSpendingHandler) // (admin only)
 			protected.GET("/admin/sales/daily", handlers.GetDailySalesHandler) // (admin only)
 			protected.GET("/admin/sales/monthly", handlers.GetMonthlySalesHandler) // (admin only)
@@ -95,14 +97,14 @@ func main() {
 			protected.GET("/admin/items/low-stock", handlers.GetLowStockItemsHandler) // (admin only)
 			protected.GET("/admin/variants/low-stock", handlers.GetLowStockVariantsHandler) // (admin only)
 			protected.GET("/admin/users/stats", handlers.GetUserStatsHandler) // (admin only)
-			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler) 
-			protected.POST("/orders/:id/cancel", handlers.CancelOrderHandler)
 			protected.DELETE("/products/:id", handlers.DeleteProductHandler) // delete (admin only)
 			protected.POST("/products", handlers.CreateProductHandler)    // add (admin only)
 			protected.PUT("/products/:id", handlers.UpdateProductHandler) // edit (admin only)
 			protected.POST("/variants/product/:product_id", handlers.CreateVariantHandler) // admin only
 			protected.PUT("/variants/:id", handlers.UpdateVariantHandler) // admin only
 			protected.DELETE("/variants/:id", handlers.DeleteVariantHandler) // admin only
+			protected.GET("/admin/attributes/config", handlers.GetAttributeConfigHandler) // admin only
+			protected.PUT("/admin/attributes/config", handlers.UpdateAttributeConfigHandler) // admin only
 		}
 	}
 
