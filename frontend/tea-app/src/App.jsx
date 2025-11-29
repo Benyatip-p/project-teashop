@@ -15,8 +15,11 @@ import Productpage from "./pages/Productpage";
 import Favoritepage from "./pages/Favoritepage";
 import Cartpage from "./pages/Cartpage";
 
+import SidebarProfile from "./components/SidebarProfile";
 import Purchasepage from "./pages/Purchasepage";
 import Profilepage from "./pages/Profilepage";
+import Profilepaypage from "./pages/Profilepaypage";
+import Addresspage from "./pages/Addresspage";
 
 import ProductDetailpage from "./pages/ProductDetailpage";
 
@@ -42,6 +45,15 @@ const AuthLayout = ({ children }) => (
   <div className="flex min-h-screen items-center justify-center bg-gray-50">
     {children}
   </div>
+);
+
+const AccountLayout = ({ children }) => (
+  <PublicLayout>
+    <div className="container mx-auto px-4 py-8 flex flex-col md:flex-row gap-6">
+      <SidebarProfile />
+      <div className="flex-1 w-full min-w-0">{children}</div>
+    </div>
+  </PublicLayout>
 );
 
 
@@ -193,9 +205,31 @@ function App() {
             path="/user/account/profile"
             element={
               <ProtectedRoute>
-                <PublicLayout>
+                <AccountLayout>
                   <Profilepage />
-                </PublicLayout>
+                </AccountLayout>
+              </ProtectedRoute>
+            }
+          />
+
+           <Route
+            path="/user/account/payment"
+            element={
+              <ProtectedRoute>
+                <AccountLayout>
+                  <Profilepaypage />
+                </AccountLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/user/account/address"
+            element={
+              <ProtectedRoute>
+                <AccountLayout>
+                  <Addresspage />
+                </AccountLayout>
               </ProtectedRoute>
             }
           />
@@ -204,20 +238,9 @@ function App() {
             path="/user/purchase"
             element={
               <ProtectedRoute>
-                <PublicLayout>
+                <AccountLayout>
                   <Purchasepage />
-                </PublicLayout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/payment"
-            element={
-              <ProtectedRoute>
-                <PublicLayout>
-                  <Paymentpage />
-                </PublicLayout>
+                </AccountLayout>
               </ProtectedRoute>
             }
           />
