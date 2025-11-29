@@ -291,9 +291,10 @@ func CancelOrder(orderID int) error {
 
 func GetOrderItemsByOrderID(orderID int) ([]models.OrderItem, error) {
 	query := `
-		SELECT id, order_id, product_id, variant_id, weight, quantity, price_per_unit
-		FROM order_items
-		WHERE order_id = $1
+		SELECT oi.id, oi.order_id, oi.product_id, oi.variant_id, oi.weight, oi.quantity, oi.price_per_unit, p.name, p.image_url
+		FROM order_items oi
+		JOIN products p ON oi.product_id = p.id
+		WHERE oi.order_id = $1
 	`
 
 	rows, err := DB.Query(query, orderID)
@@ -313,6 +314,8 @@ func GetOrderItemsByOrderID(orderID int) ([]models.OrderItem, error) {
 			&item.Weight,
 			&item.Quantity,
 			&item.PricePerUnit,
+			&item.ProductName,
+			&item.ImageURL,
 		)
 		if err != nil {
 			return nil, err
