@@ -344,7 +344,7 @@ const DashboardContent = ({
                       {product.name}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-emerald-700">
-                      ฿{product.total_revenue?.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+                      ฿{product.total_revenue?.toLocaleString('th-TH', { maximumFractionDigits: 0 })} ขายได้ {product.total_sold} อัน
                     </p>
                   </div>
                 </div>
