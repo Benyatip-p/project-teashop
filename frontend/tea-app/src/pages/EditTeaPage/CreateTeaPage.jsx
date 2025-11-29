@@ -1,90 +1,40 @@
-// src/pages/EditTeaPage/EditTeaPage.jsx
 import React, { useState, useEffect } from "react"
-import { useParams, useNavigate, Link } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import api from "../../api/api"
 import AdminLayout from "../../components/AdminLayout"
 import LoadingSpinner from "../../components/LoadingSpinner"
 
-const EditTeaPage = () => {
-  const { id } = useParams()
+const CreateTeaPage = () => {
   const navigate = useNavigate()
 
   const [name, setName] = useState("")
   const [categories, setCategories] = useState([])
   const [categoryId, setCategoryId] = useState("")
   const [imageUrl, setImageUrl] = useState("")
-  const [variants, setVariants] = useState([
-    { id: null, weight: "", price: 0, stock: 0 },
-  ])
-  const [initialVariantIds, setInitialVariantIds] = useState([])
+  const [imagePreview, setImagePreview] = useState("")
+  const [variants, setVariants] = useState([{ weight: "", price: 0, stock: 0 }])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCategories = async () => {
       try {
         setLoading(true)
         setError("")
-
-        const productRes = await api.get(`/products/${id}`)
-        const product = productRes.data.product || productRes.data
-
-        let catList = []
-        try {
-          const catRes = await api.get("/categories")
-          catList = catRes.data.categories || catRes.data || []
-        } catch {
-          catList = []
-        }
-
-        let variantList = []
-        try {
-          const vRes = await api.get(`/variants/product/${id}`)
-          const raw = vRes.data.variants || vRes.data || []
-          variantList = raw.map(v => ({
-            id: v.id,
-            weight: v.weight ?? "",
-            price: v.price ?? 0,
-            stock: v.stock ?? 0,
-          }))
-        } catch {
-          variantList = []
-        }
-
+        const catRes = await api.get("/categories")
+        const catList = catRes.data.categories || catRes.data || []
         setCategories(catList)
-        setName(product.name || product.title || "")
-        setCategoryId(product.category_id ? String(product.category_id) : "")
-        setImageUrl(
-          product.image_url ||
-            product.coverImage ||
-            "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
-        )
-
-        if (variantList.length > 0) {
-          setVariants(variantList)
-          setInitialVariantIds(
-            variantList.map(v => v.id).filter(vId => vId != null)
-          )
-        } else {
-          const fallbackVariant = {
-            id: null,
-            weight: "",
-            price: product.price ?? 0,
-            stock: product.stock ?? 0,
-          }
-          setVariants([fallbackVariant])
-          setInitialVariantIds([])
-        }
       } catch {
-        setError("ไม่สามารถดึงข้อมูลสินค้าที่ต้องการแก้ไขได้")
+        setCategories([])
       } finally {
         setLoading(false)
       }
     }
 
-    fetchData()
-  }, [id])
+    fetchCategories()
+  }, [])
 
   const handleVariantChange = (index, field, value) => {
     setVariants(prev =>
@@ -105,16 +55,37 @@ const EditTeaPage = () => {
   }
 
   const handleAddVariant = () => {
-    setVariants(prev => [
-      ...prev,
-      { id: null, weight: "", price: 0, stock: 0 },
-    ])
+    setVariants(prev => [...prev, { weight: "", price: 0, stock: 0 }])
   }
 
   const handleRemoveVariant = index => {
     setVariants(prev =>
       prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)
     )
+  }
+
+  const handleImageChange = async e => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImagePreview(URL.createObjectURL(file))
+
+    try {
+      setUploading(true)
+      setError("")
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await api.post("/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      const url = res.data.url || res.data.image_url || ""
+      setImageUrl(url)
+    } catch {
+      setError("อัปโหลดรูปภาพไม่สำเร็จ โปรดลองอีกครั้ง")
+      setImageUrl("")
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleSubmit = async e => {
@@ -125,7 +96,7 @@ const EditTeaPage = () => {
 
       const baseVariant = variants[0] || { price: 0, stock: 0 }
 
-      await api.put(`/products/${id}`, {
+      const productRes = await api.post("/products", {
         name,
         category_id: categoryId ? Number(categoryId) : null,
         price: Number(baseVariant.price || 0),
@@ -133,13 +104,13 @@ const EditTeaPage = () => {
         image_url: imageUrl,
       })
 
-      const currentVariantIds = variants
-        .map(v => v.id)
-        .filter(vId => vId != null)
+      const createdProduct =
+        productRes.data.product || productRes.data || null
+      const productId = createdProduct?.id
 
-      const toDeactivate = initialVariantIds.filter(
-        vId => !currentVariantIds.includes(vId)
-      )
+      if (!productId) {
+        throw new Error("ไม่พบรหัสสินค้าที่สร้างใหม่")
+      }
 
       for (const variant of variants) {
         const payload = {
@@ -148,22 +119,15 @@ const EditTeaPage = () => {
           stock: Number(variant.stock || 0),
           is_active: true,
         }
-
-        if (variant.id) {
-          await api.put(`/variants/${variant.id}`, payload)
-        } else {
-          await api.post(`/variants/product/${id}`, payload)
-        }
-      }
-
-      for (const vId of toDeactivate) {
-        await api.put(`/variants/${vId}`, { is_active: false })
+        await api.post(`/variants/product/${productId}`, payload)
       }
 
       navigate("/admin/products")
     } catch (err) {
       setError(
-        err?.response?.data?.detail || "เกิดข้อผิดพลาดขณะบันทึกข้อมูลสินค้า"
+        err?.response?.data?.detail ||
+          err?.message ||
+          "เกิดข้อผิดพลาดขณะบันทึกข้อมูลสินค้า"
       )
     } finally {
       setSaving(false)
@@ -184,6 +148,10 @@ const EditTeaPage = () => {
     categories.find(c => String(c.id) === String(categoryId))?.name || ""
 
   const previewPrice = variants[0]?.price || 0
+  const previewSrc =
+    imagePreview ||
+    imageUrl ||
+    "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
 
   return (
     <AdminLayout>
@@ -198,10 +166,10 @@ const EditTeaPage = () => {
             </Link>
             <div>
               <h1 className="text-2xl font-semibold text-slate-900">
-                แก้ไขสินค้า
+                เพิ่มสินค้าใหม่
               </h1>
               <p className="mt-1 text-sm text-slate-500">
-                ปรับชื่อ ราคา รูปภาพ และรายละเอียดสินค้าในร้าน GOODTEA
+                สร้างสินค้าใหม่สำหรับร้าน GOODTEA กำหนดชื่อ หมวดหมู่ ราคา และรูปภาพ
               </p>
             </div>
           </div>
@@ -249,7 +217,7 @@ const EditTeaPage = () => {
                   ))}
                 </select>
                 <p className="mt-1 text-xs text-slate-400">
-                  เลือกจากรายการด้านบน หรือเพิ่มหมวดหมู่ใหม่ในภายหลังได้
+                  หากยังไม่มีหมวดหมู่ สามารถไปเพิ่มภายหลังได้
                 </p>
               </div>
 
@@ -269,7 +237,7 @@ const EditTeaPage = () => {
                   <div className="mt-2 space-y-2">
                     {variants.map((variant, index) => (
                       <div
-                        key={variant.id ?? index}
+                        key={index}
                         className="grid grid-cols-[1.2fr,1fr,1fr,auto] gap-3"
                       >
                         <input
@@ -341,18 +309,22 @@ const EditTeaPage = () => {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
-                  ลิงก์รูปสินค้า (URL)
+                  อัปโหลดรูปสินค้า
                 </label>
                 <input
-                  type="text"
-                  value={imageUrl}
-                  onChange={e => setImageUrl(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
-                  placeholder="https://..."
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full text-sm"
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  แนะนำรูป 800×800px ขึ้นไป
+                  รองรับไฟล์ภาพ เช่น .jpg, .png ขนาดแนะนำ 800×800px ขึ้นไป
                 </p>
+                {uploading && (
+                  <p className="mt-1 text-xs text-emerald-600">
+                    กำลังอัปโหลดรูปภาพ...
+                  </p>
+                )}
               </div>
 
               <div className="mt-6 flex gap-3">
@@ -365,10 +337,10 @@ const EditTeaPage = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || uploading || !imageUrl}
                   className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {saving ? "กำลังบันทึก..." : "บันทึกสินค้า"}
+                  {saving ? "กำลังบันทึก..." : "บันทึกสินค้าใหม่"}
                 </button>
               </div>
             </div>
@@ -379,15 +351,15 @@ const EditTeaPage = () => {
               ตัวอย่างดูรูปสินค้า
             </h2>
             <p className="mt-1 text-xs text-emerald-700/80">
-              ระบบจะแสดงตัวอย่างจากลิงก์ด้านซ้ายแบบเรียลไทม์
+              ระบบจะแสดงตัวอย่างจากรูปที่อัปโหลดแบบเรียลไทม์
             </p>
 
             <div className="mt-6 flex h-full items-center justify-center">
               <div className="flex w-full max-w-xs flex-col items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
                 <div className="h-48 w-full overflow-hidden rounded-xl bg-emerald-50">
-                  {imageUrl ? (
+                  {previewSrc ? (
                     <img
-                      src={imageUrl}
+                      src={previewSrc}
                       alt={name}
                       className="h-full w-full object-contain"
                     />
@@ -417,4 +389,4 @@ const EditTeaPage = () => {
   )
 }
 
-export default EditTeaPage
+export default CreateTeaPage

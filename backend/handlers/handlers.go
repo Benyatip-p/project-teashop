@@ -353,6 +353,89 @@ func UpdateOrderStatusHandler(c *gin.Context) {
 	c.JSON(200, gin.H{"message": "order status updated successfully"})
 }
 
+// UpdateOrderTrackingNumberHandler godoc
+// @Summary Update tracking number for shipped order
+// @Description Update the tracking number for an order with status 'shipped' (Admin only)
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Param id path int true "Order ID"
+// @Param request body models.UpdateTrackingNumberRequest true "Tracking number data"
+// @Security BearerAuth
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 401 {object} models.ErrorResponse
+// @Failure 403 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/orders/{id}/tracking [put]
+func UpdateOrderTrackingNumberHandler(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(401, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Check if user is admin
+	roles, err := database.GetUserRoles(userID.(int))
+	if err != nil {
+		log.Printf("Error getting roles: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	isAdmin := false
+	for _, role := range roles {
+		if role == "admin" {
+			isAdmin = true
+			break
+		}
+	}
+	if !isAdmin {
+		c.JSON(403, gin.H{"error": "admin access required"})
+		return
+	}
+
+	orderIDStr := c.Param("id")
+	orderID, err := strconv.Atoi(orderIDStr)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	var req models.UpdateTrackingNumberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Check if order exists and is in shipped status
+	order, err := database.GetOrderByID(orderID)
+	if err != nil {
+		log.Printf("Error getting order: %v", err)
+		c.JSON(500, gin.H{"error": "internal server error"})
+		return
+	}
+	if order == nil {
+		c.JSON(404, gin.H{"error": "order not found"})
+		return
+	}
+
+	// Only allow tracking number update for shipped orders
+	if order.Status != "shipped" {
+		c.JSON(400, gin.H{"error": "tracking number can only be updated for orders with status 'shipped'"})
+		return
+	}
+
+	err = database.UpdateOrderStatus(orderID, "shipped", &req.TrackingNumber)
+	if err != nil {
+		log.Printf("Error updating tracking number: %v", err)
+		c.JSON(500, gin.H{"error": "failed to update tracking number"})
+		return
+	}
+
+	c.JSON(200, gin.H{"message": "tracking number updated successfully"})
+}
+
 // CancelOrderHandler godoc
 // @Summary Cancel an order
 // @Description Cancel an order and restore stock (User/Admin). Only the order owner or admin can cancel.

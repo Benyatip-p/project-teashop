@@ -5,8 +5,9 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import NotFound from "./components/Notfound";
 import NotAuthorized from "./components/NotAuthorized";
-import { ShopProvider } from "./context/ShopContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+import { ShopProvider } from "./context/ShopContext";
 
 import Homepage from "./pages/Homepage";
 import ContactPage from "./pages/Contactpage";
@@ -33,6 +34,9 @@ import AdminProductPage from "./pages/AdminDashboard/AdminProductPage";
 import CategoryProductspage from "./pages/CategoryProductspage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
+import CreateTeaPage from "./pages/EditTeaPage/CreateTeaPage"; 
+
+// ===================== LAYOUT =====================
 const PublicLayout = ({ children }) => (
   <div className="flex min-h-screen flex-col bg-gray-50">
     <Navbar />
@@ -62,42 +66,13 @@ function App() {
     <ShopProvider>
       <Router>
         <Routes>
-          <Route
-            path="/login"
-            element={
-              <AuthLayout>
-                <LoginPage />
-              </AuthLayout>
-            }
-          />
 
-          <Route
-            path="/register"
-            element={
-              <AuthLayout>
-                <RegisterPage />
-              </AuthLayout>
-            }
-          />
+          {/* Auth Routes */}
+          <Route path="/login" element={<AuthLayout><LoginPage /></AuthLayout>} />
+          <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />
+          <Route path="/not-authorized" element={<AuthLayout><NotAuthorized /></AuthLayout>} />
 
-          <Route
-            path="/forgot-password"
-            element={
-              <AuthLayout>
-                <ResetPasswordPage />
-              </AuthLayout>
-            }
-          />
-
-          <Route
-            path="/not-authorized"
-            element={
-              <PublicLayout>
-                <NotAuthorized />
-              </PublicLayout>
-            }
-          />
-
+          {/* ADMIN ONLY ROUTES */}
           <Route
             path="/admin/dashboard"
             element={
@@ -107,17 +82,18 @@ function App() {
             }
           />
 
+          {/* ⭐⭐ เพิ่มเส้นนี้แล้วใช้งานได้เลย ⭐⭐ */}
           <Route
-            path="/store-manager/dashboard"
+            path="/admin/create-products"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminDashboardPage />
+                <CreateTeaPage />
               </ProtectedRoute>
             }
           />
 
           <Route
-            path="/admin/edit-tea/:id"
+            path="/admin/update-products/:id"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
                 <EditTeaPage />
@@ -143,73 +119,16 @@ function App() {
             }
           />
 
-          <Route
-            path="/"
-            element={
-              <PublicLayout>
-                <Homepage />
-              </PublicLayout>
-            }
-          />
+          {/* PUBLIC */}
+          <Route path="/" element={<PublicLayout><Homepage /></PublicLayout>} />
+          <Route path="/products" element={<PublicLayout><Productpage /></PublicLayout>} />
+          <Route path="/products/:id" element={<PublicLayout><ProductDetailpage /></PublicLayout>} />
+          <Route path="/about" element={<PublicLayout><Aboutpage /></PublicLayout>} />
+          <Route path="/contact" element={<PublicLayout><ContactPage /></PublicLayout>} />
+          <Route path="/favorites" element={<PublicLayout><Favoritepage /></PublicLayout>} />
+          <Route path="/cart" element={<PublicLayout><Cartpage /></PublicLayout>} />
 
-          <Route
-            path="/products"
-            element={
-              <PublicLayout>
-                <Productpage />
-              </PublicLayout>
-            }
-          />
-
-          <Route
-            path="/products/:id"
-            element={
-              <PublicLayout>
-                <ProductDetailpage />
-              </PublicLayout>
-            }
-          />
-
-          <Route
-            path="/about"
-            element={
-              <PublicLayout>
-                <Aboutpage />
-              </PublicLayout>
-            }
-          />
-
-          <Route
-            path="/contact"
-            element={
-              <PublicLayout>
-                <ContactPage />
-              </PublicLayout>
-            }
-          />
-
-          <Route
-            path="/favorites"
-            element={
-              <ProtectedRoute>
-                <PublicLayout>
-                  <Favoritepage />
-                </PublicLayout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/cart"
-            element={
-              <ProtectedRoute>
-                <PublicLayout>
-                  <Cartpage />
-                </PublicLayout>
-              </ProtectedRoute>
-            }
-          />
-
+          {/* USER PROFILE */}
           <Route
             path="/user/account/profile"
             element={
@@ -232,6 +151,7 @@ function App() {
             }
           />
 
+          {/* PAYMENT */}
           <Route
             path="/user/account/address"
             element={
@@ -254,16 +174,15 @@ function App() {
             }
           />
 
+          {/* CATEGORY PAGE */}
           <Route
             path="/category/:categoryName"
-            element={
-              <PublicLayout>
-                <CategoryProductspage />
-              </PublicLayout>
-            }
+            element={<PublicLayout><CategoryProductspage /></PublicLayout>}
           />
 
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
+
         </Routes>
       </Router>
     </ShopProvider>
