@@ -179,6 +179,11 @@ type OrderItem struct {
 	ImageURL      *string `json:"image_url"`
 }
 
+type OrderWithItems struct {
+	Order
+	Items []OrderItem `json:"items"`
+}
+
 type CreateOrderRequest struct {
 	CustomerName    string                  `json:"customer_name" binding:"required"`
 	ShippingAddress string                  `json:"shipping_address" binding:"required"`

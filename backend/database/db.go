@@ -374,7 +374,7 @@ func CheckOrderOwnership(orderID, userID int) (bool, error) {
 	return count > 0, err
 }
 
-func GetOrdersByUserID(userID int) ([]models.Order, error) {
+func GetOrdersByUserID(userID int) ([]models.OrderWithItems, error) {
 	query := `
 		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
 		FROM orders
@@ -388,9 +388,9 @@ func GetOrdersByUserID(userID int) ([]models.Order, error) {
 	}
 	defer rows.Close()
 
-	var orders []models.Order
+	var orders []models.OrderWithItems
 	for rows.Next() {
-		var order models.Order
+		var order models.OrderWithItems
 		err := rows.Scan(
 			&order.ID,
 			&order.UserID,
@@ -404,13 +404,21 @@ func GetOrdersByUserID(userID int) ([]models.Order, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Get order items
+		items, err := GetOrderItemsByOrderID(order.ID)
+		if err != nil {
+			return nil, err
+		}
+		order.Items = items
+
 		orders = append(orders, order)
 	}
 
 	return orders, nil
 }
 
-func GetAllOrders() ([]models.Order, error) {
+func GetAllOrders() ([]models.OrderWithItems, error) {
 	query := `
 		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
 		FROM orders
@@ -423,9 +431,9 @@ func GetAllOrders() ([]models.Order, error) {
 	}
 	defer rows.Close()
 
-	var orders []models.Order
+	var orders []models.OrderWithItems
 	for rows.Next() {
-		var order models.Order
+		var order models.OrderWithItems
 		err := rows.Scan(
 			&order.ID,
 			&order.UserID,
@@ -439,6 +447,14 @@ func GetAllOrders() ([]models.Order, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Get order items
+		items, err := GetOrderItemsByOrderID(order.ID)
+		if err != nil {
+			return nil, err
+		}
+		order.Items = items
+
 		orders = append(orders, order)
 	}
 
@@ -495,7 +511,7 @@ func GetAllUsersSpending() ([]UserSpending, error) {
 }
 
 // ===================== Order Status Database Functions =====================
-func GetOrdersByStatus(status string) ([]models.Order, error) {
+func GetOrdersByStatus(status string) ([]models.OrderWithItems, error) {
 	query := `
 		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
 		FROM orders
@@ -509,9 +525,9 @@ func GetOrdersByStatus(status string) ([]models.Order, error) {
 	}
 	defer rows.Close()
 
-	var orders []models.Order
+	var orders []models.OrderWithItems
 	for rows.Next() {
-		var order models.Order
+		var order models.OrderWithItems
 		err := rows.Scan(
 			&order.ID,
 			&order.UserID,
@@ -525,13 +541,21 @@ func GetOrdersByStatus(status string) ([]models.Order, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Get order items
+		items, err := GetOrderItemsByOrderID(order.ID)
+		if err != nil {
+			return nil, err
+		}
+		order.Items = items
+
 		orders = append(orders, order)
 	}
 
 	return orders, nil
 }
 
-func GetUserOrdersByStatus(userID int, status string) ([]models.Order, error) {
+func GetUserOrdersByStatus(userID int, status string) ([]models.OrderWithItems, error) {
 	query := `
 		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
 		FROM orders
@@ -545,9 +569,9 @@ func GetUserOrdersByStatus(userID int, status string) ([]models.Order, error) {
 	}
 	defer rows.Close()
 
-	var orders []models.Order
+	var orders []models.OrderWithItems
 	for rows.Next() {
-		var order models.Order
+		var order models.OrderWithItems
 		err := rows.Scan(
 			&order.ID,
 			&order.UserID,
@@ -561,6 +585,14 @@ func GetUserOrdersByStatus(userID int, status string) ([]models.Order, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// Get order items
+		items, err := GetOrderItemsByOrderID(order.ID)
+		if err != nil {
+			return nil, err
+		}
+		order.Items = items
+
 		orders = append(orders, order)
 	}
 
