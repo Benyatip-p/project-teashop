@@ -115,10 +115,11 @@ func GetProductsHandler(c *gin.Context) {
         return
     }
 
-	// Add average rating to each product
+	// Add average rating and review count to each product
 	type ProductWithRating struct {
 		models.Product
-		AvgRating float64 `json:"avg_rating"`
+		AvgRating   float64 `json:"avg_rating"`
+		ReviewCount int     `json:"review_count"`
 	}
 
 	productsWithRating := make([]ProductWithRating, len(products))
@@ -128,9 +129,17 @@ func GetProductsHandler(c *gin.Context) {
 			log.Printf("Error getting average rating for product %d: %v", product.ID, err)
 			avgRating = 0
 		}
+
+		reviewCount, err := database.GetReviewCountByProductID(product.ID)
+		if err != nil {
+			log.Printf("Error getting review count for product %d: %v", product.ID, err)
+			reviewCount = 0
+		}
+
 		productsWithRating[i] = ProductWithRating{
-			Product:   product,
-			AvgRating: avgRating,
+			Product:     product,
+			AvgRating:   avgRating,
+			ReviewCount: reviewCount,
 		}
 	}
 

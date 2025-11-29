@@ -171,27 +171,27 @@ func LogAudit(userID int, action, resource string, resourceID interface{}, detai
 
 // ===================== Product Database Functions =====================
 func GetProducts(sort string, maxPrice *float64, search string) ([]models.Product, error) {
-    var (
-        args  []interface{}
-        index = 1
-    )
+     var (
+         args  []interface{}
+         index = 1
+     )
 
-    query := `
-        SELECT
-            p.id,
-            p.category_id,
-            p.name,
-            p.description,
-            p.image_url,
-            p.is_active,
-            p.created_at,
-            p.updated_at,
-            COALESCE(SUM(pv.stock), 0) as total_stock,
-            MIN(pv.price) as display_price
-        FROM products p
-        LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
-        WHERE p.is_active = true
-    `
+     query := `
+     	SELECT
+     		p.id,
+     		p.category_id,
+     		p.name,
+     		p.description,
+     		p.image_url,
+     		p.is_active,
+     		p.created_at,
+     		p.updated_at,
+     		COALESCE(SUM(pv.stock), 0) as total_stock,
+     		MIN(pv.price) as display_price
+     	FROM products p
+     	LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
+     	WHERE p.is_active = true
+     `
 
     if search != "" {
         like := "%" + search + "%"
@@ -248,6 +248,13 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
     }
 
     return products, nil
+}
+
+func GetReviewCountByProductID(productID int) (int, error) {
+ query := `SELECT COUNT(*) FROM reviews WHERE product_id = $1`
+ var count int
+ err := DB.QueryRow(query, productID).Scan(&count)
+ return count, err
 }
 
 // ===================== Order Database Functions =====================
