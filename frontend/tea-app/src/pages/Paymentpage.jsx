@@ -429,15 +429,6 @@ const Paymentpage = () => {
 
       <h1 className="text-4xl font-semibold mb-6">ชำระเงิน</h1>
 
-      <button
-        type="button"
-        onClick={() => navigate("/cart")}
-        className="text-sm text-white px-4 py-2 rounded bg-gray-500 hover:bg-gray-700 mb-6"
-        disabled={isProcessing}
-      >
-        ← ย้อนกลับ
-      </button>
-
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* ซ้าย: ฟอร์มที่อยู่ + วิธีชำระเงิน */}
@@ -841,6 +832,15 @@ const Paymentpage = () => {
               disabled={(triedSubmit && !paymentMethod) || isProcessing}
             >
               {isProcessing ? "กำลังดำเนินการ..." : "ยืนยันการสั่งซื้อ"}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate("/cart")}
+              className="mt-3 w-full rounded-xl py-3 text-sm font-semibold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors disabled:opacity-70"
+              disabled={isProcessing}
+            >
+              ยกเลิก
             </button>
           </div>
         </div>
