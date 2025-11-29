@@ -1076,9 +1076,10 @@
                     {
                         "enum": [
                             "paid",
+                            "processing",
                             "shipped",
                             "completed",
-                            "cancelled",
+                            "canceled",
                             "refunded"
                         ],
                         "type": "string",
@@ -2761,11 +2762,11 @@
                 "status": {
                     "type": "string",
                     "enum": [
-                        "pending",
                         "paid",
+                        "processing",
                         "shipped",
                         "completed",
-                        "cancelled",
+                        "canceled",
                         "refunded"
                     ]
                 },

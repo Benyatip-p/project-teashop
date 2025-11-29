@@ -1080,9 +1080,10 @@ const docTemplate = `{
                     {
                         "enum": [
                             "paid",
+                            "processing",
                             "shipped",
                             "completed",
-                            "cancelled",
+                            "canceled",
                             "refunded"
                         ],
                         "type": "string",
@@ -2765,11 +2766,11 @@ const docTemplate = `{
                 "status": {
                     "type": "string",
                     "enum": [
-                        "pending",
                         "paid",
+                        "processing",
                         "shipped",
                         "completed",
-                        "cancelled",
+                        "canceled",
                         "refunded"
                     ]
                 },

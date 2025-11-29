@@ -421,9 +421,9 @@ func CancelOrderHandler(c *gin.Context) {
 		return
 	}
 
-	// Only allow cancellation if status is pending or paid
-	if order.Status != "pending" && order.Status != "paid" {
-		c.JSON(400, gin.H{"error": "order cannot be cancelled"})
+	// Only allow cancellation if status is paid or processing
+	if order.Status != "paid" && order.Status != "processing" {
+		c.JSON(400, gin.H{"error": "order cannot be canceled"})
 		return
 	}
 
@@ -434,7 +434,7 @@ func CancelOrderHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "order cancelled successfully"})
+	c.JSON(200, gin.H{"message": "order canceled successfully"})
 }
 
 // GetUserOrdersHandler godoc
@@ -629,7 +629,7 @@ func GetAllUsersSpendingHandler(c *gin.Context) {
 // @Tags orders
 // @Accept json
 // @Produce json
-// @Param status query string true "Order status to filter by" Enums(paid,shipped,completed,cancelled,refunded)
+// @Param status query string true "Order status to filter by" Enums(paid,processing,shipped,completed,canceled,refunded)
 // @Security BearerAuth
 // @Success 200 {object} object
 // @Failure 400 {object} models.ErrorResponse
@@ -669,21 +669,24 @@ func GetOrdersByStatusHandler(c *gin.Context) {
 	// Validate allowed statuses based on role
 	allowedStatuses := map[string]bool{}
 	if isAdmin {
-		// Admin can query: paid, completed, cancelled, refunded
+		// Admin can query: paid, processing, shipped, completed, canceled, refunded
 		allowedStatuses = map[string]bool{
-			"paid":      true,
-			"completed": true,
-			"cancelled": true,
-			"refunded":  true,
+			"paid":       true,
+			"processing": true,
+			"shipped":    true,
+			"completed":  true,
+			"canceled":   true,
+			"refunded":   true,
 		}
 	} else {
-		// User can query: paid, shipped, completed, cancelled, refunded
+		// User can query: paid, processing, shipped, completed, canceled, refunded
 		allowedStatuses = map[string]bool{
-			"paid":      true,
-			"shipped":   true,
-			"completed": true,
-			"cancelled": true,
-			"refunded":  true,
+			"paid":       true,
+			"processing": true,
+			"shipped":    true,
+			"completed":  true,
+			"canceled":   true,
+			"refunded":   true,
 		}
 	}
 

@@ -243,11 +243,11 @@ definitions:
     properties:
       status:
         enum:
-        - pending
         - paid
+        - processing
         - shipped
         - completed
-        - cancelled
+        - canceled
         - refunded
         type: string
       tracking_number:
@@ -1135,9 +1135,10 @@ paths:
       - description: Order status to filter by
         enum:
         - paid
+        - processing
         - shipped
         - completed
-        - cancelled
+        - canceled
         - refunded
         in: query
         name: status
