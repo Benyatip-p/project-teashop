@@ -201,6 +201,10 @@ type UpdateOrderStatusRequest struct {
 	TrackingNumber *string `json:"tracking_number"`
 }
 
+type UpdateTrackingNumberRequest struct {
+	TrackingNumber string `json:"tracking_number" binding:"required"`
+}
+
 // ===================== Review Models =====================
 type Review struct {
 	ID        int       `json:"id"`

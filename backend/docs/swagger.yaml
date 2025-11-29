@@ -266,6 +266,13 @@ definitions:
       username:
         type: string
     type: object
+  models.UpdateTrackingNumberRequest:
+    properties:
+      tracking_number:
+        type: string
+    required:
+    - tracking_number
+    type: object
   models.UpdateVariantRequest:
     properties:
       is_active:
@@ -1123,6 +1130,56 @@ paths:
       security:
       - BearerAuth: []
       summary: Update order status
+      tags:
+      - orders
+  /api/v1/orders/{id}/tracking:
+    put:
+      consumes:
+      - application/json
+      description: Update the tracking number for an order with status 'shipped' (Admin
+        only)
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Tracking number data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateTrackingNumberRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update tracking number for shipped order
       tags:
       - orders
   /api/v1/orders/status:

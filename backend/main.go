@@ -88,6 +88,7 @@ func main() {
 			protected.GET("/orders/status", handlers.GetOrdersByStatusHandler)
 			protected.POST("/orders/:id/cancel", handlers.CancelOrderHandler)
 			protected.PUT("/orders/:id/status", handlers.UpdateOrderStatusHandler)
+			protected.PUT("/orders/:id/tracking", handlers.UpdateOrderTrackingNumberHandler)
 			protected.GET("/admin/spending", handlers.GetAllUsersSpendingHandler) // (admin only)
 			protected.GET("/admin/sales/daily", handlers.GetDailySalesHandler) // (admin only)
 			protected.GET("/admin/sales/monthly", handlers.GetMonthlySalesHandler) // (admin only)
