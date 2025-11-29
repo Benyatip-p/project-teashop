@@ -1,12 +1,68 @@
+version: '3.8'
+
 services:
+  # PostgreSQL Database
+  db:
+    image: postgres:13
+    container_name: teashop-postgres
+    environment:
+      POSTGRES_DB: teashop_db
+      POSTGRES_USER: teashop_user
+      POSTGRES_PASSWORD: teashop_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ../backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - teashop-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teashop_user -d teashop_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: teashop-api
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: teashop_user
+      DB_PASSWORD: teashop_pass
+      DB_NAME: teashop_db
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - teashop-network
+    restart: unless-stopped
+
+  # Frontend
   frontend:
     build: ./tea-app
     ports:
       - "3001:80"
     restart: unless-stopped
+    depends_on:
+      - api
+    networks:
+      - teashop-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+
+volumes:
+  postgres_data:
+
+networks:
+  teashop-network:
+    driver: bridge
