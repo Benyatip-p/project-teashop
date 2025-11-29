@@ -1,4 +1,3 @@
-// src/components/admin/AdminLayout.jsx
 import React, { useState } from "react";
 import Sidebar from "./Sidebar";
 
