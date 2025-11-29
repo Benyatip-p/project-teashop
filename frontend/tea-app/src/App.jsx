@@ -24,6 +24,7 @@ import ProductDetailpage from "./pages/ProductDetailpage";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/Registerpage";
+import Paymentpage from "./pages/Paymentpage";
 
 import DeleteTeaPage from "./pages/DeleteTeaPage";
 import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
@@ -34,7 +35,7 @@ import CategoryProductspage from "./pages/CategoryProductspage";
 import Purchasepage from "./pages/Purchasepage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
-import CreateTeaPage from "./pages/EditTeaPage/CreateTeaPage"; 
+import CreateTeaPage from "./pages/EditTeaPage/CreateTeaPage";
 
 
 const PublicLayout = ({ children }) => (
@@ -174,9 +175,9 @@ function App() {
             path="/user/purchase"
             element={
               <ProtectedRoute>
-                <PublicLayout>
+                <AccountLayout>
                   <Purchasepage />
-                </PublicLayout>
+                </AccountLayout>
               </ProtectedRoute>
             }
           />
