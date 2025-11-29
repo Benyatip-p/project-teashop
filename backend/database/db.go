@@ -285,8 +285,8 @@ func CancelOrder(orderID int) error {
 		}
 	}
 
-	// Update order status to cancelled
-	return UpdateOrderStatus(orderID, "cancelled", nil)
+	// Update order status to canceled
+	return UpdateOrderStatus(orderID, "canceled", nil)
 }
 
 func GetOrderItemsByOrderID(orderID int) ([]models.OrderItem, error) {
@@ -516,7 +516,7 @@ func GetOrdersByStatus(status string) ([]models.OrderWithItems, error) {
 		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
 		FROM orders
 		WHERE status = $1
-		ORDER BY created_at DESC
+		ORDER BY id ASC
 	`
 
 	rows, err := DB.Query(query, status)
@@ -560,7 +560,7 @@ func GetUserOrdersByStatus(userID int, status string) ([]models.OrderWithItems, 
 		SELECT id, user_id, total_amount, status, tracking_number, customer_name, shipping_address, created_at
 		FROM orders
 		WHERE user_id = $1 AND status = $2
-		ORDER BY created_at DESC
+		ORDER BY id ASC
 	`
 
 	rows, err := DB.Query(query, userID, status)
@@ -807,7 +807,7 @@ func CreateOrder(userID int, req models.CreateOrderRequest) (*models.Order, erro
 	// Create order
 	orderQuery := `
 		INSERT INTO orders (user_id, total_amount, status, customer_name, shipping_address)
-		VALUES ($1, $2, 'pending', $3, $4)
+		VALUES ($1, $2, 'paid', $3, $4)
 		RETURNING id
 	`
 	var orderID int

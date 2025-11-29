@@ -197,7 +197,7 @@ type CreateOrderItemRequest struct {
 }
 
 type UpdateOrderStatusRequest struct {
-	Status         string  `json:"status" binding:"required,oneof=pending paid shipped completed cancelled refunded"`
+	Status         string  `json:"status" binding:"required,oneof=paid processing shipped completed canceled refunded"`
 	TrackingNumber *string `json:"tracking_number"`
 }
 
