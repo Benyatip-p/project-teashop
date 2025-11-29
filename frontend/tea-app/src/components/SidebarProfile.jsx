@@ -145,13 +145,13 @@ const SidebarProfile = () => {
             setIsAccountOpen(false);
             navigate('/user/purchase');
           }}
-          className={`w-full text-left text-sm px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+          className={`w-full text-left text-sm font-semibold px-3 py-2 rounded-lg flex items-center gap-2 transition-colors ${
             location.pathname === '/user/purchase'
               ? 'bg-viridian-600 text-white'
-              : 'text-gray-800 hover:bg-gray-100'
+              : 'text-gray-700 hover:bg-gray-100'
           }`}
         >
-          <ClipboardListIcon className="h-5 w-5 text-viridian-600" />
+          <ClipboardListIcon className="h-5 w-5" />
           <span>การซื้อของฉัน</span>
         </button>
 
