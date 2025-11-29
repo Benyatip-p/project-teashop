@@ -102,6 +102,7 @@ const Navbar = () => {
 
   const handleUserIconClick = () => {
     if (isLoggedIn) {
+      // Both admin and customer can open dropdown, but with different menu items
       setIsUserDropdownOpen(prev => !prev)
     } else {
       navigate('/login', { state: { from: location } })
@@ -247,23 +248,29 @@ const Navbar = () => {
                 {isLoggedIn && isUserDropdownOpen && (
                   <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5">
                     <div className="py-1">
-                      <Link
-                        to="/user/account/profile"
-                        onClick={() => setIsUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
-                      >
-                        <UserIcon className="mr-3 h-5 w-5 text-viridian-600" />
-                        บัญชีของฉัน
-                      </Link>
-                      <Link
-                        to="/user/purchase"
-                        onClick={() => setIsUserDropdownOpen(false)}
-                        className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
-                      >
-                        <ShoppingCartIcon className="mr-3 h-5 w-5 text-viridian-600" />
-                        การซื้อของฉัน
-                      </Link>
-                      <hr className="my-1 border-gray-200" />
+                      {/* Only show My Account and My Purchases for non-admin users */}
+                      {!isAdmin && (
+                        <>
+                          <Link
+                            to="/user/account/profile"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                            className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+                          >
+                            <UserIcon className="mr-3 h-5 w-5 text-viridian-600" />
+                            บัญชีของฉัน
+                          </Link>
+                          <Link
+                            to="/user/purchase"
+                            onClick={() => setIsUserDropdownOpen(false)}
+                            className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+                          >
+                            <ShoppingCartIcon className="mr-3 h-5 w-5 text-viridian-600" />
+                            การซื้อของฉัน
+                          </Link>
+                          <hr className="my-1 border-gray-200" />
+                        </>
+                      )}
+                      {/* Logout is shown for all users */}
                       <button
                         type="button"
                         onClick={handleLogout}

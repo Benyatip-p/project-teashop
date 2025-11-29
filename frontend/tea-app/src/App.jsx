@@ -30,8 +30,8 @@ import DeleteTeaPage from "./pages/DeleteTeaPage";
 import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
 import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
 import AdminProductPage from "./pages/AdminDashboard/AdminProductPage";
-import Paymentpage from "./pages/Paymentpage";
 import CategoryProductspage from "./pages/CategoryProductspage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 const PublicLayout = ({ children }) => (
   <div className="flex min-h-screen flex-col bg-gray-50">
@@ -76,6 +76,15 @@ function App() {
             element={
               <AuthLayout>
                 <RegisterPage />
+              </AuthLayout>
+            }
+          />
+
+          <Route
+            path="/forgot-password"
+            element={
+              <AuthLayout>
+                <ResetPasswordPage />
               </AuthLayout>
             }
           />

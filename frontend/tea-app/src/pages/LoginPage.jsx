@@ -257,7 +257,7 @@ const LoginPage = () => {
                 <span>จดจำการเข้าสู่ระบบบนอุปกรณ์นี้</span>
               </label>
               <Link
-                to="/"
+                to="/forgot-password"
                 className="text-viridian-800 hover:text-viridian-900 hover:underline"
               >
                 ลืมรหัสผ่าน?
