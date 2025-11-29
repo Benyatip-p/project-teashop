@@ -58,7 +58,6 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { isLoggedIn, isAdmin, username } = authState;
 
   const isActivePath = (path) => location.pathname.startsWith(path);
 
