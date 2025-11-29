@@ -20,10 +20,15 @@ const DashboardContent = ({
   userStats,
   monthlyHistory = [],
   yearlyHistory = [],
+  orderStatusDistribution = [],
+  averageOrderValue = 0,
+  totalProductsCount = 0,
+  revenueByCategory = [],
+  recentActivities = [],
 }) => {
   const [overviewMode, setOverviewMode] = useState('year')
 
-  const activities = []
+  const activities = recentActivities
 
   const formatCurrencyTick = value =>
     Number(value || 0).toLocaleString('th-TH', {
@@ -129,24 +134,24 @@ const DashboardContent = ({
           </div>
         )}
 
-        <section className="mb-10 grid gap-6 md:grid-cols-3">
+        <section className="mb-10 grid gap-4 md:grid-cols-3">
           {stats.map(item => (
             <div
               key={item.id}
-              className="relative overflow-hidden rounded-3xl bg-white px-6 py-5 shadow-md ring-1 ring-slate-100"
+              className="relative overflow-hidden rounded-2xl bg-white px-4 py-3 shadow-md ring-1 ring-slate-100"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
                     {item.title}
                   </p>
-                  <p className="mt-3 text-3xl font-semibold text-slate-900">
+                  <p className="mt-2 text-2xl font-semibold text-slate-900">
                     {item.value}
                   </p>
                   {item.trendLabel && (
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-2 flex items-center gap-2">
                       {item.trendValue && (
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                           {item.trendValue}
                         </span>
                       )}
@@ -157,7 +162,7 @@ const DashboardContent = ({
                   )}
                 </div>
                 <div
-                  className={`flex h-12 w-12 items-center justify-center rounded-2xl ${item.iconBg}`}
+                  className={`flex h-10 w-10 items-center justify-center rounded-xl ${item.iconBg}`}
                 >
                   {item.icon}
                 </div>
@@ -181,22 +186,20 @@ const DashboardContent = ({
                 <button
                   type="button"
                   onClick={() => setOverviewMode('year')}
-                  className={`rounded-full px-3 py-1.5 font-medium ${
-                    overviewMode === 'year'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-emerald-700 hover:bg-emerald-50'
-                  }`}
+                  className={`rounded-full px-3 py-1.5 font-medium ${overviewMode === 'year'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-emerald-700 hover:bg-emerald-50'
+                    }`}
                 >
                   ภาพรวมปีนี้
                 </button>
                 <button
                   type="button"
                   onClick={() => setOverviewMode('all')}
-                  className={`rounded-full px-3 py-1.5 font-medium ${
-                    overviewMode === 'all'
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-emerald-700 hover:bg-emerald-50'
-                  }`}
+                  className={`rounded-full px-3 py-1.5 font-medium ${overviewMode === 'all'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-emerald-700 hover:bg-emerald-50'
+                    }`}
                 >
                   ภาพรวมทั้งหมด
                 </button>
@@ -244,7 +247,7 @@ const DashboardContent = ({
                 !salesError &&
                 overviewChartData.length > 0 &&
                 (isUsingHistoryData || salesChartData.length > 0) && (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" aspect={2.5}>
                     <BarChart
                       data={overviewChartData}
                       margin={{ top: 8, right: 16, left: -20, bottom: 4 }}
@@ -312,17 +315,9 @@ const DashboardContent = ({
           </div>
 
           <div className="flex flex-col rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-slate-900">
-                สินค้าขายดีวันนี้
-              </h2>
-              <Link
-                to="/admin/create-products"
-                className="text-xs font-medium text-emerald-600 hover:text-emerald-700"
-              >
-                เพิ่มสินค้า
-              </Link>
-            </div>
+            <h2 className="mb-4 text-sm font-semibold text-slate-900">
+              สินค้าขายดีวันนี้
+            </h2>
             <div className="space-y-3">
               {products.length === 0 && (
                 <p className="text-xs text-slate-400">
@@ -331,34 +326,100 @@ const DashboardContent = ({
               )}
               {products.map((product, index) => (
                 <div
-                  key={product.id || index}
-                  className="flex items-center gap-3 rounded-2xl px-2.5 py-2.5 hover:bg-slate-50"
+                  key={product.product_id || index}
+                  className="flex items-center gap-4 rounded-2xl px-3 py-3 hover:bg-slate-50"
                 >
-                  <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
+                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200">
                     <img
-                      src={product.img}
+                      src={`/${product.image_url}`}
                       alt={product.name}
                       className="h-full w-full object-cover"
                     />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-slate-400">
-                      อันดับ {index + 1} · {product.category}
+                      อันดับ {index + 1}
                     </p>
                     <p className="truncate text-sm font-medium text-slate-900">
                       {product.name}
                     </p>
-                    <div className="mt-0.5 flex items-center gap-2">
-                      <p className="text-xs font-semibold text-emerald-700">
-                        ฿{product.price}
-                      </p>
-                      <p className="text-[11px] text-slate-400">
-                        ขายแล้ว {product.sold} แก้ว
-                      </p>
-                    </div>
+                    <p className="mt-1 text-xs font-semibold text-emerald-700">
+                      ฿{product.total_revenue?.toLocaleString('th-TH', { maximumFractionDigits: 0 })} ขายได้ {product.total_sold} อัน
+                    </p>
                   </div>
-                  <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-medium text-emerald-700">
-                    ดูรายละเอียด
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="mb-10 grid gap-6 xl:grid-cols-2">
+          <div className="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100">
+            <h2 className="mb-4 text-sm font-semibold text-slate-900">
+              สถานะคำสั่งซื้อ
+            </h2>
+            <div className="space-y-3">
+              {orderStatusDistribution.length === 0 && (
+                <p className="text-xs text-slate-400">
+                  ยังไม่มีข้อมูลคำสั่งซื้อ
+                </p>
+              )}
+              {orderStatusDistribution.map((item, index) => (
+                <div
+                  key={item.status}
+                  className="flex items-center justify-between rounded-2xl px-3 py-2.5 hover:bg-slate-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`h-3 w-3 rounded-full ${item.status === 'completed' ? 'bg-emerald-500' :
+                      item.status === 'paid' ? 'bg-blue-500' :
+                        item.status === 'processing' ? 'bg-yellow-500' :
+                          item.status === 'shipped' ? 'bg-purple-500' :
+                            item.status === 'canceled' ? 'bg-red-500' :
+                              'bg-gray-500'
+                      }`} />
+                    <span className="text-sm font-medium text-slate-900 capitalize">
+                      {item.status === 'paid' ? 'ชำระแล้ว' :
+                        item.status === 'processing' ? 'กำลังดำเนินการ' :
+                          item.status === 'shipped' ? 'จัดส่งแล้ว' :
+                            item.status === 'completed' ? 'เสร็จสิ้น' :
+                              item.status === 'canceled' ? 'ยกเลิก' :
+                                item.status === 'refunded' ? 'คืนเงิน' :
+                                  item.status}
+                    </span>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-700">
+                    {item.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-white p-6 shadow-md ring-1 ring-slate-100">
+            <h2 className="mb-4 text-sm font-semibold text-slate-900">
+              รายได้ตามหมวดหมู่
+            </h2>
+            <div className="space-y-3">
+              {revenueByCategory.length === 0 && (
+                <p className="text-xs text-slate-400">
+                  ยังไม่มีข้อมูลรายได้
+                </p>
+              )}
+              {revenueByCategory.slice(0, 5).map((item, index) => (
+                <div
+                  key={item.category_id}
+                  className="flex items-center justify-between rounded-2xl px-3 py-2.5 hover:bg-slate-50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-slate-900">
+                      {item.category_name}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      {item.order_count} คำสั่งซื้อ
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-emerald-700">
+                    ฿{item.revenue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
                   </span>
                 </div>
               ))}
@@ -382,26 +443,40 @@ const DashboardContent = ({
                   ยังไม่มีข้อมูลกิจกรรมล่าสุด
                 </p>
               )}
-              {activities.map(activity => (
+              {activities.map((activity, index) => (
                 <div
-                  key={activity.id}
+                  key={index}
                   className="flex items-start gap-3 rounded-2xl px-2.5 py-2.5 hover:bg-slate-50"
                 >
                   <div
-                    className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${activity.badgeColor}`}
+                    className={`mt-0.5 inline-flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${activity.type === 'order' ? 'bg-blue-100 text-blue-700' :
+                      activity.type === 'user' ? 'bg-emerald-100 text-emerald-700' :
+                        activity.type === 'review' ? 'bg-purple-100 text-purple-700' :
+                          'bg-gray-100 text-gray-700'
+                      }`}
                   >
-                    {activity.badge}
+                    {activity.type === 'order' ? '🛒' :
+                      activity.type === 'user' ? '👤' :
+                        activity.type === 'review' ? '⭐' :
+                          '📝'}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-slate-900">
-                      {activity.title}
+                      {activity.description}
                     </p>
-                    <p className="text-xs text-slate-500">
-                      {activity.subtitle}
-                    </p>
+                    {activity.amount && (
+                      <p className="text-xs font-semibold text-emerald-700">
+                        ฿{activity.amount.toLocaleString('th-TH', { maximumFractionDigits: 0 })}
+                      </p>
+                    )}
                   </div>
                   <p className="whitespace-nowrap text-xs text-slate-400">
-                    {activity.time}
+                    {new Date(activity.time).toLocaleDateString('th-TH', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
                   </p>
                 </div>
               ))}
@@ -426,8 +501,8 @@ const DashboardContent = ({
                 <span className="font-semibold text-emerald-700">
                   {userStats
                     ? `${userStats.newUsersThisMonth.toLocaleString(
-                        'th-TH'
-                      )} คน`
+                      'th-TH'
+                    )} คน`
                     : '-'}
                 </span>
               </div>
@@ -436,8 +511,8 @@ const DashboardContent = ({
                 <span className="font-semibold text-slate-700">
                   {userStats
                     ? `${userStats.newUsersLastMonth.toLocaleString(
-                        'th-TH'
-                      )} คน`
+                      'th-TH'
+                    )} คน`
                     : '-'}
                 </span>
               </div>
@@ -448,8 +523,8 @@ const DashboardContent = ({
                     userStats && userStats.growthPercentage > 0
                       ? 'font-semibold text-emerald-700'
                       : userStats && userStats.growthPercentage < 0
-                      ? 'font-semibold text-rose-600'
-                      : 'font-semibold text-slate-700'
+                        ? 'font-semibold text-rose-600'
+                        : 'font-semibold text-slate-700'
                   }
                 >
                   {userStats

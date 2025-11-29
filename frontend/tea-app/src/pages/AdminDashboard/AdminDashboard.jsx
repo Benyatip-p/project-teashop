@@ -9,6 +9,11 @@ import {
   getTopSellingProducts,
   getMonthlySalesHistory,
   getYearlySalesHistory,
+  getOrderStatusDistribution,
+  getAverageOrderValue,
+  getTotalProductsCount,
+  getRevenueByCategory,
+  getRecentActivities,
 } from '../../api/dashboard/sales'
 import { getUserStats } from '../../api/dashboard/users'
 import { getLowStockItems, getLowStockVariants } from '../../api/dashboard/inventory'
@@ -21,6 +26,11 @@ export default function AdminDashboard() {
   const [yearlyHistory, setYearlyHistory] = useState([])
   const [lowStockItems, setLowStockItems] = useState([])
   const [lowStockVariants, setLowStockVariants] = useState([])
+  const [orderStatusDistribution, setOrderStatusDistribution] = useState([])
+  const [averageOrderValue, setAverageOrderValue] = useState(0)
+  const [totalProductsCount, setTotalProductsCount] = useState(0)
+  const [revenueByCategory, setRevenueByCategory] = useState([])
+  const [recentActivities, setRecentActivities] = useState([])
 
   const [salesLoading, setSalesLoading] = useState(true)
   const [salesError, setSalesError] = useState('')
@@ -43,6 +53,11 @@ export default function AdminDashboard() {
           yearlyHist,
           lowItems,
           lowVariants,
+          orderStatusDist,
+          avgOrderValue,
+          totalProducts,
+          revenueByCat,
+          recentActivitiesData,
         ] = await Promise.all([
           getDailySales(),
           getMonthlySales(),
@@ -71,6 +86,26 @@ export default function AdminDashboard() {
             console.error('getLowStockVariants failed', err)
             return []
           }),
+          getOrderStatusDistribution().catch(err => {
+            console.error('getOrderStatusDistribution failed', err)
+            return []
+          }),
+          getAverageOrderValue().catch(err => {
+            console.error('getAverageOrderValue failed', err)
+            return 0
+          }),
+          getTotalProductsCount().catch(err => {
+            console.error('getTotalProductsCount failed', err)
+            return 0
+          }),
+          getRevenueByCategory().catch(err => {
+            console.error('getRevenueByCategory failed', err)
+            return []
+          }),
+          getRecentActivities(15).catch(err => {
+            console.error('getRecentActivities failed', err)
+            return []
+          }),
         ])
 
         if (!isMounted) return
@@ -82,6 +117,11 @@ export default function AdminDashboard() {
         setYearlyHistory(yearlyHist || [])
         setLowStockItems(lowItems || [])
         setLowStockVariants(lowVariants || [])
+        setOrderStatusDistribution(orderStatusDist || [])
+        setAverageOrderValue(avgOrderValue || 0)
+        setTotalProductsCount(totalProducts || 0)
+        setRevenueByCategory(revenueByCat || [])
+        setRecentActivities(recentActivitiesData || [])
       } catch (err) {
         if (!isMounted) return
         console.error('Dashboard load failed', err)
@@ -120,11 +160,29 @@ export default function AdminDashboard() {
     {
       id: 'low-total',
       title: 'รวมรายการที่ต้องเติมสต็อก',
-      value: `${lowStockItems.length + lowStockVariants.length} รายการ`,
+      value: `${lowStockVariants.length} รายการ`,
       trendLabel: 'ควรรีสต็อกเร็ว ๆ',
       trendValue: '',
       iconBg: 'bg-emerald-50',
       icon: <ChartBarIcon className="h-6 w-6 text-emerald-600" />,
+    },
+    {
+      id: 'avg-order-value',
+      title: 'มูลค่าคำสั่งซื้อเฉลี่ย',
+      value: `฿${averageOrderValue.toLocaleString('th-TH', { maximumFractionDigits: 0 })}`,
+      trendLabel: 'เฉลี่ยต่อคำสั่งซื้อ',
+      trendValue: '',
+      iconBg: 'bg-blue-50',
+      icon: <ChartBarIcon className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      id: 'total-products',
+      title: 'จำนวนสินค้าทั้งหมด',
+      value: `${totalProductsCount} รายการ`,
+      trendLabel: 'สินค้าที่ใช้งานได้',
+      trendValue: '',
+      iconBg: 'bg-purple-50',
+      icon: <ChartBarIcon className="h-6 w-6 text-purple-500" />,
     },
   ]
 
@@ -145,6 +203,11 @@ export default function AdminDashboard() {
         userStats={userStats}
         monthlyHistory={monthlyHistory}
         yearlyHistory={yearlyHistory}
+        orderStatusDistribution={orderStatusDistribution}
+        averageOrderValue={averageOrderValue}
+        totalProductsCount={totalProductsCount}
+        revenueByCategory={revenueByCategory}
+        recentActivities={recentActivities}
       />
     </AdminLayout>
   )

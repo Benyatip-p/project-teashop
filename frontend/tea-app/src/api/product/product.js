@@ -70,3 +70,22 @@ export async function getVariantsByProductId(productId) {
 
   return list.map(normalizeVariant).filter(v => v.isActive)
 }
+
+export async function createProduct(productData) {
+  const { data } = await api.post('/products', productData)
+  return data
+}
+
+export async function createVariant(productId, variantData) {
+  const { data } = await api.post(`/variants/product/${productId}`, variantData)
+  return data
+}
+
+export async function uploadProductImage(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  const { data } = await api.post('/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}

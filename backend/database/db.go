@@ -171,27 +171,27 @@ func LogAudit(userID int, action, resource string, resourceID interface{}, detai
 
 // ===================== Product Database Functions =====================
 func GetProducts(sort string, maxPrice *float64, search string) ([]models.Product, error) {
-    var (
-        args  []interface{}
-        index = 1
-    )
+     var (
+         args  []interface{}
+         index = 1
+     )
 
-    query := `
-        SELECT
-            p.id,
-            p.category_id,
-            p.name,
-            p.description,
-            p.image_url,
-            p.is_active,
-            p.created_at,
-            p.updated_at,
-            COALESCE(SUM(pv.stock), 0) as total_stock,
-            MIN(pv.price) as display_price
-        FROM products p
-        LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
-        WHERE p.is_active = true
-    `
+     query := `
+     	SELECT
+     		p.id,
+     		p.category_id,
+     		p.name,
+     		p.description,
+     		p.image_url,
+     		p.is_active,
+     		p.created_at,
+     		p.updated_at,
+     		COALESCE(SUM(pv.stock), 0) as total_stock,
+     		MIN(pv.price) as display_price
+     	FROM products p
+     	LEFT JOIN product_variants pv ON p.id = pv.product_id AND pv.is_active = true
+     	WHERE p.is_active = true
+     `
 
     if search != "" {
         like := "%" + search + "%"
@@ -248,6 +248,13 @@ func GetProducts(sort string, maxPrice *float64, search string) ([]models.Produc
     }
 
     return products, nil
+}
+
+func GetReviewCountByProductID(productID int) (int, error) {
+ query := `SELECT COUNT(*) FROM reviews WHERE product_id = $1`
+ var count int
+ err := DB.QueryRow(query, productID).Scan(&count)
+ return count, err
 }
 
 // ===================== Order Database Functions =====================
@@ -1605,4 +1612,214 @@ func UpdateAttributeConfig(categoryID int, schema interface{}) error {
 
 	_, err = DB.Exec(query, schemaJSON, categoryID)
 	return err
+}
+
+// ===================== New Dashboard Metrics Functions =====================
+
+type OrderStatusCount struct {
+	Status string `json:"status"`
+	Count  int    `json:"count"`
+}
+
+func GetOrderStatusDistribution() ([]OrderStatusCount, error) {
+	query := `
+		SELECT status, COUNT(*) as count
+		FROM orders
+		GROUP BY status
+		ORDER BY count DESC
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var distribution []OrderStatusCount
+	for rows.Next() {
+		var item OrderStatusCount
+		err := rows.Scan(&item.Status, &item.Count)
+		if err != nil {
+			return nil, err
+		}
+		distribution = append(distribution, item)
+	}
+
+	return distribution, nil
+}
+
+func GetAverageOrderValue() (float64, error) {
+	query := `
+		SELECT COALESCE(AVG(total_amount), 0)
+		FROM orders
+		WHERE status = 'completed'
+	`
+
+	var avg float64
+	err := DB.QueryRow(query).Scan(&avg)
+	return avg, err
+}
+
+func GetTotalProductsCount() (int, error) {
+	query := `SELECT COUNT(*) FROM products WHERE is_active = true`
+	var count int
+	err := DB.QueryRow(query).Scan(&count)
+	return count, err
+}
+
+type RevenueByCategory struct {
+	CategoryID   int     `json:"category_id"`
+	CategoryName string  `json:"category_name"`
+	Revenue      float64 `json:"revenue"`
+	OrderCount   int     `json:"order_count"`
+}
+
+func GetRevenueByCategory() ([]RevenueByCategory, error) {
+	query := `
+		SELECT
+			c.id as category_id,
+			c.name as category_name,
+			COALESCE(SUM(o.total_amount), 0) as revenue,
+			COUNT(DISTINCT o.id) as order_count
+		FROM categories c
+		LEFT JOIN categories sub ON sub.parent_id = c.id
+		LEFT JOIN products p ON (p.category_id = c.id OR p.category_id = sub.id) AND p.is_active = true
+		LEFT JOIN order_items oi ON p.id = oi.product_id
+		LEFT JOIN orders o ON oi.order_id = o.id AND o.status = 'completed'
+		WHERE c.parent_id IS NULL
+		GROUP BY c.id, c.name
+		ORDER BY revenue DESC
+	`
+
+	rows, err := DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var revenues []RevenueByCategory
+	for rows.Next() {
+		var item RevenueByCategory
+		err := rows.Scan(&item.CategoryID, &item.CategoryName, &item.Revenue, &item.OrderCount)
+		if err != nil {
+			return nil, err
+		}
+		revenues = append(revenues, item)
+	}
+
+	return revenues, nil
+}
+
+type RecentActivity struct {
+	Type        string    `json:"type"`
+	Description string    `json:"description"`
+	Time        time.Time `json:"time"`
+	User        string    `json:"user,omitempty"`
+	Amount      *float64  `json:"amount,omitempty"`
+}
+
+func GetRecentActivities(limit int) ([]RecentActivity, error) {
+	// Get recent orders
+	orderQuery := `
+		SELECT 'order' as type,
+			   CONCAT('Order #', id, ' - ', customer_name) as description,
+			   created_at as time,
+			   customer_name as user,
+			   total_amount as amount
+		FROM orders
+		WHERE status != 'canceled'
+		ORDER BY created_at DESC
+		LIMIT $1
+	`
+
+	// Get recent user registrations
+	userQuery := `
+		SELECT 'user' as type,
+			   CONCAT('New user: ', username) as description,
+			   created_at as time,
+			   username as user,
+			   NULL as amount
+		FROM users
+		ORDER BY created_at DESC
+		LIMIT $1
+	`
+
+	// Get recent reviews
+	reviewQuery := `
+		SELECT 'review' as type,
+			   CONCAT('Review for ', p.name) as description,
+			   r.created_at as time,
+			   u.username as user,
+			   NULL as amount
+		FROM reviews r
+		JOIN products p ON r.product_id = p.id
+		JOIN users u ON r.user_id = u.id
+		ORDER BY r.created_at DESC
+		LIMIT $1
+	`
+
+	var activities []RecentActivity
+
+	// Get orders
+	orderRows, err := DB.Query(orderQuery, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer orderRows.Close()
+
+	for orderRows.Next() {
+		var activity RecentActivity
+		err := orderRows.Scan(&activity.Type, &activity.Description, &activity.Time, &activity.User, &activity.Amount)
+		if err != nil {
+			return nil, err
+		}
+		activities = append(activities, activity)
+	}
+
+	// Get users
+	userRows, err := DB.Query(userQuery, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer userRows.Close()
+
+	for userRows.Next() {
+		var activity RecentActivity
+		err := userRows.Scan(&activity.Type, &activity.Description, &activity.Time, &activity.User, &activity.Amount)
+		if err != nil {
+			return nil, err
+		}
+		activities = append(activities, activity)
+	}
+
+	// Get reviews
+	reviewRows, err := DB.Query(reviewQuery, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer reviewRows.Close()
+
+	for reviewRows.Next() {
+		var activity RecentActivity
+		err := reviewRows.Scan(&activity.Type, &activity.Description, &activity.Time, &activity.User, &activity.Amount)
+		if err != nil {
+			return nil, err
+		}
+		activities = append(activities, activity)
+	}
+
+	// Sort by time descending and limit
+	for i := 0; i < len(activities)-1; i++ {
+		for j := i + 1; j < len(activities); j++ {
+			if activities[i].Time.Before(activities[j].Time) {
+				activities[i], activities[j] = activities[j], activities[i]
+			}
+		}
+	}
+
+	if len(activities) > limit {
+		activities = activities[:limit]
+	}
+
+	return activities, nil
 }
