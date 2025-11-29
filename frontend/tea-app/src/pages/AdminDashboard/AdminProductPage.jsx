@@ -1,7 +1,6 @@
-// src/pages/AdminDashboard/AdminProductPage.jsx
 import React, { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
-import { ChevronDownIcon } from "@heroicons/react/outline"
+//import { ChevronDownIcon } from "@heroicons/react/outline"
 import api from "../../api/api"
 import LoadingSpinner from "../../components/LoadingSpinner"
 import AdminLayout from "../../components/AdminLayout"
@@ -22,19 +21,19 @@ const categories = {
   อุปกรณ์ชา: ["ที่กรองชา", "ถ้วยชา"],
 }
 
-const sortOptions = [
-  { value: "newest", label: "ใหม่ล่าสุด" },
-  { value: "price-low", label: "ราคาต่ำ-สูง" },
-  { value: "price-high", label: "ราคาสูง-ต่ำ" },
-  { value: "popular", label: "ยอดนิยม" },
-]
+// const sortOptions = [
+//   { value: "newest", label: "ใหม่ล่าสุด" },
+//   { value: "price-low", label: "ราคาต่ำ-สูง" },
+//   { value: "price-high", label: "ราคาสูง-ต่ำ" },
+//   { value: "popular", label: "ยอดนิยม" },
+// ]
 
 const productsPerPage = 12
 
 const AdminProductpage = () => {
   const [products, setProducts] = useState([])
   const [filteredProducts, setFilteredProducts] = useState([])
-  const [sortBy, setSortBy] = useState("newest")
+  //const [sortBy, setSortBy] = useState("newest")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -119,26 +118,26 @@ const AdminProductpage = () => {
     setCurrentPage(1)
   }
 
-  const handleSort = sortValue => {
-    setSortBy(sortValue)
-    const sorted = [...filteredProducts]
+  // const handleSort = sortValue => {
+  //   setSortBy(sortValue)
+  //   const sorted = [...filteredProducts]
 
-    switch (sortValue) {
-      case "price-low":
-        sorted.sort((a, b) => (a.price || 0) - (b.price || 0))
-        break
-      case "price-high":
-        sorted.sort((a, b) => (b.price || 0) - (a.price || 0))
-        break
-      case "popular":
-        sorted.sort((a, b) => (b.reviews || 0) - (a.reviews || 0))
-        break
-      default:
-        sorted.sort((a, b) => (b.id || 0) - (a.id || 0))
-    }
+  //   switch (sortValue) {
+  //     case "price-low":
+  //       sorted.sort((a, b) => (a.price || 0) - (b.price || 0))
+  //       break
+  //     case "price-high":
+  //       sorted.sort((a, b) => (b.price || 0) - (a.price || 0))
+  //       break
+  //     case "popular":
+  //       sorted.sort((a, b) => (b.reviews || 0) - (a.reviews || 0))
+  //       break
+  //     default:
+  //       sorted.sort((a, b) => (b.id || 0) - (a.id || 0))
+  //   }
 
-    setFilteredProducts(sorted)
-  }
+  //   setFilteredProducts(sorted)
+  // }
 
   const handleDeleted = id => {
     setProducts(prev => prev.filter(p => p.id !== id))
@@ -152,8 +151,8 @@ const AdminProductpage = () => {
 
   const paginate = pageNumber => setCurrentPage(pageNumber)
 
-  const currentSortLabel =
-    sortOptions.find(opt => opt.value === sortBy)?.label || "ใหม่ล่าสุด"
+  // const currentSortLabel =
+  //   sortOptions.find(opt => opt.value === sortBy)?.label || "ใหม่ล่าสุด"
 
   if (loading) {
     return (
@@ -203,11 +202,10 @@ const AdminProductpage = () => {
 
               <button
                 onClick={() => applyCategoryFilter("all")}
-                className={`mb-3 w-full rounded-lg px-3 py-2 text-left text-sm ${
-                  selectedCategory === "all"
+                className={`mb-3 w-full rounded-lg px-3 py-2 text-left text-sm ${selectedCategory === "all"
                     ? "bg-viridian-600 text-white"
                     : "text-gray-800 hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 รายการสินค้าทั้งหมด
               </button>
@@ -217,11 +215,10 @@ const AdminProductpage = () => {
                   <div key={parent} className="border-t border-gray-200 pt-4">
                     <button
                       onClick={() => applyCategoryFilter(parent)}
-                      className={`w-full rounded-lg px-2 py-1.5 text-left text-sm font-semibold ${
-                        selectedCategory === parent
+                      className={`w-full rounded-lg px-2 py-1.5 text-left text-sm font-semibold ${selectedCategory === parent
                           ? "bg-viridian-50 text-viridian-700"
                           : "text-gray-900 hover:bg-gray-100"
-                      }`}
+                        }`}
                     >
                       {parent}
                     </button>
@@ -232,11 +229,10 @@ const AdminProductpage = () => {
                           <button
                             key={sub}
                             onClick={() => applyCategoryFilter(sub)}
-                            className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${
-                              selectedCategory === sub
+                            className={`w-full rounded-lg px-2 py-1.5 text-left text-sm ${selectedCategory === sub
                                 ? "bg-viridian-600 text-white"
                                 : "text-gray-700 hover:bg-gray-100"
-                            }`}
+                              }`}
                           >
                             {sub}
                           </button>
@@ -273,36 +269,7 @@ const AdminProductpage = () => {
                 {selectedCategory !== "all" && ` ในหมวด ${selectedCategory}`}
               </div>
 
-              <div className="relative w-full max-w-xs" ref={sortRef}>
-                <button
-                  onClick={() => setOpenSort(prev => !prev)}
-                  className="flex w-full items-center justify-between rounded-full border bg-white px-4 py-2 text-sm shadow-sm hover:bg-slate-50"
-                >
-                  <span>จัดเรียงตาม: {currentSortLabel}</span>
-                  <ChevronDownIcon className="h-4 w-4 text-slate-400" />
-                </button>
-
-                {openSort && (
-                  <div className="absolute right-0 z-50 mt-2 w-full rounded-xl border bg-white p-2 shadow">
-                    {sortOptions.map(option => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          handleSort(option.value)
-                          setOpenSort(false)
-                        }}
-                        className={`w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50 ${
-                          sortBy === option.value
-                            ? "font-medium text-emerald-700"
-                            : "text-slate-700"
-                        }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              
             </div>
 
             <AdminProductTable
@@ -327,11 +294,10 @@ const AdminProductpage = () => {
                       <button
                         key={i}
                         onClick={() => paginate(i + 1)}
-                        className={`rounded-full px-3 py-2 ${
-                          active
+                        className={`rounded-full px-3 py-2 ${active
                             ? "bg-emerald-600 text-white"
                             : "border hover:bg-slate-50"
-                        }`}
+                          }`}
                       >
                         {i + 1}
                       </button>

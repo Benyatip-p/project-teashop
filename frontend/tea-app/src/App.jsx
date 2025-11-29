@@ -36,7 +36,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 import CreateTeaPage from "./pages/EditTeaPage/CreateTeaPage"; 
 
-// ===================== LAYOUT =====================
+
 const PublicLayout = ({ children }) => (
   <div className="flex min-h-screen flex-col bg-gray-50">
     <Navbar />
@@ -70,9 +70,10 @@ function App() {
           {/* Auth Routes */}
           <Route path="/login" element={<AuthLayout><LoginPage /></AuthLayout>} />
           <Route path="/register" element={<AuthLayout><RegisterPage /></AuthLayout>} />
+          <Route path="/reset-password" element={<AuthLayout><ResetPasswordPage /></AuthLayout>} />
           <Route path="/not-authorized" element={<AuthLayout><NotAuthorized /></AuthLayout>} />
 
-          {/* ADMIN ONLY ROUTES */}
+          {/* ADMIN ROUTES */}
           <Route
             path="/admin/dashboard"
             element={
@@ -82,7 +83,6 @@ function App() {
             }
           />
 
-          {/* ⭐⭐ เพิ่มเส้นนี้แล้วใช้งานได้เลย ⭐⭐ */}
           <Route
             path="/admin/create-products"
             element={
@@ -150,8 +150,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-
-          {/* PAYMENT */}
           <Route
             path="/user/account/address"
             element={

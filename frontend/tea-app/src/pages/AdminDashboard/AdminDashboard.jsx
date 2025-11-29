@@ -1,4 +1,3 @@
-// src/pages/AdminDashboard/AdminDashboard.jsx
 import React, { useEffect, useState } from 'react'
 import { ChartBarIcon } from '@heroicons/react/outline'
 import AdminLayout from '../../components/AdminLayout'

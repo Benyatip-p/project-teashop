@@ -132,7 +132,6 @@ const OrderCard = ({ order }) => {
           {/* ปุ่ม Action (เปลี่ยนตามสถานะ) */}
           <div className="flex gap-2 w-full sm:w-auto">
              
-             {/* ปุ่มสำหรับสถานะ Completed (สำเร็จแล้ว) */}
              {order.status === 'completed' && (
                <>
                 <button className="flex-1 sm:flex-none px-6 py-2 bg-viridian-500 text-white text-sm rounded hover:bg-viridian-600 transition shadow-sm font-medium">
