@@ -470,7 +470,7 @@ func GetUserOrdersHandler(c *gin.Context) {
 		}
 	}
 
-	var orders []models.Order
+	var orders []models.OrderWithItems
 	if isAdmin {
 		// Admin can see all orders in the system
 		orders, err = database.GetAllOrders()
@@ -693,7 +693,7 @@ func GetOrdersByStatusHandler(c *gin.Context) {
 	}
 
 	// Get orders based on role
-	var orders []models.Order
+	var orders []models.OrderWithItems
 	if isAdmin {
 		// Admin can see all orders with the status
 		orders, err = database.GetOrdersByStatus(status)
