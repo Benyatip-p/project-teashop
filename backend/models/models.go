@@ -175,6 +175,8 @@ type OrderItem struct {
 	Weight        float64 `json:"weight"`
 	Quantity      int     `json:"quantity"`
 	PricePerUnit  float64 `json:"price_per_unit"`
+	ProductName   string  `json:"product_name"`
+	ImageURL      *string `json:"image_url"`
 }
 
 type CreateOrderRequest struct {
