@@ -57,8 +57,8 @@ const EditTeaPage = () => {
         setCategoryId(product.category_id ? String(product.category_id) : "")
         setImageUrl(
           product.image_url ||
-            product.coverImage ||
-            "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
+          product.coverImage ||
+          "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
         )
 
         if (variantList.length > 0) {
@@ -91,14 +91,14 @@ const EditTeaPage = () => {
       prev.map((v, i) =>
         i === index
           ? {
-              ...v,
-              [field]:
-                field === "weight"
-                  ? value
-                  : value === ""
+            ...v,
+            [field]:
+              field === "weight"
+                ? value
+                : value === ""
                   ? ""
                   : Number(value),
-            }
+          }
           : v
       )
     )
@@ -253,90 +253,97 @@ const EditTeaPage = () => {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  ขนาดสินค้า / ราคา / สต็อก
-                </label>
+              <div className="rounded-xl border border-slate-200 p-3">
+                {/* ส่วนหัวตาราง: ซ่อนบนมือถือ (hidden) แสดงบนจอใหญ่ (sm:grid) */}
+                <div className="hidden sm:grid grid-cols-[1.2fr,1fr,1fr,auto] gap-3 text-xs font-semibold text-slate-500 mb-2">
+                  <span>น้ำหนัก (กรัม)</span>
+                  <span>ราคา (บาท)</span>
+                  <span>สต็อก</span>
+                  <span />
+                </div>
 
-                <div className="rounded-xl border border-slate-200 p-3">
-                  <div className="grid grid-cols-[1.2fr,1fr,1fr,auto] gap-3 text-xs font-semibold text-slate-500">
-                    <span>น้ำหนัก (กรัม)</span>
-                    <span>ราคา (บาท)</span>
-                    <span>สต็อก</span>
-                    <span />
-                  </div>
-
-                  <div className="mt-2 space-y-2">
-                    {variants.map((variant, index) => (
-                      <div
-                        key={variant.id ?? index}
-                        className="grid grid-cols-[1.2fr,1fr,1fr,auto] gap-3"
-                      >
+                <div className="space-y-4 sm:space-y-2">
+                  {variants.map((variant, index) => (
+                    <div
+                      key={variant.id ?? index}
+                      // แก้ไข Grid: มือถือเป็น 2 คอลัมน์, จอใหญ่เป็น 4 คอลัมน์เหมือนเดิม
+                      // เพิ่ม bg-slate-50 บนมือถือเพื่อให้แยกแต่ละรายการได้ง่ายขึ้น
+                      className="grid grid-cols-2 gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 sm:grid-cols-[1.2fr,1fr,1fr,auto] sm:border-0 sm:bg-white sm:p-0"
+                    >
+                      {/* น้ำหนัก */}
+                      <div className="col-span-2 sm:col-span-1">
+                        <label className="mb-1 block text-xs font-medium text-slate-500 sm:hidden">
+                          น้ำหนัก (กรัม)
+                        </label>
                         <input
                           type="number"
                           min="0"
                           value={variant.weight}
                           onChange={e =>
-                            handleVariantChange(
-                              index,
-                              "weight",
-                              e.target.value
-                            )
+                            handleVariantChange(index, "weight", e.target.value)
                           }
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 bg-white"
                           placeholder="เช่น 50"
                         />
+                      </div>
+
+                      {/* ราคา */}
+                      <div className="col-span-1">
+                        <label className="mb-1 block text-xs font-medium text-slate-500 sm:hidden">
+                          ราคา
+                        </label>
                         <input
                           type="number"
                           min="0"
                           value={variant.price}
                           onChange={e =>
-                            handleVariantChange(
-                              index,
-                              "price",
-                              e.target.value
-                            )
+                            handleVariantChange(index, "price", e.target.value)
                           }
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 bg-white"
                           placeholder="ราคา"
                         />
+                      </div>
+
+                      {/* สต็อก */}
+                      <div className="col-span-1">
+                        <label className="mb-1 block text-xs font-medium text-slate-500 sm:hidden">
+                          สต็อก
+                        </label>
                         <input
                           type="number"
                           min="0"
                           value={variant.stock}
                           onChange={e =>
-                            handleVariantChange(
-                              index,
-                              "stock",
-                              e.target.value
-                            )
+                            handleVariantChange(index, "stock", e.target.value)
                           }
-                          className="rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200"
+                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-200 bg-white"
                           placeholder="สต็อก"
                         />
-                        <div className="flex items-center justify-end">
-                          {variants.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveVariant(index)}
-                              className="rounded-full bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-100"
-                            >
-                              ลบ
-                            </button>
-                          )}
-                        </div>
                       </div>
-                    ))}
-                  </div>
 
-                  <button
-                    type="button"
-                    onClick={handleAddVariant}
-                    className="mt-3 w-full rounded-xl border border-dashed border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
-                  >
-                    + เพิ่มขนาดสินค้า
-                  </button>
+                      {/* ปุ่มลบ */}
+                      <div className="col-span-2 flex items-center justify-end sm:col-span-1">
+                        {variants.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariant(index)}
+                            className="rounded-full bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-100 w-full sm:w-auto"
+                          >
+                            ลบรายการนี้
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddVariant}
+                  className="mt-3 w-full rounded-xl border border-dashed border-emerald-300 px-3 py-2 text-sm font-medium text-emerald-700 hover:bg-emerald-50"
+                >
+                  + เพิ่มขนาดสินค้า
+                </button>
               </div>
 
               <div>

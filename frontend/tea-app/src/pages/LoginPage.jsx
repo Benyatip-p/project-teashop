@@ -52,7 +52,7 @@ const LoginPage = () => {
     (roleId) => {
       if (roleId === 1) {
         // Store manager (admin) - always redirect to store manager dashboard
-        navigate("/store-manager/dashboard", { replace: true });
+        navigate("/Admin/dashboard", { replace: true });
       } else if (roleId === 2) {
         // Regular user - redirect to previous page or home
         if (from) {

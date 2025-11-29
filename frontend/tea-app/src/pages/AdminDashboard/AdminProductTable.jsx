@@ -37,7 +37,6 @@ const AdminProductTable = ({ products, onDeleted }) => {
           <tr>
             <th className="px-4 py-3 text-left">สินค้า</th>
             <th className="px-4 py-3 text-left">หมวดหมู่</th>
-            {/* 🔥 ลบ PRICE HEAD */}
             <th className="px-4 py-3 text-center">รีวิว</th>
             <th className="px-4 py-3 text-right">การจัดการ</th>
           </tr>
@@ -70,8 +69,6 @@ const AdminProductTable = ({ products, onDeleted }) => {
                 <td className="px-4 py-3 text-sm text-slate-700">
                   {categoryName}
                 </td>
-
-                {/* 🔥 ลบ PRICE CELL */}
 
                 <td className="px-4 py-3 text-center text-xs text-slate-500">
                   {product.reviews || 0} รีวิว

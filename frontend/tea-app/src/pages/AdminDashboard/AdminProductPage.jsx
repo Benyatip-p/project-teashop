@@ -1,7 +1,6 @@
-// src/pages/AdminDashboard/AdminProductPage.jsx
 import React, { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
-import { ChevronDownIcon } from "@heroicons/react/outline"
+//import { ChevronDownIcon } from "@heroicons/react/outline"
 import api from "../../api/api"
 import LoadingSpinner from "../../components/LoadingSpinner"
 import AdminLayout from "../../components/AdminLayout"
@@ -22,19 +21,19 @@ const categories = {
   อุปกรณ์ชา: ["ที่กรองชา", "ถ้วยชา"],
 }
 
-const sortOptions = [
-  { value: "newest", label: "ใหม่ล่าสุด" },
-  { value: "price-low", label: "ราคาต่ำ-สูง" },
-  { value: "price-high", label: "ราคาสูง-ต่ำ" },
-  { value: "popular", label: "ยอดนิยม" },
-]
+// const sortOptions = [
+//   { value: "newest", label: "ใหม่ล่าสุด" },
+//   { value: "price-low", label: "ราคาต่ำ-สูง" },
+//   { value: "price-high", label: "ราคาสูง-ต่ำ" },
+//   { value: "popular", label: "ยอดนิยม" },
+// ]
 
 const productsPerPage = 12
 
 const AdminProductpage = () => {
   const [products, setProducts] = useState([])
   const [filteredProducts, setFilteredProducts] = useState([])
-  const [sortBy, setSortBy] = useState("newest")
+  //const [sortBy, setSortBy] = useState("newest")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
@@ -119,26 +118,26 @@ const AdminProductpage = () => {
     setCurrentPage(1)
   }
 
-  const handleSort = sortValue => {
-    setSortBy(sortValue)
-    const sorted = [...filteredProducts]
+  // const handleSort = sortValue => {
+  //   setSortBy(sortValue)
+  //   const sorted = [...filteredProducts]
 
-    switch (sortValue) {
-      case "price-low":
-        sorted.sort((a, b) => (a.price || 0) - (b.price || 0))
-        break
-      case "price-high":
-        sorted.sort((a, b) => (b.price || 0) - (a.price || 0))
-        break
-      case "popular":
-        sorted.sort((a, b) => (b.reviews || 0) - (a.reviews || 0))
-        break
-      default:
-        sorted.sort((a, b) => (b.id || 0) - (a.id || 0))
-    }
+  //   switch (sortValue) {
+  //     case "price-low":
+  //       sorted.sort((a, b) => (a.price || 0) - (b.price || 0))
+  //       break
+  //     case "price-high":
+  //       sorted.sort((a, b) => (b.price || 0) - (a.price || 0))
+  //       break
+  //     case "popular":
+  //       sorted.sort((a, b) => (b.reviews || 0) - (a.reviews || 0))
+  //       break
+  //     default:
+  //       sorted.sort((a, b) => (b.id || 0) - (a.id || 0))
+  //   }
 
-    setFilteredProducts(sorted)
-  }
+  //   setFilteredProducts(sorted)
+  // }
 
   const handleDeleted = id => {
     setProducts(prev => prev.filter(p => p.id !== id))
@@ -152,8 +151,8 @@ const AdminProductpage = () => {
 
   const paginate = pageNumber => setCurrentPage(pageNumber)
 
-  const currentSortLabel =
-    sortOptions.find(opt => opt.value === sortBy)?.label || "ใหม่ล่าสุด"
+  // const currentSortLabel =
+  //   sortOptions.find(opt => opt.value === sortBy)?.label || "ใหม่ล่าสุด"
 
   if (loading) {
     return (

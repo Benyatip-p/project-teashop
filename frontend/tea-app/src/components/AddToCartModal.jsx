@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useShop } from '../context/ShopContext'
 import { getVariantsByProductId } from '../api/product/product'
 
+
 const AddToCartModal = ({ open, onClose, product }) => {
   const { addToCart } = useShop()
   const [quantity, setQuantity] = useState(1)
