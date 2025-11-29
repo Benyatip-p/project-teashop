@@ -37,6 +37,7 @@ const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -68,12 +69,15 @@ const LoginPage = () => {
   );
 
   useEffect(() => {
-    const token = localStorage.getItem("access_token");
+    // Check both localStorage and sessionStorage for existing token
+    const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
     if (!token) return;
 
     const roleId = getRoleIdFromToken(token);
     if (!roleId) {
+      // Clear from both storages if token is invalid
       localStorage.removeItem("access_token");
+      sessionStorage.removeItem("access_token");
       return;
     }
 
@@ -92,11 +96,23 @@ const LoginPage = () => {
       });
 
       const token = res.data.access_token;
-      localStorage.setItem("access_token", token);
+      
+      // Store token based on "Remember Me" preference
+      if (rememberMe) {
+        localStorage.setItem("access_token", token);
+        // Clear sessionStorage if it exists from a previous session
+        sessionStorage.removeItem("access_token");
+      } else {
+        sessionStorage.setItem("access_token", token);
+        // Clear localStorage if it exists from a previous session
+        localStorage.removeItem("access_token");
+      }
 
       const roleId = getRoleIdFromToken(token);
       if (!roleId) {
+        // Clear from both storages if token is invalid
         localStorage.removeItem("access_token");
+        sessionStorage.removeItem("access_token");
         setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
         return;
       }
@@ -231,12 +247,12 @@ const LoginPage = () => {
             </div>
 
             <div className="flex items-center justify-between text-xs text-gray-600 md:text-sm">
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked
-                  readOnly
-                  className="h-4 w-4 text-viridian-700"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-viridian-700 cursor-pointer"
                 />
                 <span>จดจำการเข้าสู่ระบบบนอุปกรณ์นี้</span>
               </label>

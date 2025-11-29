@@ -1,4 +1,3 @@
-// src/components/Navbar.jsx
 import React, { useState, useEffect, useRef } from 'react'
 import {
   Link,
@@ -67,7 +66,8 @@ const Navbar = () => {
   let username = ''
 
   if (isBrowser) {
-    const token = localStorage.getItem('access_token')
+    // Check both localStorage and sessionStorage for token
+    const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token')
     if (token) {
       try {
         const decoded = jwtDecode(token)
@@ -110,7 +110,7 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      const refreshToken = localStorage.getItem('refresh_token')
+      const refreshToken = localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token')
       if (refreshToken) {
         await axios.post('http://localhost:8080/auth/logout', {
           refresh_token: refreshToken,
@@ -119,9 +119,13 @@ const Navbar = () => {
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
+      // Clear from both localStorage and sessionStorage
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
       localStorage.removeItem('adminUser')
+      sessionStorage.removeItem('access_token')
+      sessionStorage.removeItem('refresh_token')
+      sessionStorage.removeItem('adminUser')
       setIsUserDropdownOpen(false)
       navigate('/')
     }
@@ -252,7 +256,7 @@ const Navbar = () => {
                         บัญชีของฉัน
                       </Link>
                       <Link
-                        to="/orders"
+                        to="/user/purchase"
                         onClick={() => setIsUserDropdownOpen(false)}
                         className="flex items-center px-4 py-3 text-sm text-gray-700 transition-colors hover:bg-gray-100"
                       >

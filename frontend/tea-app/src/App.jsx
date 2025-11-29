@@ -14,10 +14,15 @@ import Aboutpage from "./pages/Aboutpage";
 import Productpage from "./pages/Productpage";
 import Favoritepage from "./pages/Favoritepage";
 import Cartpage from "./pages/Cartpage";
+
+import Purchasepage from "./pages/Purchasepage";
 import Profilepage from "./pages/Profilepage";
+
 import ProductDetailpage from "./pages/ProductDetailpage";
+
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/Registerpage";
+
 import DeleteTeaPage from "./pages/DeleteTeaPage";
 import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
 import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
@@ -190,6 +195,17 @@ function App() {
               <ProtectedRoute>
                 <PublicLayout>
                   <Profilepage />
+                </PublicLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/user/purchase"
+            element={
+              <ProtectedRoute>
+                <PublicLayout>
+                  <Purchasepage />
                 </PublicLayout>
               </ProtectedRoute>
             }
