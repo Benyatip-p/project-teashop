@@ -4,6 +4,13 @@ const ShopContext = createContext();
 
 export const useShop = () => useContext(ShopContext);
 
+const buildCartItemId = (product) => {
+  const baseId = product.id;
+  const variantId = product.variantId ?? null;
+  const variantWeight = product.variantWeight ?? product.selectedSize ?? null;
+  return `${baseId}-${variantId ?? "noVar"}-${variantWeight ?? "noSize"}`;
+};
+
 export const ShopProvider = ({ children }) => {
   const [cart, setCart] = useState(() => {
     const stored = localStorage.getItem("cart");
@@ -15,7 +22,6 @@ export const ShopProvider = ({ children }) => {
     return stored ? JSON.parse(stored) : [];
   });
 
-  // sync localStorage
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
@@ -24,12 +30,11 @@ export const ShopProvider = ({ children }) => {
     localStorage.setItem("favorites", JSON.stringify(favorites));
   }, [favorites]);
 
-  // helpers
   const isFavorite = (productId) =>
     favorites.some((item) => item.id === productId);
 
   const isInCart = (productId) =>
-    cart.some((item) => item.id === productId);
+    cart.some((item) => item.productId === productId);
 
   const toggleFavorite = (product) => {
     setFavorites((prev) =>
@@ -39,41 +44,56 @@ export const ShopProvider = ({ children }) => {
     );
   };
 
-  // ✅ ใช้ qty ที่ส่งมาจริง ๆ
   const addToCart = (product, qty = 1) => {
     const quantityToAdd = Number(qty) || 1;
+    const cartItemId = buildCartItemId(product);
 
     setCart((prev) => {
-      const existing = prev.find((item) => item.id === product.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.id === product.id
-            ? { ...item, qty: (item.qty || 1) + quantityToAdd }
-            : item
-        );
+      const index = prev.findIndex((item) => item.id === cartItemId);
+      if (index !== -1) {
+        const next = [...prev];
+        const currentQty = next[index].qty || 1;
+        next[index] = { ...next[index], qty: currentQty + quantityToAdd };
+        return next;
       }
-      return [...prev, { ...product, qty: quantityToAdd }];
+
+      const variantWeight =
+        product.variantWeight ?? product.selectedSize ?? null;
+
+      return [
+        ...prev,
+        {
+          id: cartItemId,
+          productId: product.id,
+          title: product.title,
+          price: product.price,
+          coverImage: product.coverImage || product.image,
+          qty: quantityToAdd,
+          variantId: product.variantId ?? null,
+          variantWeight,
+          selectedSize: product.selectedSize ?? null,
+        },
+      ];
     });
   };
 
-  const removeFromCart = (productId) => {
-    setCart((prev) => prev.filter((item) => item.id !== productId));
+  const removeFromCart = (cartItemId) => {
+    setCart((prev) => prev.filter((item) => item.id !== cartItemId));
   };
 
-  const updateCartQty = (productId, newQty) => {
-  const qtyNum = Number(newQty);
+  const updateCartQty = (cartItemId, newQty) => {
+    const qtyNum = Number(newQty);
 
-    setCart(prev =>
-        prev
-        .map(item =>
-            item.id === productId
-            ? { ...item, qty: qtyNum < 1 ? 1 : qtyNum } // อย่างน้อย 1
-            : item
-        )
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === cartItemId
+          ? { ...item, qty: qtyNum < 1 ? 1 : qtyNum }
+          : item
+      )
     );
-    };
+  };
 
-  const cartItemCount = cart.length; // จำนวน “รายการ” ในตะกร้า
+  const cartItemCount = cart.length;
 
   return (
     <ShopContext.Provider

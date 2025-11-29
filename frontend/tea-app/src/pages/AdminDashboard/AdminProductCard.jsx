@@ -103,7 +103,7 @@ const ProductCardAdmin = ({ product, onDeleted }) => {
 
           {/* Edit Button */}
           <Link
-            to={`/store-manager/edit-Tea/${product.id}`}
+            to={`/admin/update-products/${product.id}`}
             className="inline-flex items-center justify-center px-4 py-2
               bg-gradient-to-r from-green-500 to-viridian-700
               text-white font-semibold text-sm md:text-sm

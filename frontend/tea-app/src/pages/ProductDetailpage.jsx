@@ -2,12 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Link, useParams, useLocation } from 'react-router-dom'
 import { productsData } from '../data/productsData'
 import { useShop } from '../context/ShopContext'
-
-const sizeOptions = [
-  { size: '20g', stock: 5 },
-  { size: '50g', stock: 8 },
-  { size: '100g', stock: 3 },
-]
+import { getVariantsByProductId } from '../api/product/product'
+import AddToCartToast from '../components/AddToCartToast'
 
 const getMockDetails = category => {
   if (category === 'ชาเขียว') {
@@ -95,11 +91,13 @@ const ProductDetailpage = () => {
   const { id } = useParams()
 
   const [product, setProduct] = useState(null)
+  const [variants, setVariants] = useState([])
+  const [selectedVariantId, setSelectedVariantId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [qty, setQty] = useState(1)
-  const [showPopup, setShowPopup] = useState(false)
-  const [selectedSize, setSelectedSize] = useState('100g')
+  const [toastOpen, setToastOpen] = useState(false)
+  const [toastData, setToastData] = useState(null)
 
   const { addToCart, toggleFavorite, isFavorite } = useShop()
 
@@ -161,11 +159,50 @@ const ProductDetailpage = () => {
     if (id) fetchProduct()
   }, [id])
 
+  useEffect(() => {
+    const loadVariants = async () => {
+      try {
+        const list = await getVariantsByProductId(id)
+        setVariants(list)
+        if (list.length > 0) {
+          setSelectedVariantId(list[0].id)
+        } else {
+          setSelectedVariantId(null)
+        }
+      } catch {
+        setVariants([])
+        setSelectedVariantId(null)
+      }
+    }
+
+    if (id) loadVariants()
+  }, [id])
+
   const handleAddToCart = () => {
     if (!product) return
-    addToCart({ ...product, selectedSize }, qty)
-    setShowPopup(true)
-    setTimeout(() => setShowPopup(false), 3000)
+
+    const selectedVariant =
+      variants.find(v => v.id === selectedVariantId) || null
+
+    const payload = {
+      ...product,
+      price: selectedVariant ? selectedVariant.price : product.price,
+      variantId: selectedVariant ? selectedVariant.id : null,
+      variantWeight: selectedVariant ? selectedVariant.weight : null,
+    }
+
+    addToCart(payload, qty)
+
+    setToastData({
+      product,
+      variant: selectedVariant,
+      qty,
+    })
+    setToastOpen(true)
+
+    setTimeout(() => {
+      setToastOpen(false)
+    }, 3000)
   }
 
   if (loading) {
@@ -206,7 +243,9 @@ const ProductDetailpage = () => {
 
   const favoriteActive = isFavorite(product.id)
   const details = getMockDetails(product.category)
-  const selectedSizeData = sizeOptions.find(s => s.size === selectedSize)
+  const selectedVariant =
+    variants.find(v => v.id === selectedVariantId) || null
+  const displayPrice = selectedVariant ? selectedVariant.price : product.price
 
   return (
     <div className="min-h-[calc(100vh-72px)] bg-[#f5f7f5]">
@@ -218,7 +257,7 @@ const ProductDetailpage = () => {
           ← กลับไปหน้ารายการสินค้า
         </Link>
 
-        <section className="mt-6 grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.3fr)] items-start">
+        <section className="mt-6 grid items-start gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.3fr)]">
           <div className="space-y-6">
             <div className="overflow-hidden rounded-2xl bg-white shadow">
               <img
@@ -252,7 +291,7 @@ const ProductDetailpage = () => {
                 คาเฟอีน: {details.caffeine}
               </span>
               <span className="text-2xl font-semibold text-gray-900">
-                ฿{product.price}
+                ฿{displayPrice}
               </span>
             </div>
 
@@ -260,20 +299,26 @@ const ProductDetailpage = () => {
               <div>
                 <p className="text-sm font-medium text-gray-800">เลือกขนาด</p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {sizeOptions.map(item => (
-                    <button
-                      key={item.size}
-                      type="button"
-                      onClick={() => setSelectedSize(item.size)}
-                      className={`rounded-full border px-4 py-2 text-sm ${
-                        selectedSize === item.size
-                          ? 'border-[#0b2f27] bg-[#0b2f27] text-white'
-                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      {item.size}
-                    </button>
-                  ))}
+                  {variants.length > 0 ? (
+                    variants.map(v => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setSelectedVariantId(v.id)}
+                        className={`rounded-full border px-4 py-2 text-sm ${
+                          selectedVariantId === v.id
+                            ? 'border-[#0b2f27] bg-[#0b2f27] text-white'
+                            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {v.weight}g
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-500">
+                      สินค้านี้มีเพียงขนาดเดียว
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -303,9 +348,9 @@ const ProductDetailpage = () => {
                   </div>
                 </div>
 
-                {selectedSizeData && (
+                {selectedVariant && (
                   <span className="text-xs text-gray-500">
-                    สินค้าคงเหลือประมาณ {selectedSizeData.stock} ชิ้นสำหรับขนาดนี้
+                    สินค้าคงเหลือประมาณ {selectedVariant.stock} ชิ้นสำหรับขนาดนี้
                   </span>
                 )}
               </div>
@@ -376,12 +421,14 @@ const ProductDetailpage = () => {
           </div>
         </section>
 
-        {showPopup && (
-          <div className="fixed right-5 top-16 z-50">
-            <div className="rounded-xl bg-emerald-500 px-5 py-3 text-sm text-white shadow-lg">
-              เพิ่ม {product.title} ({selectedSize}) จำนวน {qty} ชิ้น ลงในตะกร้าแล้ว
-            </div>
-          </div>
+        {toastOpen && toastData && (
+          <AddToCartToast
+            open={toastOpen}
+            product={toastData.product}
+            variant={toastData.variant}
+            qty={toastData.qty}
+            onClose={() => setToastOpen(false)}
+          />
         )}
       </div>
     </div>

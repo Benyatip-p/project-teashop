@@ -1,41 +1,64 @@
-import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useShop } from '../context/ShopContext';
-
-const sizeOptions = [
-  { size: '20g', stock: 12 },
-  { size: '50g', stock: 8 },
-  { size: '100g', stock: 3 },
-];
+import React, { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useShop } from '../context/ShopContext'
+import { getVariantsByProductId } from '../api/product/product'
 
 const AddToCartModal = ({ open, onClose, product }) => {
-  const { addToCart } = useShop();
-  const [quantity, setQuantity] = useState(1);
-  const [selectedSize, setSelectedSize] = useState(sizeOptions[sizeOptions.length - 1].size);
+  const { addToCart } = useShop()
+  const [quantity, setQuantity] = useState(1)
+  const [variants, setVariants] = useState([])
+  const [selectedVariantId, setSelectedVariantId] = useState(null)
 
   useEffect(() => {
-    if (open) {
-      setQuantity(1);
-      setSelectedSize(sizeOptions[sizeOptions.length - 1].size);
-    }
-  }, [open]);
+    if (!open || !product?.id) return
 
-  if (!open || typeof document === 'undefined') return null;
+    setQuantity(1)
+
+    const load = async () => {
+      try {
+        const list = await getVariantsByProductId(product.id)
+        setVariants(list)
+        if (list.length > 0) {
+          setSelectedVariantId(list[0].id)
+        } else {
+          setSelectedVariantId(null)
+        }
+      } catch {
+        setVariants([])
+        setSelectedVariantId(null)
+      }
+    }
+
+    load()
+  }, [open, product?.id])
+
+  if (!open || typeof document === 'undefined') return null
 
   const decreaseQty = () => {
-    setQuantity((q) => (q > 1 ? q - 1 : 1));
-  };
+    setQuantity(q => (q > 1 ? q - 1 : 1))
+  }
 
   const increaseQty = () => {
-    setQuantity((q) => q + 1);
-  };
+    setQuantity(q => q + 1)
+  }
+
+  const selectedVariant =
+    variants.find(v => v.id === selectedVariantId) || null
+
+  const displayPrice = selectedVariant ? selectedVariant.price : product.price
+  const displayStock =
+    selectedVariant?.stock ?? product?.stock ?? null
 
   const handleConfirm = () => {
-    addToCart({ ...product, selectedSize }, quantity);
-    onClose();
-  };
-
-  const selectedSizeData = sizeOptions.find((s) => s.size === selectedSize);
+    const payload = {
+      ...product,
+      price: displayPrice,
+      variantId: selectedVariant ? selectedVariant.id : null,
+      variantWeight: selectedVariant ? selectedVariant.weight : null,
+    }
+    addToCart(payload, quantity)
+    onClose()
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 px-4">
@@ -56,25 +79,31 @@ const AddToCartModal = ({ open, onClose, product }) => {
             <h3 className="mt-1 line-clamp-2 text-xl font-semibold text-gray-900">
               {product.title}
             </h3>
-            <p className="mt-2 text-base text-gray-800">฿{product.price}</p>
+            <p className="mt-2 text-base text-gray-800">฿{displayPrice}</p>
 
             <div className="mt-4">
               <span className="text-sm text-gray-700">เลือกขนาด:</span>
               <div className="mt-2 flex flex-wrap gap-2">
-                {sizeOptions.map((item) => (
-                  <button
-                    key={item.size}
-                    type="button"
-                    onClick={() => setSelectedSize(item.size)}
-                    className={`rounded-full border px-3 py-1 text-sm transition ${
-                      selectedSize === item.size
-                        ? 'border-[#0b2f27] bg-[#0b2f27] text-white'
-                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {item.size}
-                  </button>
-                ))}
+                {variants.length > 0 ? (
+                  variants.map(v => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setSelectedVariantId(v.id)}
+                      className={`rounded-full border px-3 py-1 text-sm transition ${
+                        selectedVariantId === v.id
+                          ? 'border-[#0b2f27] bg-[#0b2f27] text-white'
+                          : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {v.weight}g
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-xs text-gray-500">
+                    สินค้านี้มีเพียงขนาดเดียว
+                  </span>
+                )}
               </div>
             </div>
 
@@ -88,7 +117,9 @@ const AddToCartModal = ({ open, onClose, product }) => {
                 >
                   −
                 </button>
-                <span className="w-10 text-center text-sm font-semibold">{quantity}</span>
+                <span className="w-10 text-center text-sm font-semibold">
+                  {quantity}
+                </span>
                 <button
                   type="button"
                   onClick={increaseQty}
@@ -98,9 +129,9 @@ const AddToCartModal = ({ open, onClose, product }) => {
                 </button>
               </div>
 
-              {selectedSizeData && (
+              {displayStock != null && (
                 <span className="text-xs text-gray-500">
-                  มีสินค้าทั้งหมด {selectedSizeData.stock} ชิ้น
+                  มีสินค้าทั้งหมด {displayStock} ชิ้นสำหรับขนาดนี้
                 </span>
               )}
             </div>
@@ -125,8 +156,8 @@ const AddToCartModal = ({ open, onClose, product }) => {
         </div>
       </div>
     </div>,
-    document.body
-  );
-};
+    document.body,
+  )
+}
 
-export default AddToCartModal;
+export default AddToCartModal

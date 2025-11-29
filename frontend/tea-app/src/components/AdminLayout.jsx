@@ -1,9 +1,8 @@
 // src/components/admin/AdminLayout.jsx
 import React, { useState } from "react";
 import Sidebar from "./Sidebar";
-import Topbar from "./Topbar";
 
-const AdminLayout = ({ children, title }) => {
+const AdminLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const handleLogout = () => {
@@ -20,10 +19,9 @@ const AdminLayout = ({ children, title }) => {
         setSidebarOpen={setSidebarOpen}
         handleLogout={handleLogout}
       />
-      <div className="flex flex-1 flex-col">
-        <Topbar title={title} />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
+      <main className="flex-1 overflow-y-auto p-8">
+        {children}
+      </main>
     </div>
   );
 };
