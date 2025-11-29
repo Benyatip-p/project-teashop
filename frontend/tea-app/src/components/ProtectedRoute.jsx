@@ -1,24 +1,52 @@
 import React from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import { jwtDecode } from "jwt-decode";
+
+const getDecodedToken = () => {
+  // Check both localStorage and sessionStorage for token
+  const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+  if (!token) return null;
+
+  try {
+    const decoded = jwtDecode(token);
+
+    if (decoded.exp && decoded.exp < Date.now() / 1000) {
+      // Clear from both storages if token is expired
+      localStorage.removeItem("access_token");
+      sessionStorage.removeItem("access_token");
+      return null;
+    }
+
+    return decoded;
+  } catch {
+    // Clear from both storages if token is invalid
+    localStorage.removeItem("access_token");
+    sessionStorage.removeItem("access_token");
+    return null;
+  }
+};
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const token = localStorage.getItem("access_token");
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const location = useLocation();
+  const decoded = getDecodedToken();
 
-  // Check if user is logged in
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  if (!decoded) {
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ redirectTo: location.pathname }}
+      />
+    );
   }
 
-  // If allowedRoles is specified, check if user has required role
-  if (allowedRoles.length > 0) {
-    const userRoles = user.roles || [];
-    const hasRequiredRole = allowedRoles.some(role => userRoles.includes(role));
+  const roles = Array.isArray(decoded.roles) ? decoded.roles : [];
+  const hasRequiredRole =
+    allowedRoles.length === 0 ||
+    roles.some(role => allowedRoles.includes(role));
 
-    if (!hasRequiredRole) {
-      // Redirect to not authorized page if user doesn't have required permissions
-      return <Navigate to="/not-authorized" replace />;
-    }
+  if (!hasRequiredRole) {
+    return <Navigate to="/not-authorized" replace />;
   }
 
   return children;

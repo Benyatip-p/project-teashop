@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import {
@@ -7,29 +7,82 @@ import {
   EyeIcon,
   EyeOffIcon,
 } from "@heroicons/react/outline";
+import { jwtDecode } from "jwt-decode";
+
+// Map role names to role_id
+const ROLE_ID_MAP = {
+  admin: 1,
+  user: 2,
+};
+
+const getRoleIdFromToken = (token) => {
+  if (!token) return null;
+
+  try {
+    const decoded = jwtDecode(token);
+
+    if (decoded.exp && decoded.exp < Date.now() / 1000) {
+      return null;
+    }
+
+    const roles = Array.isArray(decoded.roles) ? decoded.roles : [];
+    const roleName = roles[0] || "user";
+    return ROLE_ID_MAP[roleName] || 2; // Default to user (role_id = 2)
+  } catch {
+    return null;
+  }
+};
 
 const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    const token = localStorage.getItem("access_token");
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
+  // Get the previous page from location state, or use referrer
+  const from = location.state?.from?.pathname || location.state?.redirectTo || null;
+  const redirectState = location.state?.checkoutData || null;
 
-    if (token && user.roles) {
-      // Redirect based on user role
-      if (user.roles.includes("admin")) {
-        navigate("/admin/dashboard", { replace: true });
+  const redirectByRoleId = useCallback(
+    (roleId) => {
+      if (roleId === 1) {
+        // Store manager (admin) - always redirect to store manager dashboard
+        navigate("/store-manager/dashboard", { replace: true });
+      } else if (roleId === 2) {
+        // Regular user - redirect to previous page or home
+        if (from) {
+          navigate(from, { replace: true, state: redirectState });
+        } else {
+          navigate("/", { replace: true });
+        }
       } else {
+        // Fallback to home
         navigate("/", { replace: true });
       }
+    },
+    [navigate, from, redirectState]
+  );
+
+  useEffect(() => {
+    // Check both localStorage and sessionStorage for existing token
+    const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+    if (!token) return;
+
+    const roleId = getRoleIdFromToken(token);
+    if (!roleId) {
+      // Clear from both storages if token is invalid
+      localStorage.removeItem("access_token");
+      sessionStorage.removeItem("access_token");
+      return;
     }
-  }, [navigate]);
+
+    redirectByRoleId(roleId);
+  }, [redirectByRoleId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,19 +95,29 @@ const LoginPage = () => {
         password,
       });
 
-      // Save token and user data
-      localStorage.setItem("access_token", res.data.access_token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-
-      // Check user roles and redirect accordingly
-      const userRoles = res.data.user.roles || [];
-
-      if (userRoles.includes("admin")) {
-        navigate("/admin/dashboard", { replace: true });
+      const token = res.data.access_token;
+      
+      // Store token based on "Remember Me" preference
+      if (rememberMe) {
+        localStorage.setItem("access_token", token);
+        // Clear sessionStorage if it exists from a previous session
+        sessionStorage.removeItem("access_token");
       } else {
-        // For "user" role or any other roles, redirect to homepage
-        navigate("/", { replace: true });
+        sessionStorage.setItem("access_token", token);
+        // Clear localStorage if it exists from a previous session
+        localStorage.removeItem("access_token");
       }
+
+      const roleId = getRoleIdFromToken(token);
+      if (!roleId) {
+        // Clear from both storages if token is invalid
+        localStorage.removeItem("access_token");
+        sessionStorage.removeItem("access_token");
+        setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
+        return;
+      }
+
+      redirectByRoleId(roleId);
     } catch (err) {
       const msg =
         err.response?.data?.message ||
@@ -68,8 +131,8 @@ const LoginPage = () => {
 
   return (
     <div className="flex items-center justify-center py-12 px-4">
-      <div className="w-full max-w-3xl bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden grid md:grid-cols-2">
-        <div className="hidden md:flex flex-col justify-between bg-viridian-900 text-emerald-50 p-8">
+      <div className="grid w-full max-w-3xl overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-lg md:grid-cols-2">
+        <div className="hidden flex-col justify-between bg-viridian-900 p-8 text-emerald-50 md:flex">
           <div>
             <Link to="/" className="inline-flex items-center gap-3">
               <img
@@ -81,7 +144,7 @@ const LoginPage = () => {
                 GOODTEA
               </span>
             </Link>
-            <p className="mt-6 text-sm text-emerald-100/90 leading-relaxed">
+            <p className="mt-6 text-sm leading-relaxed text-emerald-100/90">
               เข้าสู่ระบบเพื่อจัดการคำสั่งซื้อของคุณ ดูประวัติการสั่งซื้อ
               และเก็บรายการโปรดของคุณไว้ในที่เดียว
             </p>
@@ -106,7 +169,7 @@ const LoginPage = () => {
           </div>
 
           <div className="mb-6 md:mb-8">
-            <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+            <h1 className="text-2xl font-semibold text-gray-900 md:text-3xl">
               เข้าสู่ระบบ
             </h1>
             <p className="mt-2 text-sm text-gray-500">
@@ -117,7 +180,7 @@ const LoginPage = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-2 rounded-lg text-sm">
+              <div className="rounded-lg border border-red-400 bg-red-50 px-4 py-2 text-sm text-red-700">
                 {error}
               </div>
             )}
@@ -125,24 +188,24 @@ const LoginPage = () => {
             <div>
               <label
                 htmlFor="username"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="mb-1 block text-sm font-medium text-gray-700"
               >
                 ชื่อผู้ใช้
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <UserIcon className="h-5 w-5 text-viridian-800" />
                 </div>
                 <input
-                  type="text"
                   id="username"
                   name="username"
+                  type="text"
                   autoComplete="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="กรอกชื่อผู้ใช้ของคุณ"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-viridian-500 focus:border-viridian-500 bg-white"
+                  className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-10 pr-4 text-sm focus:border-viridian-500 focus:outline-none focus:ring-2 focus:ring-viridian-500"
                 />
               </div>
             </div>
@@ -150,29 +213,29 @@ const LoginPage = () => {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="mb-1 block text-sm font-medium text-gray-700"
               >
                 รหัสผ่าน
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <LockClosedIcon className="h-5 w-5 text-viridian-800" />
                 </div>
                 <input
-                  type={showPassword ? "text" : "password"}
                   id="password"
                   name="password"
+                  type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="กรอกรหัสผ่าน"
                   required
-                  className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-viridian-500 focus:border-viridian-500 bg-white"
+                  className="w-full rounded-xl border border-gray-300 bg-white py-3 pl-10 pr-10 text-sm focus:border-viridian-500 focus:outline-none focus:ring-2 focus:ring-viridian-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute inset-y-0 right-0 flex items-center pr-3"
                 >
                   {showPassword ? (
                     <EyeOffIcon className="h-5 w-5 text-viridian-800" />
@@ -183,13 +246,13 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs md:text-sm text-gray-600">
-              <label className="flex items-center gap-2">
+            <div className="flex items-center justify-between text-xs text-gray-600 md:text-sm">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked
-                  readOnly
-                  className="form-checkbox h-4 w-4 text-viridian-700"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="h-4 w-4 text-viridian-700 cursor-pointer"
                 />
                 <span>จดจำการเข้าสู่ระบบบนอุปกรณ์นี้</span>
               </label>
@@ -204,9 +267,9 @@ const LoginPage = () => {
             <button
               type="submit"
               disabled={loading}
-              className={`w-full py-3 text-white font-semibold rounded-xl text-sm md:text-base transition-colors ${
+              className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-colors md:text-base ${
                 loading
-                  ? "bg-viridian-300 cursor-not-allowed"
+                  ? "cursor-not-allowed bg-viridian-300"
                   : "bg-viridian-900 hover:bg-viridian-800"
               }`}
             >
@@ -218,7 +281,7 @@ const LoginPage = () => {
             <span>ยังไม่มีบัญชี? </span>
             <Link
               to="/register"
-              className="text-viridian-800 font-semibold hover:underline"
+              className="font-semibold text-viridian-800 hover:underline"
             >
               สมัครสมาชิกใหม่
             </Link>

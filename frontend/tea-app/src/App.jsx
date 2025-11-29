@@ -14,9 +14,15 @@ import Aboutpage from "./pages/Aboutpage";
 import Productpage from "./pages/Productpage";
 import Favoritepage from "./pages/Favoritepage";
 import Cartpage from "./pages/Cartpage";
+
+import Purchasepage from "./pages/Purchasepage";
 import Profilepage from "./pages/Profilepage";
+
 import ProductDetailpage from "./pages/ProductDetailpage";
+
 import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/Registerpage";
+
 import DeleteTeaPage from "./pages/DeleteTeaPage";
 import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
 import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
@@ -25,7 +31,7 @@ import Paymentpage from "./pages/Paymentpage";
 import CategoryProductspage from "./pages/CategoryProductspage";
 
 const PublicLayout = ({ children }) => (
-  <div className="flex flex-col min-h-screen bg-gray-50">
+  <div className="flex min-h-screen flex-col bg-gray-50">
     <Navbar />
     <main className="flex-grow">{children}</main>
     <Footer />
@@ -33,12 +39,11 @@ const PublicLayout = ({ children }) => (
 );
 
 const AuthLayout = ({ children }) => (
-  <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+  <div className="flex min-h-screen items-center justify-center bg-gray-50">
     {children}
   </div>
 );
 
-const AdminLayout = ({ children }) => <>{children}</>;
 
 function App() {
   return (
@@ -55,11 +60,20 @@ function App() {
           />
 
           <Route
-            path="/not-authorized"
+            path="/register"
             element={
               <AuthLayout>
-                <NotAuthorized />
+                <RegisterPage />
               </AuthLayout>
+            }
+          />
+
+          <Route
+            path="/not-authorized"
+            element={
+              <PublicLayout>
+                <NotAuthorized />
+              </PublicLayout>
             }
           />
 
@@ -67,39 +81,43 @@ function App() {
             path="/admin/dashboard"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout>
-                  <AdminDashboardPage />
-                </AdminLayout>
+                <AdminDashboardPage />
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/store-manager/dashboard"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminDashboardPage />
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/admin/edit-tea/:id"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout>
-                  <EditTeaPage />
-                </AdminLayout>
+                <EditTeaPage />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/admin/delete-tea"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout>
-                  <DeleteTeaPage />
-                </AdminLayout>
+                <DeleteTeaPage />
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/admin/products"
             element={
               <ProtectedRoute allowedRoles={["admin"]}>
-                <AdminLayout>
-                  <AdminProductPage />
-                </AdminLayout>
+                <AdminProductPage />
               </ProtectedRoute>
             }
           />
@@ -112,6 +130,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/products"
             element={
@@ -120,6 +139,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/products/:id"
             element={
@@ -128,6 +148,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/about"
             element={
@@ -136,6 +157,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/contact"
             element={
@@ -144,6 +166,7 @@ function App() {
               </PublicLayout>
             }
           />
+
           <Route
             path="/favorites"
             element={
@@ -154,6 +177,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/cart"
             element={
@@ -164,8 +188,9 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
-            path="/profile"
+            path="/user/account/profile"
             element={
               <ProtectedRoute>
                 <PublicLayout>
@@ -174,6 +199,18 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/user/purchase"
+            element={
+              <ProtectedRoute>
+                <PublicLayout>
+                  <Purchasepage />
+                </PublicLayout>
+              </ProtectedRoute>
+            }
+          />
+
           <Route
             path="/payment"
             element={
@@ -184,6 +221,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+
           <Route
             path="/category/:categoryName"
             element={
