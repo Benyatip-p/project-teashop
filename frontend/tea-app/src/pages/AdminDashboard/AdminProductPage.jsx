@@ -37,17 +37,17 @@ const AdminProductpage = () => {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
-  const [openSort, setOpenSort] = useState(false)
+  //const [openSort, setOpenSort] = useState(false)
 
-  const sortRef = useRef(null)
+  //const sortRef = useRef(null)
 
-  useEffect(() => {
-    const handler = e => {
-      if (sortRef.current && !sortRef.current.contains(e.target)) setOpenSort(false)
-    }
-    document.addEventListener("mousedown", handler)
-    return () => document.removeEventListener("mousedown", handler)
-  }, [])
+  // useEffect(() => {
+  //   const handler = e => {
+  //     if (sortRef.current && !sortRef.current.contains(e.target)) setOpenSort(false)
+  //   }
+  //   document.addEventListener("mousedown", handler)
+  //   return () => document.removeEventListener("mousedown", handler)
+  // }, [])
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -267,36 +267,6 @@ const AdminProductpage = () => {
                 </span>{" "}
                 ชิ้น
                 {selectedCategory !== "all" && ` ในหมวด ${selectedCategory}`}
-              </div>
-
-              <div className="relative w-full max-w-xs" ref={sortRef}>
-                <button
-                  onClick={() => setOpenSort(prev => !prev)}
-                  className="flex w-full items-center justify-between rounded-full border bg-white px-4 py-2 text-sm shadow-sm hover:bg-slate-50"
-                >
-                  <span>จัดเรียงตาม: {currentSortLabel}</span>
-                  <ChevronDownIcon className="h-4 w-4 text-slate-400" />
-                </button>
-
-                {openSort && (
-                  <div className="absolute right-0 z-50 mt-2 w-full rounded-xl border bg-white p-2 shadow">
-                    {sortOptions.map(option => (
-                      <button
-                        key={option.value}
-                        onClick={() => {
-                          handleSort(option.value)
-                          setOpenSort(false)
-                        }}
-                        className={`w-full rounded-lg px-3 py-2 text-left hover:bg-slate-50 ${sortBy === option.value
-                            ? "font-medium text-emerald-700"
-                            : "text-slate-700"
-                          }`}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </div>
 
