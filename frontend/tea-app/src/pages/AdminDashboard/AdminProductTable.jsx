@@ -1,6 +1,7 @@
-import React from "react"
+import React, { useState } from "react"
 import { Link } from "react-router-dom"
 import api from "../../api/api"
+import DeleteConfirmationModal from "../../components/DeleteConfirmationModal"
 
 const CATEGORY_ID_TO_NAME = {
   4: "ชาเขียว",
@@ -19,15 +20,34 @@ const resolveImageSrc = coverImage => {
 }
 
 const AdminProductTable = ({ products, onDeleted }) => {
-  const handleDelete = async product => {
-    if (!window.confirm("คุณแน่ใจหรือว่าต้องการลบสินค้านี้?")) return
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    product: null,
+  })
+
+  const handleDeleteClick = product => {
+    setDeleteModal({
+      isOpen: true,
+      product: product,
+    })
+  }
+
+  const handleDeleteConfirm = async () => {
+    const product = deleteModal.product
+    if (!product) return
 
     try {
       await api.delete(`/products/${product.id}`)
       if (onDeleted) onDeleted(product.id)
+      setDeleteModal({ isOpen: false, product: null })
     } catch (err) {
       alert(err?.response?.data?.detail || "เกิดข้อผิดพลาดในการลบสินค้า")
+      setDeleteModal({ isOpen: false, product: null })
     }
+  }
+
+  const handleDeleteCancel = () => {
+    setDeleteModal({ isOpen: false, product: null })
   }
 
   return (
@@ -83,7 +103,7 @@ const AdminProductTable = ({ products, onDeleted }) => {
                       แก้ไข
                     </Link>
                     <button
-                      onClick={() => handleDelete(product)}
+                      onClick={() => handleDeleteClick(product)}
                       className="rounded-full bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-100"
                     >
                       ลบ
@@ -103,6 +123,13 @@ const AdminProductTable = ({ products, onDeleted }) => {
           )}
         </tbody>
       </table>
+
+      <DeleteConfirmationModal
+        isOpen={deleteModal.isOpen}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        product={deleteModal.product}
+      />
     </div>
   )
 }
