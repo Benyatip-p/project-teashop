@@ -393,7 +393,7 @@ const Cartpage = () => {
 
               <button
                 type="button"
-                className={`w-full rounded-xl py-3 text-sm font-semibold text.white transition-colors ${
+                className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-colors ${
                   selectedItems.length === 0
                     ? 'cursor-not-allowed bg-gray-300'
                     : 'bg-[#0b2f27] hover:bg-[#13493d]'

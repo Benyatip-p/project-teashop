@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { SearchIcon } from '@heroicons/react/outline';
-import api from '../api/api';
+import { useNavigate } from 'react-router-dom'; 
+import api from './../api/api';
 
-import PurchaseTabs from '../components/AdminPurchasetab';
-import AdminOrderCard from '../components/AdminOrderCard';
-import AdminLayout from '../components/AdminLayout';
+import PurchaseTabs from './../components/AdminPurchasetab';
+import AdminOrderCard from './../components/AdminOrderCard';
+import AdminLayout from './../components/AdminLayout';
 
 const AdminOrderpage = () => {
   const [activeTab, setActiveTab] = useState("All");
@@ -12,14 +13,23 @@ const AdminOrderpage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-
-     // ฟังก์ชันดึงข้อมูลจาก API
+  
+  const navigate = useNavigate();
+  // ฟังก์ชันดึงข้อมูลจาก API
   const fetchOrders = async () => {
     try {
       setLoading(true);
       setError(null);
 
+      // 2. ตรวจสอบว่ามีสิทธิ์เข้าถึงหรือไม่ (Security Check)
+      // เช็คทั้ง Local และ Session Storage
+      const token = localStorage.getItem('access_token') || sessionStorage.getItem('access_token');
       
+      if (!token) {
+         navigate('/login');
+         return;
+      }
+
       const response = await api.get('/orders'); 
 
       const orderList = response.data?.orders || [];
@@ -27,6 +37,10 @@ const AdminOrderpage = () => {
       
     } catch (err) {
       console.error("Error fetching orders:", err);
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+          navigate('/login');
+          return;
+      }
       setError("ไม่สามารถโหลดข้อมูลคำสั่งซื้อได้ กรุณาลองใหม่อีกครั้ง");
     } finally {
       setLoading(false);
@@ -63,14 +77,16 @@ const AdminOrderpage = () => {
     // กรองชั้นที่ 2: ตรวจสอบคำค้นหา
     const term = searchTerm.toLowerCase().trim();
     
-    // Admin อาจต้องการค้นหาเพิ่ม เช่น ชื่อลูกค้า (customer_name) ถ้า API ส่งมาให้
     const matchesSearch = term === "" || (
       // 1. Order ID
       order.id.toString().includes(term) ||
       // 2. ชื่อสินค้า
       (order.items && order.items.some(item => 
         item.product_name && item.product_name.toLowerCase().includes(term)
-      )) 
+      )) ||
+      // 3. (เพิ่มเติม) ชื่อลูกค้า - ถ้า API ส่งมา เช่น order.customer_name หรือ order.user.username
+      (order.customer_name && order.customer_name.toLowerCase().includes(term)) ||
+      (order.shipping_name && order.shipping_name.toLowerCase().includes(term))
     );
 
     return matchesTab && matchesSearch;
@@ -89,7 +105,7 @@ const AdminOrderpage = () => {
           <SearchIcon className="h-5 w-5 text-gray-400 ml-2" />
           <input
             type="text"
-            placeholder="ค้นหา: เลขคำสั่งซื้อ, ชื่อสินค้า"
+            placeholder="ค้นหา: เลขคำสั่งซื้อ, ชื่อสินค้า, ชื่อลูกค้า"
             className="w-full bg-transparent p-2 text-sm outline-none text-gray-700 placeholder-gray-400"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
