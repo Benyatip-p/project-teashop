@@ -247,7 +247,7 @@ const DashboardContent = ({
                 !salesError &&
                 overviewChartData.length > 0 &&
                 (isUsingHistoryData || salesChartData.length > 0) && (
-                  <ResponsiveContainer width="100%" aspect={2.5}>
+                  <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={overviewChartData}
                       margin={{ top: 8, right: 16, left: -20, bottom: 4 }}

@@ -794,21 +794,36 @@ func CreateOrder(userID int, req models.CreateOrderRequest) (*models.Order, erro
 	// Calculate total amount and validate stock
 	var totalAmount float64
 	for _, item := range req.Items {
-		// Get variant price and stock (use FOR UPDATE to prevent race conditions)
+		var variantID int
 		var price float64
 		var stock int
-		query := `SELECT price, stock FROM product_variants WHERE id = $1 AND is_active = true FOR UPDATE`
-		err = tx.QueryRow(query, item.VariantID).Scan(&price, &stock)
-		if err != nil {
-			return nil, fmt.Errorf("variant not found: %d", item.VariantID)
+
+		// If variant_id is 0 or not provided, find the first available variant for the product
+		if item.VariantID == 0 {
+			query := `SELECT id, price, stock FROM product_variants WHERE product_id = $1 AND is_active = true ORDER BY id ASC LIMIT 1 FOR UPDATE`
+			err = tx.QueryRow(query, item.ProductID).Scan(&variantID, &price, &stock)
+			if err != nil {
+				return nil, fmt.Errorf("no active variant found for product %d", item.ProductID)
+			}
+		} else {
+			// Get variant price and stock (use FOR UPDATE to prevent race conditions)
+			query := `SELECT price, stock FROM product_variants WHERE id = $1 AND is_active = true FOR UPDATE`
+			err = tx.QueryRow(query, item.VariantID).Scan(&price, &stock)
+			if err != nil {
+				return nil, fmt.Errorf("variant not found: %d", item.VariantID)
+			}
+			variantID = item.VariantID
 		}
 
 		// Check stock
 		if item.Quantity > stock {
-			return nil, fmt.Errorf("insufficient stock for variant %d (requested: %d, available: %d)", item.VariantID, item.Quantity, stock)
+			return nil, fmt.Errorf("insufficient stock for variant %d (requested: %d, available: %d)", variantID, item.Quantity, stock)
 		}
 
 		totalAmount += price * float64(item.Quantity)
+
+		// Update the item.VariantID for use in order item creation
+		item.VariantID = variantID
 	}
 
 	// Create order
