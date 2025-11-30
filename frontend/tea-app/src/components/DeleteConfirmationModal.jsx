@@ -3,6 +3,21 @@ import React from "react"
 const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, product }) => {
     if (!isOpen || !product) return null
 
+    const resolveImageSrc = img => {
+        if (!img) return "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
+        if (/^https?:\/\//.test(img)) return img
+
+        // Handle relative paths
+        const filename = img.split("/").pop()
+        if (!filename || filename === '') {
+            return "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
+        }
+
+        // Construct absolute URL to current host to avoid port mismatches
+        const baseUrl = window.location.origin
+        return `${baseUrl}/images/products/${filename}`
+    }
+
     const handleBackdropClick = e => {
         if (e.target === e.currentTarget) {
             onClose()
@@ -44,7 +59,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, product }) => {
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 overflow-hidden rounded-lg bg-slate-200">
                                 <img
-                                    src={product.coverImage || "/images/placeholder.jpg"}
+                                    src={resolveImageSrc(product.coverImage)}
                                     alt={product.title}
                                     className="h-full w-full object-cover"
                                 />
