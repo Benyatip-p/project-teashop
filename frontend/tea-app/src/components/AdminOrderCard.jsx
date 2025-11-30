@@ -7,30 +7,7 @@ import {
 const AdminOrderCard = ({ order, onUpdateStatus }) => {
 
   const { items } = order;
-
-  const resolveImageSrc = img => {
-    if (!img) return "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
-    if (/^https?:\/\//.test(img)) return img
-
-    // Handle relative paths
-    const filename = img.split("/").pop()
-    if (!filename || filename === '') {
-      return "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
-    }
-
-    // Construct absolute URL to current host to avoid port mismatches
-    const baseUrl = window.location.origin
-    return `${baseUrl}/images/products/${filename}`
-  }
-
-  // Debug: Check what fields are available
-  const getImageUrl = (item) => {
-    return item.image_url || item.ImageURL || item.product_image_url || null
-  }
-
-  const getProductName = (item) => {
-    return item.product_name || item.ProductName || item.name || 'Unknown Product'
-  }
+  const API_BASE_URL = "http://localhost:3001"; 
 
   const getStatusText = (status) => {
     switch (status) {
