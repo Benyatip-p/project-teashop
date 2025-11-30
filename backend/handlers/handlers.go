@@ -6,12 +6,89 @@ import (
 	"backend/models"
 	"database/sql"
 	"fmt"
+	"io"
 	"log"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+// UploadImageHandler godoc
+// @Summary Upload image file
+// @Description Upload an image file and return the URL
+// @Tags upload
+// @Accept multipart/form-data
+// @Produce json
+// @Param file formData file true "Image file to upload"
+// @Success 200 {object} object
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /upload [post]
+func UploadImageHandler(c *gin.Context) {
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(400, gin.H{"error": "No file uploaded"})
+		return
+	}
+	defer file.Close()
+
+	// Validate file type
+	allowedTypes := map[string]bool{
+		"image/jpeg": true,
+		"image/jpg":  true,
+		"image/png":  true,
+		"image/gif":  true,
+		"image/webp": true,
+	}
+
+	if !allowedTypes[header.Header.Get("Content-Type")] {
+		c.JSON(400, gin.H{"error": "Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed"})
+		return
+	}
+
+	// Validate file size (max 5MB)
+	maxSize := int64(5 * 1024 * 1024) // 5MB
+	if header.Size > maxSize {
+		c.JSON(400, gin.H{"error": "File too large. Maximum size is 5MB"})
+		return
+	}
+
+	// Create uploads directory if it doesn't exist
+	uploadDir := "./uploads"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		log.Printf("Error creating upload directory: %v", err)
+		c.JSON(500, gin.H{"error": "Failed to create upload directory"})
+		return
+	}
+
+	// Generate unique filename
+	ext := filepath.Ext(header.Filename)
+	filename := fmt.Sprintf("%d_%s%s", time.Now().UnixNano(), "image", ext)
+	filepath := filepath.Join(uploadDir, filename)
+
+	// Save file
+	out, err := os.Create(filepath)
+	if err != nil {
+		log.Printf("Error creating file: %v", err)
+		c.JSON(500, gin.H{"error": "Failed to save file"})
+		return
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, file)
+	if err != nil {
+		log.Printf("Error copying file: %v", err)
+		c.JSON(500, gin.H{"error": "Failed to save file"})
+		return
+	}
+
+	// Return the URL (relative path that can be served by frontend)
+	url := fmt.Sprintf("/uploads/%s", filename)
+	c.JSON(200, gin.H{"url": url, "image_url": url})
+}
 
 // GetMyProfileHandler godoc
 // @Summary Get current user profile

@@ -58,7 +58,7 @@ const EditTeaPage = () => {
         const productName = product.name || product.title || ""
         console.log('Setting product name:', productName, 'from product:', product)
         setName(productName)
-        setCategoryId(product.category_id ? String(product.category_id) : "")
+        setCategoryId((product.category_id || product.categoryId) ? String(product.category_id || product.categoryId) : "")
 
         const imgUrl = product.image_url || product.coverImage || ""
         console.log('Setting imageUrl:', imgUrl, 'from product:', product)

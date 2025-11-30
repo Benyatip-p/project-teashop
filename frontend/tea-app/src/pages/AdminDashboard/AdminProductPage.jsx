@@ -6,18 +6,21 @@ import AdminLayout from "../../components/AdminLayout"
 import AdminProductTable from "./AdminProductTable"
 
 const CATEGORY_ID_TO_NAME = {
+  1: "ชาใบ",
+  2: "อุปกรณ์ชงชา",
+  3: "กาชงชา",
   4: "ชาเขียว",
   5: "ชาอู่หลง",
   6: "ชาดำ",
-  3: "กาชงชา",
+  7: "ชาขาว",
   8: "ที่กรองชา",
   9: "ถ้วยชา",
 }
 
 const categories = {
-  ชา: ["ชาเขียว", "ชาขาว", "ชาอู่หลง", "ชาดำ"],
+  ชาใบ: ["ชาเขียว", "ชาขาว", "ชาอู่หลง", "ชาดำ"],
   กาชงชา: [],
-  อุปกรณ์ชา: ["ที่กรองชา", "ถ้วยชา"],
+  อุปกรณ์ชงชา: ["ที่กรองชา", "ถ้วยชา"],
 }
 
 
@@ -50,7 +53,10 @@ const AdminProductpage = () => {
 
         const normalized = productsArray.map(p => {
           const categoryName =
-            CATEGORY_ID_TO_NAME[p.category_id] || p.category_name || "Uncategorized"
+            CATEGORY_ID_TO_NAME[p.category_id] ||
+            CATEGORY_ID_TO_NAME[p.categoryId] ||
+            p.category_name ||
+            "Uncategorized"
           const coverImage =
             p.image_url ||
             p.coverImage ||

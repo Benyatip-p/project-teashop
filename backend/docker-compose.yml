@@ -41,6 +41,8 @@ services:
         condition: service_healthy
     networks:
       - teashop-network
+    volumes:
+      - uploads_data:/root/uploads
     restart: unless-stopped
 
   # PgAdmin (Optional - for database management)
@@ -62,6 +64,7 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+  uploads_data:
 
 networks:
   teashop-network:

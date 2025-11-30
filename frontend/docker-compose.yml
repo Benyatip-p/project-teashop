@@ -60,8 +60,25 @@ services:
       retries: 3
       start_period: 40s
 
+  # PgAdmin (Optional - for database management)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: teashop-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@teashop.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - teashop-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
 volumes:
-  postgres_data:
+ postgres_data:
+ pgadmin_data:
 
 networks:
   teashop-network:

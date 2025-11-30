@@ -33,6 +33,9 @@ func main() {
 	r := gin.Default()
 	r.Use(cors.Default())
 
+	// Serve static files from uploads directory
+	r.Static("/uploads", "./uploads")
+
 	// ===================== Public Endpoints =====================
 	// Health check
 	r.GET("/health", func(c *gin.Context){
@@ -60,6 +63,7 @@ func main() {
 	api := r.Group("/api/v1")
 	{
 		// Public endpoints
+		api.POST("/upload", handlers.UploadImageHandler)
 		api.GET("/products", handlers.GetProductsHandler)
 		api.GET("/products/:id/reviews", handlers.GetProductReviewsHandler)
 		api.GET("/products/:id", handlers.GetProductByIDHandler)

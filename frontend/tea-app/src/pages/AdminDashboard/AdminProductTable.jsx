@@ -4,10 +4,13 @@ import api from "../../api/api"
 import DeleteConfirmationModal from "../../components/DeleteConfirmationModal"
 
 const CATEGORY_ID_TO_NAME = {
+  1: "ชาใบ",
+  2: "อุปกรณ์ชงชา",
+  3: "กาชงชา",
   4: "ชาเขียว",
   5: "ชาอู่หลง",
   6: "ชาดำ",
-  3: "กาชงชา",
+  7: "ชาขาว",
   8: "ที่กรองชา",
   9: "ถ้วยชา",
 }
