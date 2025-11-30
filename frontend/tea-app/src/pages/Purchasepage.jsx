@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SearchIcon } from '@heroicons/react/outline';
+import { useNavigate } from 'react-router-dom'; // เพิ่ม useNavigate
 import api from '../api/api';
 
 import PurchaseTabs from '../components/Purchasetab';
@@ -10,9 +11,9 @@ const Purchasepage = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-
   const [searchTerm, setSearchTerm] = useState("");
+  
+  const navigate = useNavigate(); // Hook สำหรับเปลี่ยนหน้า
 
   // ฟังก์ชันดึงข้อมูลจาก API
   const fetchOrders = async () => {
@@ -20,11 +21,16 @@ const Purchasepage = () => {
       setLoading(true);
       setError(null);
 
-      const storedUser = JSON.parse(localStorage.getItem('user'));
+      // --- [ส่วนที่แก้ไข: ตรวจสอบทั้ง LocalStorage และ SessionStorage] ---
+      const storedUser = JSON.parse(localStorage.getItem('user')) || 
+                         JSON.parse(sessionStorage.getItem('user'));
+                         
       const userId = storedUser?.id;
 
       if (!userId) {
          setLoading(false);
+         // ถ้าไม่มี User ให้ Redirect ไปหน้า Login
+         navigate('/login');
          return;
       }
 
@@ -67,7 +73,7 @@ const Purchasepage = () => {
     }
   };
 
-  // 2. ปรับปรุง Logic การกรองข้อมูล (Filter)
+  // Logic การกรองข้อมูล (Filter)
   const filteredOrders = orders.filter((order) => {
     // กรองชั้นที่ 1: ตรวจสอบสถานะตาม Tab
     const matchesTab = checkStatus(order.status, activeTab);
@@ -101,7 +107,7 @@ const Purchasepage = () => {
           placeholder="คุณสามารถค้นหาโดยใช้ หมายเลขคำสั่งซื้อ หรือชื่อสินค้า"
           className="w-full bg-transparent p-2 text-sm outline-none text-gray-700 placeholder-gray-400"
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)} // 3. ผูก Input กับ State
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
         {/* ปุ่มล้างคำค้นหา */}
         {searchTerm && (
