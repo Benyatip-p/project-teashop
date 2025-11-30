@@ -17,15 +17,14 @@ import Favoritepage from "./pages/Favoritepage";
 import Cartpage from "./pages/Cartpage";
 
 import SidebarProfile from "./components/SidebarProfile";
-import Purchasepage from "./pages/Purchasepage";
 import Profilepage from "./pages/Profilepage";
-import Profilepaypage from "./pages/Profilepaypage";
 import Addresspage from "./pages/Addresspage";
 
 import ProductDetailpage from "./pages/ProductDetailpage";
 
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/Registerpage";
+import Paymentpage from "./pages/Paymentpage";
 
 import DeleteTeaPage from "./pages/DeleteTeaPage";
 import EditTeaPage from "./pages/EditTeaPage/EditTeaPage";
@@ -33,9 +32,10 @@ import AdminDashboardPage from "./pages/AdminDashboard/AdminDashboard";
 import AdminOrderpage from "./pages/AdminOrderpage";
 import AdminProductPage from "./pages/AdminDashboard/AdminProductPage";
 import CategoryProductspage from "./pages/CategoryProductspage";
+import Purchasepage from "./pages/Purchasepage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 
-import CreateTeaPage from "./pages/EditTeaPage/CreateTeaPage"; 
+import CreateTeaPage from "./pages/EditTeaPage/CreateTeaPage";
 
 
 const PublicLayout = ({ children }) => (
@@ -140,22 +140,22 @@ function App() {
 
           {/* USER PROFILE */}
           <Route
+            path="/payment"
+            element={
+              <ProtectedRoute>
+                <PublicLayout>
+                  <Paymentpage />
+                </PublicLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
             path="/user/account/profile"
             element={
               <ProtectedRoute>
                 <AccountLayout>
                   <Profilepage />
-                </AccountLayout>
-              </ProtectedRoute>
-            }
-          />
-
-           <Route
-            path="/user/account/payment"
-            element={
-              <ProtectedRoute>
-                <AccountLayout>
-                  <Profilepaypage />
                 </AccountLayout>
               </ProtectedRoute>
             }

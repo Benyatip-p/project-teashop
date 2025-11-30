@@ -44,24 +44,20 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Get the previous page from location state, or use referrer
   const from = location.state?.from?.pathname || location.state?.redirectTo || null;
   const redirectState = location.state?.checkoutData || null;
 
   const redirectByRoleId = useCallback(
     (roleId) => {
       if (roleId === 1) {
-        // Store manager (admin) - always redirect to store manager dashboard
         navigate("/Admin/dashboard", { replace: true });
       } else if (roleId === 2) {
-        // Regular user - redirect to previous page or home
         if (from) {
           navigate(from, { replace: true, state: redirectState });
         } else {
           navigate("/", { replace: true });
         }
       } else {
-        // Fallback to home
         navigate("/", { replace: true });
       }
     },
@@ -69,15 +65,15 @@ const LoginPage = () => {
   );
 
   useEffect(() => {
-    // Check both localStorage and sessionStorage for existing token
     const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
     if (!token) return;
 
     const roleId = getRoleIdFromToken(token);
     if (!roleId) {
-      // Clear from both storages if token is invalid
       localStorage.removeItem("access_token");
+      localStorage.removeItem("user"); // Clear user data too
       sessionStorage.removeItem("access_token");
+      sessionStorage.removeItem("user"); // Clear user data too
       return;
     }
 
@@ -90,6 +86,7 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      // ตรวจสอบ URL API ให้ถูกต้อง (ถ้าใช้ Docker อาจต้องเปลี่ยน localhost เป็น IP หรือ Proxy)
       const res = await axios.post("http://localhost:8080/auth/login", {
         username,
         password,
@@ -97,22 +94,41 @@ const LoginPage = () => {
 
       const token = res.data.access_token;
       
-      // Store token based on "Remember Me" preference
+      // --- [ส่วนที่แก้ไข: ถอดรหัส Token เพื่อเอา User ID] ---
+      const decoded = jwtDecode(token);
+      
+      // สร้าง Object User เพื่อบันทึก (ใช้ sub, id, หรือ user_id แล้วแต่ Backend ส่งมา)
+      const userData = {
+          id: decoded.sub || decoded.id || decoded.user_id,
+          username: decoded.username || username,
+          role: decoded.roles ? decoded.roles[0] : 'user'
+      };
+
+      // Store token AND user data based on "Remember Me"
       if (rememberMe) {
+        // Save to LocalStorage
         localStorage.setItem("access_token", token);
-        // Clear sessionStorage if it exists from a previous session
+        localStorage.setItem("user", JSON.stringify(userData)); // บันทึกข้อมูล User
+        
+        // Clear SessionStorage
         sessionStorage.removeItem("access_token");
+        sessionStorage.removeItem("user");
       } else {
+        // Save to SessionStorage
         sessionStorage.setItem("access_token", token);
-        // Clear localStorage if it exists from a previous session
+        sessionStorage.setItem("user", JSON.stringify(userData)); // บันทึกข้อมูล User
+        
+        // Clear LocalStorage
         localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
       }
 
       const roleId = getRoleIdFromToken(token);
       if (!roleId) {
-        // Clear from both storages if token is invalid
         localStorage.removeItem("access_token");
+        localStorage.removeItem("user");
         sessionStorage.removeItem("access_token");
+        sessionStorage.removeItem("user");
         setError("ไม่สามารถยืนยันตัวตนได้ กรุณาลองใหม่อีกครั้ง");
         return;
       }
@@ -132,21 +148,15 @@ const LoginPage = () => {
   return (
     <div className="flex items-center justify-center py-12 px-4">
       <div className="grid w-full max-w-3xl overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-lg md:grid-cols-2">
+        {/* Left Side (Banner) */}
         <div className="hidden flex-col justify-between bg-viridian-900 p-8 text-emerald-50 md:flex">
           <div>
             <Link to="/" className="inline-flex items-center gap-3">
-              <img
-                src="/images/logo.svg"
-                alt="GOODTEA"
-                className="h-9 w-9 rounded-full bg-emerald-50 p-1"
-              />
-              <span className="text-lg font-semibold tracking-wide">
-                GOODTEA
-              </span>
+              <img src="/images/logo.svg" alt="GOODTEA" className="h-9 w-9 rounded-full bg-emerald-50 p-1" />
+              <span className="text-lg font-semibold tracking-wide">GOODTEA</span>
             </Link>
             <p className="mt-6 text-sm leading-relaxed text-emerald-100/90">
-              เข้าสู่ระบบเพื่อจัดการคำสั่งซื้อของคุณ ดูประวัติการสั่งซื้อ
-              และเก็บรายการโปรดของคุณไว้ในที่เดียว
+              เข้าสู่ระบบเพื่อจัดการคำสั่งซื้อของคุณ ดูประวัติการสั่งซื้อ และเก็บรายการโปรดของคุณไว้ในที่เดียว
             </p>
           </div>
           <p className="mt-8 text-[11px] text-emerald-100/70">
@@ -154,27 +164,19 @@ const LoginPage = () => {
           </p>
         </div>
 
+        {/* Right Side (Form) */}
         <div className="p-8 md:p-10">
           <div className="mb-6 md:mb-8 md:hidden">
             <Link to="/" className="flex items-center gap-3">
-              <img
-                src="/images/logo.svg"
-                alt="GOODTEA"
-                className="h-9 w-9 rounded-full bg-viridian-900/5 p-1"
-              />
-              <span className="text-lg font-semibold text-viridian-900">
-                GOODTEA
-              </span>
+              <img src="/images/logo.svg" alt="GOODTEA" className="h-9 w-9 rounded-full bg-viridian-900/5 p-1" />
+              <span className="text-lg font-semibold text-viridian-900">GOODTEA</span>
             </Link>
           </div>
 
           <div className="mb-6 md:mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 md:text-3xl">
-              เข้าสู่ระบบ
-            </h1>
+            <h1 className="text-2xl font-semibold text-gray-900 md:text-3xl">เข้าสู่ระบบ</h1>
             <p className="mt-2 text-sm text-gray-500">
-              ล็อกอินด้วยบัญชีของคุณเพื่อดำเนินการสั่งซื้อ
-              และจัดการข้อมูลส่วนตัวได้อย่างสะดวก
+              ล็อกอินด้วยบัญชีของคุณเพื่อดำเนินการสั่งซื้อ และจัดการข้อมูลส่วนตัวได้อย่างสะดวก
             </p>
           </div>
 
@@ -186,12 +188,7 @@ const LoginPage = () => {
             )}
 
             <div>
-              <label
-                htmlFor="username"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                ชื่อผู้ใช้
-              </label>
+              <label htmlFor="username" className="mb-1 block text-sm font-medium text-gray-700">ชื่อผู้ใช้</label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <UserIcon className="h-5 w-5 text-viridian-800" />
@@ -211,12 +208,7 @@ const LoginPage = () => {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="mb-1 block text-sm font-medium text-gray-700"
-              >
-                รหัสผ่าน
-              </label>
+              <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700">รหัสผ่าน</label>
               <div className="relative">
                 <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <LockClosedIcon className="h-5 w-5 text-viridian-800" />
@@ -237,11 +229,7 @@ const LoginPage = () => {
                   onClick={() => setShowPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3"
                 >
-                  {showPassword ? (
-                    <EyeOffIcon className="h-5 w-5 text-viridian-800" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5 text-viridian-800" />
-                  )}
+                  {showPassword ? <EyeOffIcon className="h-5 w-5 text-viridian-800" /> : <EyeIcon className="h-5 w-5 text-viridian-800" />}
                 </button>
               </div>
             </div>
@@ -256,10 +244,7 @@ const LoginPage = () => {
                 />
                 <span>จดจำการเข้าสู่ระบบบนอุปกรณ์นี้</span>
               </label>
-              <Link
-                to="/forgot-password"
-                className="text-viridian-800 hover:text-viridian-900 hover:underline"
-              >
+              <Link to="/forgot-password" className="text-viridian-800 hover:text-viridian-900 hover:underline">
                 ลืมรหัสผ่าน?
               </Link>
             </div>
@@ -268,9 +253,7 @@ const LoginPage = () => {
               type="submit"
               disabled={loading}
               className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-colors md:text-base ${
-                loading
-                  ? "cursor-not-allowed bg-viridian-300"
-                  : "bg-viridian-900 hover:bg-viridian-800"
+                loading ? "cursor-not-allowed bg-viridian-300" : "bg-viridian-900 hover:bg-viridian-800"
               }`}
             >
               {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
@@ -279,19 +262,13 @@ const LoginPage = () => {
 
           <div className="mt-6 text-center text-sm text-gray-600">
             <span>ยังไม่มีบัญชี? </span>
-            <Link
-              to="/register"
-              className="font-semibold text-viridian-800 hover:underline"
-            >
+            <Link to="/register" className="font-semibold text-viridian-800 hover:underline">
               สมัครสมาชิกใหม่
             </Link>
           </div>
 
           <div className="mt-4 text-center">
-            <Link
-              to="/"
-              className="text-xs text-gray-400 hover:text-gray-600 hover:underline"
-            >
+            <Link to="/" className="text-xs text-gray-400 hover:text-gray-600 hover:underline">
               ← กลับไปหน้าแรก
             </Link>
           </div>

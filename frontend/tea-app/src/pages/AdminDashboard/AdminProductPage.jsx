@@ -29,7 +29,17 @@ const AdminProductpage = () => {
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [loading, setLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(1)
+  //const [openSort, setOpenSort] = useState(false)
 
+  //const sortRef = useRef(null)
+
+  // useEffect(() => {
+  //   const handler = e => {
+  //     if (sortRef.current && !sortRef.current.contains(e.target)) setOpenSort(false)
+  //   }
+  //   document.addEventListener("mousedown", handler)
+  //   return () => document.removeEventListener("mousedown", handler)
+  // }, [])
 
   useEffect(() => {
     const fetchProducts = async () => {
