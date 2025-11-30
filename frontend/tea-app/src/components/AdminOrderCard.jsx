@@ -7,7 +7,24 @@ import {
 const AdminOrderCard = ({ order, onUpdateStatus }) => {
 
   const { items } = order;
-  const API_BASE_URL = "http://localhost:3001"; 
+
+  const resolveImageSrc = img => {
+    if (!img) return "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
+    if (/^https?:\/\//.test(img)) return img
+
+    // Handle relative paths
+    const filename = img.split("/").pop()
+    if (!filename || filename === '') {
+      return "https://shop.chaipoint.com/cdn/shop/files/TeaBagsListingImages-25.jpg?v=1694165024"
+    }
+
+    // Construct absolute URL to current host to avoid port mismatches
+    const baseUrl = window.location.origin
+    return `${baseUrl}/images/products/${filename}`
+  }
+
+  const getImageUrl = (item) => item.image_url || item.coverImage
+  const getProductName = (item) => item.product_name || item.title || 'สินค้า'
 
   const getStatusText = (status) => {
     switch (status) {

@@ -380,7 +380,8 @@ const Paymentpage = () => {
         postal_code: shipping.zipcode,
         total_amount: cartTotal,
         items: selectedItems.map((item) => ({
-          product_id: item.id,
+          product_id: item.productId,
+          variant_id: item.variantId || 1, // Default to variant 1 if no variant selected
           quantity: item.qty || 1,
           price: item.price,
         })),
@@ -458,7 +459,7 @@ const Paymentpage = () => {
     setCardError("");
   };
 
-  const handleCardFocus = () => {};
+  const handleCardFocus = () => { };
 
   const handleExpiryChange = (e) => {
     let value = e.target.value.replace(/\D/g, "");
@@ -503,9 +504,8 @@ const Paymentpage = () => {
                     name="name"
                     value={shipping.name}
                     onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 ${
-                      errors.name ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`w-full border rounded px-3 py-2 ${errors.name ? "border-red-500" : "border-gray-300"
+                      }`}
                   />
                   {errors.name && (
                     <p className="mt-1 text-xs text-red-500">
@@ -525,9 +525,8 @@ const Paymentpage = () => {
                     value={shipping.phone}
                     onChange={handleChange}
                     onBlur={(e) => validatePhone(e.target.value)}
-                    className={`w-full border rounded px-3 py-2 ${
-                      errors.phone ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`w-full border rounded px-3 py-2 ${errors.phone ? "border-red-500" : "border-gray-300"
+                      }`}
                   />
                   {errors.phone && (
                     <p className="mt-1 text-xs text-red-500">
@@ -545,9 +544,8 @@ const Paymentpage = () => {
                     name="address"
                     value={shipping.address}
                     onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 h-20 ${
-                      errors.address ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`w-full border rounded px-3 py-2 h-20 ${errors.address ? "border-red-500" : "border-gray-300"
+                      }`}
                     placeholder="บ้านเลขที่, หมู่บ้าน, ซอย, ถนน (ไม่ต้องใส่แขวง/เขต/จังหวัด/รหัสไปรษณีย์)"
                   />
                   {errors.address && (
@@ -580,8 +578,8 @@ const Paymentpage = () => {
                         borderColor: errors.province
                           ? "#ef4444"
                           : state.isFocused
-                          ? "#6366f1"
-                          : "#d1d5db",
+                            ? "#6366f1"
+                            : "#d1d5db",
                         boxShadow: state.isFocused
                           ? "0 0 0 1px #6366f1"
                           : "none",
@@ -615,11 +613,10 @@ const Paymentpage = () => {
                     name="subDistrict"
                     value={shipping.subDistrict}
                     onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 ${
-                      errors.subDistrict
+                    className={`w-full border rounded px-3 py-2 ${errors.subDistrict
                         ? "border-red-500"
                         : "border-gray-300"
-                    }`}
+                      }`}
                     placeholder="ระบุแขวง/ตำบล"
                   />
                   {errors.subDistrict && (
@@ -639,11 +636,10 @@ const Paymentpage = () => {
                     name="district"
                     value={shipping.district}
                     onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 ${
-                      errors.district
+                    className={`w-full border rounded px-3 py-2 ${errors.district
                         ? "border-red-500"
                         : "border-gray-300"
-                    }`}
+                      }`}
                     placeholder="ระบุเขต/อำเภอ"
                   />
                   {errors.district && (
@@ -663,9 +659,8 @@ const Paymentpage = () => {
                     name="zipcode"
                     value={shipping.zipcode}
                     onChange={handleChange}
-                    className={`w-full border rounded px-3 py-2 ${
-                      errors.zipcode ? "border-red-500" : "border-gray-300"
-                    }`}
+                    className={`w-full border rounded px-3 py-2 ${errors.zipcode ? "border-red-500" : "border-gray-300"
+                      }`}
                     placeholder="10110"
                   />
                   {errors.zipcode && (
@@ -721,11 +716,10 @@ const Paymentpage = () => {
                         onChange={handleCardNumberChange}
                         onBlur={validateCardNumber}
                         onFocus={handleCardFocus}
-                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
-                          cardError
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${cardError
                             ? "border-red-500 focus:ring-red-400"
                             : "focus:ring-green-500"
-                        }`}
+                          }`}
                         placeholder="4xxx xxxx xxxx xxxx หรือ 5xxx xxxxx x"
                         disabled={isProcessing}
                       />
@@ -745,11 +739,10 @@ const Paymentpage = () => {
                         onChange={handleExpiryChange}
                         onBlur={validateExpiry}
                         autoComplete="off"
-                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
-                          errors.cardExpiry
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${errors.cardExpiry
                             ? "border-red-500 focus:ring-red-400"
                             : "focus:ring-green-500"
-                        }`}
+                          }`}
                         placeholder="MM / YY"
                         disabled={isProcessing}
                       />
@@ -768,11 +761,10 @@ const Paymentpage = () => {
                         onChange={handleCvvChange}
                         onBlur={validateCvv}
                         autoComplete="off"
-                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${
-                          errors.cardCvv
+                        className={`w-full border rounded-md px-3 py-2 focus:outline-none focus:ring-2 ${errors.cardCvv
                             ? "border-red-500 focus:ring-red-400"
                             : "focus:ring-green-500"
-                        }`}
+                          }`}
                         placeholder="XXX"
                         disabled={isProcessing}
                       />
@@ -913,11 +905,10 @@ const Paymentpage = () => {
 
             <button
               type="submit"
-              className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-colors ${
-                triedSubmit && !paymentMethod
+              className={`w-full rounded-xl py-3 text-sm font-semibold text-white transition-colors ${triedSubmit && !paymentMethod
                   ? 'cursor-not-allowed bg-gray-300'
                   : 'bg-[#0b2f27] hover:bg-[#13493d]'
-              } ${isProcessing ? "opacity-70 cursor-wait" : ""}`}
+                } ${isProcessing ? "opacity-70 cursor-wait" : ""}`}
               disabled={(triedSubmit && !paymentMethod) || isProcessing}
             >
               {isProcessing ? "กำลังดำเนินการ..." : "ยืนยันการสั่งซื้อ"}
