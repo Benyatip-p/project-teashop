@@ -7,7 +7,7 @@ import {
 const AdminOrderCard = ({ order, onUpdateStatus }) => {
 
   const { items } = order;
-  const API_BASE_URL = "http://localhost:3000"; 
+  const API_BASE_URL = "http://localhost:3001"; 
 
   const getStatusText = (status) => {
     switch (status) {
