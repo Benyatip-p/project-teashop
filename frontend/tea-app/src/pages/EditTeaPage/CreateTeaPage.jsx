@@ -358,102 +358,102 @@ const CreateTeaPage = () => {
           </div>
 
           <div className="rounded-2xl border bg-emerald-50/60 p-6 shadow-sm h-fit">
-  <h2 className="text-sm font-semibold text-emerald-800">ตัวอย่างดูรูปสินค้า</h2>
-  <p className="mt-1 text-xs text-emerald-700/80">
-    ระบบจะแสดงตัวอย่างจากรูปที่อัปโหลดแบบเรียลไทม์
-  </p>
+            <h2 className="text-sm font-semibold text-emerald-800">ตัวอย่างดูรูปสินค้า</h2>
+            <p className="mt-1 text-xs text-emerald-700/80">
+              ระบบจะแสดงตัวอย่างจากรูปที่อัปโหลดแบบเรียลไทม์
+            </p>
 
-  {/* Layout Wrapper: ใช้ items-start เพื่อให้เริ่มจากบนสุดเสมอ */}
-  <div className="mt-6 flex items-start justify-center">
-    <div className="flex w-full max-w-xs flex-col gap-4">
-      
-      {/* ส่วนที่ 1: รูปภาพตัวอย่าง */}
-      <div className="flex flex-col items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
-        <div className="h-48 w-full overflow-hidden rounded-xl bg-emerald-50">
-          {previewSrc ? (
-            <img
-              src={previewSrc}
-              alt={name}
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-xs text-slate-400">
-              ไม่มีตัวอย่างรูปภาพ
-            </div>
-          )}
-        </div>
-        <div className="w-full space-y-1 text-center">
-          <div className="text-sm font-semibold text-slate-900">
-            {name || "ชื่อสินค้า"}
-          </div>
-          <div className="text-xs text-slate-500">
-            {selectedCategoryName || "หมวดหมู่"}
-          </div>
-          <div className="text-sm font-semibold text-emerald-700">
-            ฿{previewPrice}
-          </div>
-        </div>
-      </div>
+            {/* Layout Wrapper: ใช้ items-start เพื่อให้เริ่มจากบนสุดเสมอ */}
+            <div className="mt-6 flex items-start justify-center">
+              <div className="flex w-full max-w-xs flex-col gap-4">
 
-      {/* ส่วนที่ 2: ข้อมูลตัวเลือกสินค้า */}
-      <div className="rounded-2xl bg-slate-50 p-4 shadow-sm">
-        <h3 className="mb-3 text-xs font-semibold text-slate-700">
-          ตัวเลือกสินค้า
-        </h3>
-        
-        {/* Scroll Area: กำหนดความสูงสูงสุดไว้ที่ 180px ถ้าเกินจะ Scroll */}
-        <div className="max-h-[180px] space-y-2 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-emerald-200 scrollbar-track-transparent">
-          {variants.map((variant, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between text-xs"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-slate-500">
-                  {variant.weight ? `${variant.weight}g` : "ไม่ระบุน้ำหนัก"}
-                </span>
+                {/* ส่วนที่ 1: รูปภาพตัวอย่าง */}
+                <div className="flex flex-col items-center gap-4 rounded-2xl bg-white p-4 shadow-sm">
+                  <div className="h-48 w-full overflow-hidden rounded-xl bg-emerald-50">
+                    {previewSrc ? (
+                      <img
+                        src={previewSrc}
+                        alt={name}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                        ไม่มีตัวอย่างรูปภาพ
+                      </div>
+                    )}
+                  </div>
+                  <div className="w-full space-y-1 text-center">
+                    <div className="text-sm font-semibold text-slate-900">
+                      {name || "ชื่อสินค้า"}
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {selectedCategoryName || "หมวดหมู่"}
+                    </div>
+                    <div className="text-sm font-semibold text-emerald-700">
+                      ฿{previewPrice}
+                    </div>
+                  </div>
+                </div>
+
+                {/* ส่วนที่ 2: ข้อมูลตัวเลือกสินค้า */}
+                <div className="rounded-2xl bg-slate-50 p-4 shadow-sm">
+                  <h3 className="mb-3 text-xs font-semibold text-slate-700">
+                    ตัวเลือกสินค้า
+                  </h3>
+
+                  {/* Scroll Area: กำหนดความสูงสูงสุดไว้ที่ 180px ถ้าเกินจะ Scroll */}
+                  <div className="max-h-[180px] space-y-2 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-emerald-200 scrollbar-track-transparent">
+                    {variants.map((variant, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500">
+                            {variant.weight ? `${variant.weight}g` : "ไม่ระบุน้ำหนัก"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-emerald-700">
+                            ฿{variant.price || 0}
+                          </span>
+                          <span className="text-slate-500">
+                            ({variant.stock || 0} ชิ้น)
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ส่วนสรุป: อยู่ติดด้านล่างเสมอ ไม่เลื่อนตาม Scroll */}
+                  <div className="mt-3 border-t border-slate-200 pt-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-600">รวมตัวเลือก:</span>
+                      <span className="font-medium text-slate-900">
+                        {variants.length} ตัวเลือก
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs">
+                      <span className="text-slate-600">ราคาเริ่มต้น:</span>
+                      <span className="font-medium text-emerald-700">
+                        ฿
+                        {Math.min(
+                          ...variants.map((v) => v.price || 0).filter((p) => p > 0)
+                        ) || 0}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs">
+                      <span className="text-slate-600">สต็อกรวม:</span>
+                      <span className="font-medium text-slate-900">
+                        {variants.reduce((sum, v) => sum + (v.stock || 0), 0)} ชิ้น
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-emerald-700">
-                  ฿{variant.price || 0}
-                </span>
-                <span className="text-slate-500">
-                  ({variant.stock || 0} ชิ้น)
-                </span>
-              </div>
             </div>
-          ))}
-        </div>
-
-        {/* ส่วนสรุป: อยู่ติดด้านล่างเสมอ ไม่เลื่อนตาม Scroll */}
-        <div className="mt-3 border-t border-slate-200 pt-3">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-600">รวมตัวเลือก:</span>
-            <span className="font-medium text-slate-900">
-              {variants.length} ตัวเลือก
-            </span>
           </div>
-          <div className="mt-1 flex items-center justify-between text-xs">
-            <span className="text-slate-600">ราคาเริ่มต้น:</span>
-            <span className="font-medium text-emerald-700">
-              ฿
-              {Math.min(
-                ...variants.map((v) => v.price || 0).filter((p) => p > 0)
-              ) || 0}
-            </span>
-          </div>
-          <div className="mt-1 flex items-center justify-between text-xs">
-            <span className="text-slate-600">สต็อกรวม:</span>
-            <span className="font-medium text-slate-900">
-              {variants.reduce((sum, v) => sum + (v.stock || 0), 0)} ชิ้น
-            </span>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
         </form>
       </div>
     </AdminLayout>
